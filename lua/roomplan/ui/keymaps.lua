@@ -1,0 +1,62 @@
+local M = {}
+local mappings = require("roomplan.ui.mappings")
+
+local function map(buf, lhs, rhs, desc, name)
+  return mappings.set(buf, lhs, rhs, desc, name)
+end
+
+function M.apply(buf, session)
+  local function controller(method, ...)
+    local args = { ... }
+    return function()
+      local module = require("roomplan.controller")
+      return module[method](session, unpack(args))
+    end
+  end
+  map(buf, "q", controller("hide"), "Hide RoomPlan canvas", "hide")
+  map(buf, "<CR>", controller("select_under_cursor"), "Select RoomPlan object", "select")
+  map(buf, "<Tab>", controller("select_next", 1), "Next RoomPlan object", "select_next")
+  map(buf, "<S-Tab>", controller("select_next", -1), "Previous RoomPlan object", "select_previous")
+  map(buf, "m", controller("set_mode", "MOVE"), "Move selected RoomPlan object", "move_mode")
+  map(buf, "p", controller("set_mode", "PAN"), "Pan RoomPlan viewport", "pan_mode")
+  for _, entry in ipairs({ { "h", -1, 0 }, { "j", 0, -1 }, { "k", 0, 1 }, { "l", 1, 0 } }) do
+    map(buf, entry[1], controller("direction", entry[2], entry[3], "normal"), "RoomPlan direction")
+  end
+  for _, entry in ipairs({ { "H", -1, 0 }, { "J", 0, -1 }, { "K", 0, 1 }, { "L", 1, 0 } }) do
+    map(buf, entry[1], controller("direction", entry[2], entry[3], "coarse"), "RoomPlan coarse direction")
+  end
+  for _, entry in ipairs({ { "<C-h>", -1, 0 }, { "<C-j>", 0, -1 }, { "<C-k>", 0, 1 }, { "<C-l>", 1, 0 } }) do
+    map(buf, entry[1], controller("direction", entry[2], entry[3], "fine"), "RoomPlan fine direction")
+  end
+  map(buf, "a", controller("add_menu"), "Add RoomPlan object", "add")
+  map(buf, "D", controller("add_door"), "Add RoomPlan door", "add_door")
+  map(buf, "F", controller("add_furniture"), "Add RoomPlan furniture", "add_furniture")
+  map(buf, "A", controller("align_room"), "Align selected RoomPlan room", "align")
+  map(buf, "e", controller("edit_selected"), "Edit RoomPlan selection", "edit")
+  map(buf, "d", controller("delete_selected"), "Delete RoomPlan selection", "delete")
+  map(buf, "y", controller("duplicate_selected"), "Duplicate RoomPlan selection", "duplicate")
+  map(buf, "r", controller("rotate_selected"), "Rotate RoomPlan furniture", "rotate")
+  map(buf, "i", controller("inspect"), "RoomPlan inspector", "inspector")
+  map(buf, "o", controller("objects"), "RoomPlan objects", "objects")
+  map(buf, "v", controller("validate", true), "Validate RoomPlan", "validate")
+  map(buf, "]e", controller("next_issue", 1), "Next RoomPlan issue", "next_issue")
+  map(buf, "[e", controller("next_issue", -1), "Previous RoomPlan issue", "previous_issue")
+  map(buf, "u", controller("undo"), "Undo RoomPlan action", "undo")
+  map(buf, "<C-r>", controller("redo"), "Redo RoomPlan action", "redo")
+  map(buf, "U", controller("redo"), "Redo RoomPlan action")
+  map(buf, "z+", controller("zoom", "in"), "Zoom RoomPlan in", "zoom_in")
+  map(buf, "z-", controller("zoom", "out"), "Zoom RoomPlan out", "zoom_out")
+  map(buf, "f", controller("fit"), "Fit RoomPlan", "fit")
+  map(buf, "zf", controller("fit"), "Fit RoomPlan")
+  for _, entry in ipairs({ { "zh", -1, 0 }, { "zj", 0, -1 }, { "zk", 0, 1 }, { "zl", 1, 0 } }) do
+    map(buf, entry[1], controller("pan", entry[2], entry[3]), "Pan RoomPlan viewport")
+  end
+  map(buf, "gs", controller("toggle_snap"), "Toggle RoomPlan snapping", "toggle_snap")
+  map(buf, "g!", controller("bypass_snap"), "Bypass next RoomPlan snap", "bypass_snap")
+  map(buf, "s", controller("save"), "Save RoomPlan", "save")
+  map(buf, "S", controller("save_as_prompt"), "Save RoomPlan As", "save_as")
+  map(buf, "?", function() require("roomplan.ui.help").open(session) end, "RoomPlan help", "help")
+  map(buf, "<Esc>", controller("escape"), "Cancel RoomPlan mode", "escape")
+end
+
+return M

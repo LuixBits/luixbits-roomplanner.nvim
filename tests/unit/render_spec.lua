@@ -1,0 +1,528 @@
+local json = require("roomplan.codec.json")
+local walls = require("roomplan.scene.walls")
+local scene_builder = require("roomplan.scene.build")
+local viewport = require("roomplan.render.viewport")
+local glyphs = require("roomplan.render.glyphs")
+local text = require("roomplan.render.text")
+local raster = require("roomplan.render.raster")
+
+local function has_segment_at(segments, orientation, fixed, scalar)
+  for _, segment in ipairs(segments) do
+    if segment.orientation == orientation
+      and segment.fixed == fixed
+      and segment.start < scalar
+      and segment.finish > scalar
+    then
+      return segment
+    end
+  end
+  return nil
+end
+
+local function fixed_view(left, top, column_scale, row_scale)
+  return viewport.new({
+    world_left_mm = left,
+    world_top_mm = top,
+    mm_per_column = column_scale,
+    mm_per_row = row_scale,
+  })
+end
+
+describe("scene extraction and rendering", function()
+  it("groups coincident walls while retaining both contributors", function()
+    local result = walls.build({
+      { id = "room-a", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      { id = "room-b", origin_mm = { 1000, 0 }, size_mm = { 1000, 1000 } },
+    }, {})
+    local shared = assert(has_segment_at(result.segments, "vertical", 1000, 500))
+    assert_equal(2, #shared.contributors)
+    assert_equal("room-a", shared.contributors[1].room_id)
+    assert_equal("east", shared.contributors[1].side)
+    assert_equal("room-b", shared.contributors[2].room_id)
+    assert_equal("west", shared.contributors[2].side)
+  end)
+
+  it("subtracts a connected aperture from both shared contributors", function()
+    local result = walls.build({
+      { id = "room-a", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      { id = "room-b", origin_mm = { 1000, 0 }, size_mm = { 1000, 1000 } },
+    }, {
+      {
+        id = "door-ab",
+        room_id = "room-a",
+        connects_to_room_id = "room-b",
+        side = "east",
+        offset_mm = 200,
+        width_mm = 400,
+      },
+    })
+    assert_equal(true, result.apertures[1].connection_valid)
+    assert_equal(nil, has_segment_at(result.segments, "vertical", 1000, 400))
+    assert_true(has_segment_at(result.segments, "vertical", 1000, 100) ~= nil)
+    assert_true(has_segment_at(result.segments, "vertical", 1000, 800) ~= nil)
+  end)
+
+  it("keeps the opposite contribution closed for a broken connection", function()
+    local result = walls.build({
+      { id = "room-a", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      { id = "room-b", origin_mm = { 1000, 0 }, size_mm = { 1000, 1000 } },
+      { id = "room-c", origin_mm = { 4000, 0 }, size_mm = { 1000, 1000 } },
+    }, {
+      {
+        id = "door-ac",
+        room_id = "room-a",
+        connects_to_room_id = "room-c",
+        side = "east",
+        offset_mm = 200,
+        width_mm = 400,
+      },
+    })
+    assert_equal(false, result.apertures[1].connection_valid)
+    local closed = assert(has_segment_at(result.segments, "vertical", 1000, 400))
+    assert_equal(1, #closed.contributors)
+    assert_equal("room-b", closed.contributors[1].room_id)
+  end)
+
+  it("treats the strict codec null sentinel as no connection", function()
+    local result = walls.build({
+      { id = "room-a", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+    }, {
+      {
+        id = "door-outside",
+        room_id = "room-a",
+        connects_to_room_id = json.null,
+        side = "south",
+        offset_mm = 200,
+        width_mm = 400,
+      },
+    })
+    assert_equal(false, result.apertures[1].connection_requested)
+    assert_equal(nil, has_segment_at(result.segments, "horizontal", 0, 400))
+  end)
+
+  it("includes furniture and complete door sweep extents in scene bounds", function()
+    local scene = scene_builder.build({
+      rooms = {
+        { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      },
+      furniture = {
+        {
+          id = "furniture-a",
+          room_id = "room-a",
+          name = "Desk",
+          center_mm = { 1200, 500 },
+          size_mm = { 401, 201, 700 },
+          rotation_deg = 0,
+        },
+      },
+      doors = {
+        {
+          id = "door-a",
+          room_id = "room-a",
+          connects_to_room_id = json.null,
+          side = "south",
+          offset_mm = 0,
+          width_mm = 500,
+          hinge = "start",
+          opens_into = "outside",
+          open_angle_deg = 90,
+        },
+      },
+    })
+    assert_true(scene.bounds.right >= 1400.5)
+    assert_true(scene.bounds.left <= 0)
+    assert_true(scene.bounds.bottom <= -500)
+  end)
+
+  it("emits the same handed leaf for every side, hinge, and swing half-plane", function()
+    local geometry_door = require("roomplan.geometry.door")
+    local room = { id = "room-a", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } }
+    for _, side in ipairs({ "north", "east", "south", "west" }) do
+      for _, hinge in ipairs({ "start", "end" }) do
+        for _, target in ipairs({ "owner", "outside" }) do
+          local door = {
+            id = "door-a",
+            room_id = "room-a",
+            connects_to_room_id = json.null,
+            side = side,
+            offset_mm = 100,
+            width_mm = 300,
+            hinge = hinge,
+            opens_into = target,
+            open_angle_deg = 90,
+          }
+          local classified = walls.classify_door(door, { [room.id] = room }, { [room.id] = 1 }, 1)
+          local rendered = assert(scene_builder.door_swing(classified))
+          local canonical = assert(geometry_door.swing(room, door))
+          assert_true(math.abs(rendered.hinge_x - canonical.hinge.x) < 1e-8)
+          assert_true(math.abs(rendered.hinge_y - canonical.hinge.y) < 1e-8)
+          assert_true(math.abs(rendered.open_x - canonical.open_endpoint.x) < 1e-8)
+          assert_true(math.abs(rendered.open_y - canonical.open_endpoint.y) < 1e-8)
+        end
+      end
+    end
+  end)
+
+  it("fits, zooms around an anchor, and pans without changing aspect", function()
+    local fitted = viewport.fit({ left = 0, bottom = 0, right = 1000, top = 1000 }, 20, 10, {
+      mm_per_column = 100,
+      cell_aspect = 2,
+      fit_margin_cells = 2,
+    })
+    assert_equal(2, fitted.mm_per_row / fitted.mm_per_column)
+    local world_x, world_y = viewport.screen_to_world(fitted, 7, 3)
+    local zoomed = viewport.zoom_in(fitted, 1.25, { screen_x = 7, screen_y = 3 })
+    local anchored_x, anchored_y = viewport.screen_to_world(zoomed, 7, 3)
+    assert_true(math.abs(world_x - anchored_x) < 1e-8)
+    assert_true(math.abs(world_y - anchored_y) < 1e-8)
+    assert_equal(2, zoomed.mm_per_row / zoomed.mm_per_column)
+    local panned = viewport.pan_cells(zoomed, 2, -3)
+    assert_equal(zoomed.world_left_mm + 2 * zoomed.mm_per_column, panned.world_left_mm)
+    assert_equal(zoomed.world_top_mm - 3 * zoomed.mm_per_row, panned.world_top_mm)
+  end)
+
+  it("maps every structural direction mask in Unicode and ASCII", function()
+    local unicode = glyphs.builtin("unicode")
+    assert_equal("└", unicode.wall[glyphs.N + glyphs.E])
+    assert_equal("┼", unicode.wall[15])
+    local ascii = glyphs.builtin("ascii")
+    for mask = 0, 15 do
+      assert_equal(1, #ascii.wall[mask])
+    end
+    assert_equal("+", ascii.wall[15])
+  end)
+
+  it("renders a stable single-room ASCII snapshot", function()
+    local scene = scene_builder.build({
+      rooms = {
+        { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 400, 400 } },
+      },
+      doors = {},
+      furniture = {},
+    })
+    local pristine_scene = vim.deepcopy(scene)
+    local output = raster.rasterize(scene, fixed_view(-100, 500, 100, 100), {
+      width = 7,
+      height = 7,
+      glyph_mode = "ascii",
+    })
+    assert_true(vim.deep_equal(pristine_scene, scene), "rasterization must not mutate its semantic scene")
+    assert_equal(table.concat({
+      "       ",
+      " +---+ ",
+      " |   | ",
+      " | A | ",
+      " |   | ",
+      " +---+ ",
+      "       ",
+    }, "\n"), table.concat(output.lines, "\n"))
+  end)
+
+  it("merges only structural walls into junction glyphs", function()
+    local ref = { type = "room", id = "room-a", order = 1 }
+    local scene = {
+      primitives = {
+        { kind = "wall", layer = 50, orientation = "horizontal", x1 = 0, y1 = 200, x2 = 400, y2 = 200, refs = { ref } },
+        { kind = "wall", layer = 50, orientation = "vertical", x1 = 200, y1 = 0, x2 = 200, y2 = 400, refs = { ref } },
+        {
+          kind = "furniture_outline",
+          layer = 31,
+          left = 100,
+          right = 300,
+          bottom = 100,
+          top = 300,
+          ref = { type = "furniture", id = "furniture-a", order = 1 },
+        },
+      },
+      warnings = {},
+    }
+    local output = raster.rasterize(scene, fixed_view(0, 400, 100, 100), {
+      width = 5,
+      height = 5,
+      glyph_mode = "unicode",
+    })
+    assert_equal("┼", output.cells[3][3].char)
+    assert_equal(15, output.cells[3][3].wall_mask)
+  end)
+
+  it("keeps ordered hit candidates beneath visual overlap", function()
+    local scene = {
+      primitives = {
+        { kind = "room_interior", layer = 20, left = 0, bottom = 0, right = 400, top = 400, ref = { type = "room", id = "room-a", order = 1 } },
+        { kind = "furniture_interior", layer = 30, left = 100, bottom = 100, right = 300, top = 300, ref = { type = "furniture", id = "furniture-a", order = 1 } },
+        { kind = "wall", layer = 50, orientation = "horizontal", x1 = 0, y1 = 200, x2 = 400, y2 = 200, refs = { { type = "room", id = "room-a", order = 1 } } },
+        { kind = "door_hinge", layer = 61, x = 200, y = 200, ref = { type = "door", id = "door-a", order = 1 } },
+      },
+      warnings = {},
+    }
+    local output = raster.rasterize(scene, fixed_view(0, 400, 100, 100), {
+      width = 5,
+      height = 5,
+      glyph_mode = "ascii",
+    })
+    local hits = output.hit_map[3][3]
+    assert_equal(3, #hits)
+    assert_equal("door", hits[1].type)
+    assert_equal("furniture", hits[2].type)
+    assert_equal("room", hits[3].type)
+    assert_equal("wall", hits[3].context)
+  end)
+
+  it("uses a semantic low-resolution door marker", function()
+    local scene = scene_builder.build({
+      rooms = {
+        { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      },
+      doors = {
+        {
+          id = "door-a",
+          room_id = "room-a",
+          connects_to_room_id = json.null,
+          side = "south",
+          offset_mm = 300,
+          width_mm = 100,
+          hinge = "start",
+          opens_into = "owner",
+          open_angle_deg = 90,
+        },
+      },
+      furniture = {},
+    })
+    local output = raster.rasterize(scene, fixed_view(0, 1000, 500, 500), {
+      width = 4,
+      height = 4,
+      glyph_mode = "ascii",
+    })
+    local found = false
+    for row = 1, output.height do
+      for column = 1, output.width do
+        if output.cells[row][column].char == "D" then
+          found = true
+          assert_equal("door-a", output.hit_map[row][column][1].id)
+        end
+      end
+    end
+    assert_true(found)
+  end)
+
+  it("clips fully offscreen geometry without boundary ghosts", function()
+    local scene = {
+      primitives = {
+        { kind = "wall", layer = 50, orientation = "horizontal", x1 = -1000, y1 = 200, x2 = -500, y2 = 200, refs = {} },
+        { kind = "wall", layer = 50, orientation = "vertical", x1 = 700, y1 = 0, x2 = 700, y2 = 400, refs = {} },
+        { kind = "door_aperture", layer = 60, x1 = -1000, y1 = 100, x2 = -950, y2 = 100,
+          ref = { type = "door", id = "door-offscreen", order = 1 } },
+      },
+      warnings = {},
+    }
+    local output = raster.rasterize(scene, fixed_view(0, 400, 100, 100), {
+      width = 5,
+      height = 5,
+      glyph_mode = "ascii",
+    })
+    assert_equal(string.rep("     \n", 4) .. "     ", table.concat(output.lines, "\n"))
+  end)
+
+  it("keeps Unicode backing cells byte-safe and replaces wide clusters", function()
+    local combining = "e\204\129"
+    local cells, metadata = assert(text.sanitize_cells("A界" .. combining .. "😀", 10, vim.fn.strdisplaywidth, "?"))
+    assert_equal(4, #cells)
+    assert_equal("A", cells[1])
+    assert_equal("?", cells[2])
+    assert_equal(combining, cells[3])
+    assert_equal("?", cells[4])
+    assert_equal(2, metadata.replaced)
+
+    local offsets = text.byte_offsets({ "─", combining, "?" })
+    assert_equal(0, offsets[1])
+    assert_equal(3, offsets[2])
+    assert_equal(6, offsets[3])
+    assert_equal(7, offsets[4])
+    assert_equal(2, text.byte_to_cell(offsets, 4))
+    local invalid, err = text.sanitize_cells("\255", 10, vim.fn.strdisplaywidth, "?")
+    assert_equal(nil, invalid)
+    assert_true(type(err) == "string")
+  end)
+
+  it("falls back atomically when one custom glyph is not one cell", function()
+    local custom = glyphs.builtin("ascii")
+    custom.door_hinge = "界"
+    local resolved, warning = glyphs.resolve("auto", custom, vim.fn.strdisplaywidth)
+    assert_equal("ascii", resolved.mode)
+    assert_true(type(warning) == "string")
+    assert_equal("o", resolved.door_hinge)
+  end)
+
+  it("recognizes validator object refs and kind-based selection roles", function()
+    local model = {
+      rooms = {
+        { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      },
+      doors = {},
+      furniture = {},
+    }
+    local scene = scene_builder.build(model, {
+      {
+        code = "ROOM_OVERLAP",
+        severity = "error",
+        object = { kind = "room", id = "room-a" },
+        related = {},
+      },
+    }, { selected = { kind = "room", id = "room-a" } })
+    local interior
+    for _, primitive in ipairs(scene.primitives) do
+      if primitive.kind == "room_interior" then interior = primitive; break end
+    end
+    assert_equal("error", assert(interior).role)
+  end)
+
+  it("opens, redraws, maps byte columns, and wipes a scratch canvas", function()
+    local canvas = require("roomplan.render.canvas")
+    local closed = false
+    local scene = scene_builder.build({
+      rooms = {
+        { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      },
+      doors = {},
+      furniture = {},
+    })
+    local handle = canvas.open({
+      open = "split",
+      scene = scene,
+      header_lines = 2,
+      glyph_mode = "unicode",
+      on_close = function()
+        closed = true
+      end,
+    })
+    assert_true(vim.api.nvim_buf_is_valid(handle.buf))
+    assert_equal("nofile", vim.bo[handle.buf].buftype)
+    assert_equal(false, vim.bo[handle.buf].modifiable)
+    assert_true(handle.last_raster ~= nil)
+    assert_true(canvas.set_logical_cursor(handle, 2, 2))
+    local cursor = assert(canvas.logical_cursor(handle))
+    assert_equal(2, cursor.row)
+    assert_equal(2, cursor.column)
+    assert_true(canvas.close(handle))
+    assert_equal(false, vim.api.nvim_buf_is_valid(handle.buf))
+    assert_equal(true, closed)
+  end)
+
+  it("renders an actionable empty state with a drawable initial cursor and footer", function()
+    local config = require("roomplan.config")
+    local canvas = require("roomplan.render.canvas")
+    config.setup({ canvas = { open = "split" } })
+    local plan = { rooms = {}, doors = {}, furniture = {}, settings = { grid_mm = 100 } }
+    local session = {
+      id = "session-empty-canvas",
+      source = { path = "/tmp/empty-canvas.roomplan.json", bufnr = vim.api.nvim_get_current_buf() },
+      canvas = {}, validation = {}, selection = nil, mode = "NAV", snap_enabled = true,
+      workflow = { generation = 0, kind = nil },
+    }
+    function session:model() return plan end
+    function session:status_text() return "[SAVED]" end
+
+    local handle = canvas.open(session)
+    local lines = vim.api.nvim_buf_get_lines(handle.buf, 0, -1, false)
+    assert_true(table.concat(lines, "\n"):find("Empty floor plan", 1, true) ~= nil)
+    assert_true(lines[#lines]:find("[a] Add first room", 1, true) ~= nil)
+    local cursor = assert(canvas.logical_cursor(session))
+    assert_true(cursor.row >= 0 and cursor.row < handle.last_raster.height)
+    assert_true(cursor.column >= 0 and cursor.column < handle.last_raster.width)
+    local has_fit_mapping = false
+    for _, mapping in ipairs(vim.api.nvim_buf_get_keymap(handle.buf, "n")) do
+      if mapping.lhs == "f" and mapping.desc == "Fit RoomPlan" then has_fit_mapping = true end
+    end
+    assert_true(has_fit_mapping)
+    assert_true(canvas.close(session))
+    config.reset()
+  end)
+
+  it("shows contextual actions and diagnoses an offscreen populated plan", function()
+    local config = require("roomplan.config")
+    local canvas = require("roomplan.render.canvas")
+    config.setup({ canvas = { open = "split" } })
+    local plan = {
+      rooms = {
+        { id = "room-far", name = "Far room", origin_mm = { 0, 0 }, size_mm = { 5000, 4000 } },
+      },
+      doors = {}, furniture = {}, settings = { grid_mm = 100 },
+    }
+    local session = {
+      id = "session-offscreen-canvas",
+      source = { path = "/tmp/offscreen-canvas.roomplan.json", bufnr = vim.api.nvim_get_current_buf() },
+      canvas = {}, validation = {}, selection = { kind = "room", id = "room-far" },
+      mode = "NAV", snap_enabled = true, workflow = { generation = 0, kind = nil },
+      viewport = fixed_view(100000, 100000, 100, 200),
+    }
+    function session:model() return plan end
+    function session:status_text() return "[SAVED]" end
+
+    local handle = canvas.open(session)
+    local lines = vim.api.nvim_buf_get_lines(handle.buf, 0, -1, false)
+    assert_true(table.concat(lines, "\n"):find("outside the viewport", 1, true) ~= nil)
+    assert_true(lines[2]:find("1 rooms, 0 doors, 0 items", 1, true) ~= nil)
+    assert_true(lines[#lines]:find("ROOM", 1, true) ~= nil)
+    assert_true(lines[#lines]:find("[A] Align", 1, true) ~= nil)
+
+    local output = assert(canvas.redraw(handle, nil, nil, { fit = true, focus_selection = true }))
+    assert_equal(nil, output.chrome_state)
+    assert_true(#canvas.hit_candidates(session) > 0)
+    session.mode = "MOVE"
+    canvas.redraw(handle)
+    lines = vim.api.nvim_buf_get_lines(handle.buf, 0, -1, false)
+    assert_true(lines[#lines]:find("MOVE", 1, true) ~= nil)
+    assert_true(lines[#lines]:find("[Ctrl-h/j/k/l] Fine", 1, true) ~= nil)
+    assert_true(canvas.close(session))
+    config.reset()
+  end)
+
+  it("adapts the controller session API without importing state", function()
+    local config = require("roomplan.config")
+    local canvas = require("roomplan.render.canvas")
+    config.setup({ canvas = { open = "split" } })
+    local model = {
+      rooms = {
+        { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      },
+      doors = {},
+      furniture = {},
+      settings = { grid_mm = 100 },
+    }
+    local wiped = false
+    local source_buffer = vim.api.nvim_get_current_buf()
+    local source_window = vim.api.nvim_get_current_win()
+    local session = {
+      id = "session-render-test",
+      source = { path = "/tmp/render-test.roomplan.json", bufnr = source_buffer },
+      canvas = {},
+      validation = {},
+      selection = { kind = "room", id = "room-a" },
+      mode = "NAV",
+      snap_enabled = true,
+    }
+    function session:model() return model end
+    function session:status_text() return "[SAVED]" end
+    local handle = canvas.open(session, { on_wipe = function() wiped = true end })
+    assert_equal(handle.buf, session.canvas.bufnr)
+    assert_equal(handle.win, session.canvas.winid)
+    assert_true(session.viewport ~= nil)
+    assert_true(canvas.set_logical_cursor(handle, 2, 2))
+    local controller_cursor = assert(canvas.logical_cursor(session))
+    assert_equal(1, controller_cursor.row)
+    assert_equal(1, controller_cursor.column)
+    assert_true(canvas.set_logical_cursor(session, 0, 0))
+    controller_cursor = assert(canvas.logical_cursor(session))
+    assert_equal(0, controller_cursor.row)
+    assert_equal(0, controller_cursor.column)
+    -- Leave only the canvas window. Closing it must reveal the source buffer,
+    -- never a session guard, because Neovim cannot close its final window.
+    vim.api.nvim_win_close(source_window, true)
+    assert_equal(1, #vim.api.nvim_list_wins())
+    assert_true(canvas.close(session))
+    assert_equal(source_buffer, vim.api.nvim_get_current_buf())
+    assert_equal(true, wiped)
+    assert_equal(nil, session.canvas.bufnr)
+    config.reset()
+  end)
+end)
