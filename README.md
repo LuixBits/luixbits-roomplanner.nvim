@@ -68,7 +68,7 @@ changes are investigated.
 
 ```lua
 vim.pack.add({
-  { src = "https://github.com/devluixos/luix-roomplanner.nvim" },
+  { src = "https://github.com/devluixos/luixbits-roomplanner.nvim" },
 })
 
 require("roomplan").setup({})
@@ -78,7 +78,7 @@ require("roomplan").setup({})
 
 ```lua
 {
-  "devluixos/luix-roomplanner.nvim",
+  "devluixos/luixbits-roomplanner.nvim",
   config = function()
     require("roomplan").setup({})
   end,
@@ -94,7 +94,7 @@ commands is safe if every command in the command table below is included.
 Clone the repository into a `start` package directory:
 
 ```sh
-git clone https://github.com/devluixos/luix-roomplanner.nvim \
+git clone https://github.com/devluixos/luixbits-roomplanner.nvim \
   ~/.local/share/nvim/site/pack/plugins/start/roomplan.nvim
 nvim --headless "+helptags ALL" +qa
 ```

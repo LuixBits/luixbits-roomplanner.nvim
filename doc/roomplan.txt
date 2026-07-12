@@ -63,7 +63,7 @@ NEOVIM 0.12 VIM.PACK                                  *roomplan-install-vimpack*
 `vim.pack` is a Neovim 0.12+ feature. In `init.lua`: >lua
 
     vim.pack.add({
-      { src = "https://github.com/devluixos/luix-roomplanner.nvim" },
+      { src = "https://github.com/devluixos/luixbits-roomplanner.nvim" },
     })
     require("roomplan").setup({})
 <
@@ -71,7 +71,7 @@ NEOVIM 0.12 VIM.PACK                                  *roomplan-install-vimpack*
 LAZY.NVIM                                                *roomplan-install-lazy*
 >lua
     {
-      "devluixos/luix-roomplanner.nvim",
+      "devluixos/luixbits-roomplanner.nvim",
       config = function()
         require("roomplan").setup({})
       end,
@@ -85,7 +85,7 @@ NATIVE PACKAGE                                      *roomplan-install-package*
 
 Clone into a `start` package directory: >sh
 
-    git clone https://github.com/devluixos/luix-roomplanner.nvim \
+    git clone https://github.com/devluixos/luixbits-roomplanner.nvim \
       ~/.local/share/nvim/site/pack/plugins/start/roomplan.nvim
     nvim --headless "+helptags ALL" +qa
 <
