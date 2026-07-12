@@ -1,0 +1,36 @@
+* Renovation notes
+
+Measurements and purchase notes outside the plan payload remain ordinary Norg
+content.
+
+* Floor plan
+
+@code json roomplan.nvim
+{
+  "format": "roomplan.nvim",
+  "schema_version": 1,
+  "units": "mm",
+  "metadata": {
+    "name": "Embedded plan",
+    "notes": ""
+  },
+  "settings": {
+    "grid_mm": 100,
+    "fine_step_mm": 10,
+    "normal_step_mm": 100,
+    "coarse_step_mm": 500,
+    "default_door_width_mm": 900,
+    "default_wall_thickness_mm": 120
+  },
+  "rooms": [],
+  "doors": [],
+  "furniture": [],
+  "custom_templates": [],
+  "extensions": {}
+}
+@end
+
+* Shopping list
+
+- Sofa
+- Desk

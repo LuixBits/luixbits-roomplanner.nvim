@@ -1,0 +1,90 @@
+{
+  "format": "roomplan.nvim",
+  "schema_version": 1,
+  "units": "mm",
+  "metadata": {
+    "name": "Acceptance flat",
+    "notes": "Two rooms, one shared door, and one explicit-size sofa."
+  },
+  "settings": {
+    "grid_mm": 100,
+    "fine_step_mm": 10,
+    "normal_step_mm": 100,
+    "coarse_step_mm": 500,
+    "default_door_width_mm": 900,
+    "default_wall_thickness_mm": 120
+  },
+  "rooms": [
+    {
+      "id": "room-living",
+      "name": "Living room",
+      "origin_mm": [
+        0,
+        0
+      ],
+      "size_mm": [
+        5000,
+        4000
+      ]
+    },
+    {
+      "id": "room-bedroom",
+      "name": "Bedroom",
+      "origin_mm": [
+        5000,
+        0
+      ],
+      "size_mm": [
+        3000,
+        3000
+      ]
+    }
+  ],
+  "doors": [
+    {
+      "id": "door-living-bedroom",
+      "kind": "hinged",
+      "room_id": "room-living",
+      "connects_to_room_id": "room-bedroom",
+      "side": "east",
+      "offset_mm": 800,
+      "width_mm": 900,
+      "hinge": "start",
+      "opens_into": "connected",
+      "open_angle_deg": 90
+    }
+  ],
+  "furniture": [
+    {
+      "id": "furniture-sofa-1",
+      "room_id": "room-living",
+      "template_id": "builtin:sofa",
+      "name": "Sofa",
+      "category": "seating",
+      "center_mm": [
+        1550,
+        1050
+      ],
+      "size_mm": [
+        2100,
+        900,
+        800
+      ],
+      "rotation_deg": 0
+    }
+  ],
+  "custom_templates": [
+    {
+      "id": "custom:my-desk",
+      "name": "My desk",
+      "category": "work",
+      "shape": "rectangle",
+      "default_size_mm": [
+        1600,
+        800,
+        740
+      ]
+    }
+  ],
+  "extensions": {}
+}

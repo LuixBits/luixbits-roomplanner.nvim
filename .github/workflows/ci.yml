@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 4 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: roomplan-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Neovim ${{ matrix.label }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: ${{ matrix.experimental }}
+    env:
+      NVIM_LOG_FILE: ${{ runner.temp }}/roomplan-nvim.log
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: 0.10.latest
+            neovim: v0.10.4
+            experimental: false
+          - label: 0.11.latest
+            neovim: v0.11.7
+            experimental: false
+          - label: 0.12.4
+            neovim: v0.12.4
+            experimental: false
+          - label: nightly
+            neovim: nightly
+            experimental: true
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1.6.1
+        with:
+          neovim: true
+          version: ${{ matrix.neovim }}
+
+      - name: Install Lua 5.1 compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.1
+
+      - name: Show runtime versions
+        run: |
+          nvim --version | head -n 3
+          lua5.1 -v
+
+      - name: Check Lua 5.1 syntax
+        run: |
+          find lua plugin tests -name '*.lua' -print0 \
+            | xargs -0 -n1 luac5.1 -p
+
+      - name: Check JSON Schema syntax
+        run: jq empty schema/roomplan.schema.json
+
+      - name: Run headless test suite
+        run: |
+          nvim --headless -u NONE -i NONE -n \
+            --cmd "set runtimepath^=$PWD" \
+            -c "luafile $PWD/tests/run.lua" \
+            -c "qa!"
+
+      - name: Smoke-test minimal setup and commands
+        run: |
+          nvim --headless -u "$PWD/scripts/minimal_init.lua" -i NONE -n \
+            -c "lua if vim.fn.exists(':RoomPlanOpen') ~= 2 or vim.fn.exists(':RoomPlanSaveAs') ~= 2 then vim.cmd('cquit 1') end" \
+            -c "qa!"
+
+      - name: Generate and verify help tags
+        run: |
+          nvim --headless -u NONE -i NONE -n \
+            --cmd "set runtimepath^=$PWD" \
+            -c "helptags $PWD/doc" \
+            -c "silent help roomplan" \
+            -c "lua if vim.bo.filetype ~= 'help' then vim.cmd('cquit 1') end" \
+            -c "qa!"
+
+      - name: Smoke-test health provider
+        run: |
+          nvim --headless -u "$PWD/scripts/minimal_init.lua" -i NONE -n \
+            -c "checkhealth roomplan" \
+            -c "qa!"
+
+  platform-smoke:
+    name: Neovim 0.12.4 on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@v1.6.1
+        with:
+          neovim: true
+          version: v0.12.4
+
+      - name: Run cross-platform headless suite
+        shell: bash
+        env:
+          NVIM_LOG_FILE: ${{ runner.temp }}/roomplan-nvim.log
+        run: |
+          nvim --headless -u NONE -i NONE -n \
+            --cmd "set runtimepath^=$PWD" \
+            -c "luafile $PWD/tests/run.lua" \
+            -c "qa!"

@@ -1,0 +1,4 @@
+nvim.log
+.nvimlog
+doc/tags
+.luacov

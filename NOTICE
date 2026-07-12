@@ -1,0 +1,9 @@
+roomplan.nvim is an original MIT-licensed implementation.
+
+The project interoperates with the Norg file format documented by the
+nvim-neorg/norg-specs project. Neorg itself is GPL-3.0 licensed; no Neorg
+implementation code is copied into this repository.
+
+venn.nvim (MIT) informed the research into terminal line-junction rendering.
+The RoomPlan renderer is independently implemented and contains no copied
+venn.nvim source at this time.
