@@ -315,6 +315,86 @@ function M.edit(session, door, opts)
   return spec
 end
 
+---Build an atomic copy form for the three placement properties users choose
+---when duplicating a door. The remaining connection and swing properties are
+---copied unchanged by the action handler.
+function M.duplicate(session, door, opts)
+  opts = opts or {}
+  if type(door) == "string" then door = model_helpers.find(session:model(), "door", door) end
+  assert(type(door) == "table" and type(door.id) == "string", "door.duplicate requires a door")
+  local context = { session = session, door_id = door.id }
+  local spec = {
+    id = "duplicate-door",
+    title = "Duplicate hinged door",
+    mode = "DOOR DUPLICATE",
+    description = "Place a copy on the same wall; connection and swing are preserved.",
+    apply_label = "Create door copy",
+    context = context,
+    initial = {
+      offset_mm = opts.offset_mm or (door.offset_mm + door.width_mm),
+      width_mm = opts.width_mm or door.width_mm,
+      hinge = opts.hinge or door.hinge,
+    },
+    fields = {
+      {
+        key = "source", label = "Source", type = "readonly",
+        value = function(ctx)
+          local current = common.find(ctx, "door", ctx.door_id)
+          if not current then return "unavailable" end
+          return string.format("%s wall of %s", current.side, current.room_id)
+        end,
+      },
+      { key = "offset_mm", label = "Copy offset", type = "measurement", required = true, allow_zero = true },
+      { key = "width_mm", label = "Copy width", type = "measurement", required = true },
+      {
+        key = "hinge", label = "Copy hinge", type = "enum", required = true,
+        choices = { { value = "start", label = "Canonical start" }, { value = "end", label = "Canonical end" } },
+      },
+    },
+    validate = function(draft, ctx)
+      local errors = {}
+      local source = common.find(ctx, "door", ctx.door_id)
+      if not source then
+        errors._form = "the source door no longer exists"
+        return errors
+      end
+      local length = edge_length({ room_id = source.room_id, side = source.side }, ctx)
+      if length and draft.offset_mm + draft.width_mm > length then
+        errors.offset_mm = string.format("opening must fit within the %d mm wall", length)
+      end
+      return errors
+    end,
+    preview = function(draft, ctx)
+      local source = common.find(ctx, "door", ctx.door_id)
+      if not source then return nil, { code = "NOT_FOUND", message = "the source door no longer exists" } end
+      return {
+        lines = {
+          string.format("%s wall: offset %d mm, width %d mm", source.side, draft.offset_mm, draft.width_mm),
+          string.format("Hinge %s; connection and swing copied from %s", draft.hinge, source.id),
+        },
+      }
+    end,
+  }
+  function spec.build(draft, ctx)
+    ctx = ctx or context
+    local source = common.find(ctx, "door", ctx.door_id)
+    if not source then return nil, { code = "NOT_FOUND", message = "the source door no longer exists" } end
+    local id, id_err = common.generate_id(ctx, "door", source.id .. " copy")
+    if not id then return nil, id_err end
+    return {
+      type = "duplicate_door_from_draft",
+      id = source.id,
+      new_id = id,
+      patch = {
+        offset_mm = draft.offset_mm,
+        width_mm = draft.width_mm,
+        hinge = draft.hinge,
+      },
+    }
+  end
+  return spec
+end
+
 M.new = M.add
 M.offset = offset
 

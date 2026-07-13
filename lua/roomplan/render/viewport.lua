@@ -24,6 +24,38 @@ local function clamp(value, minimum, maximum)
   return value
 end
 
+local function normalized_rotation(value)
+  value = tonumber(value) or 0
+  if not finite(value) then return 0 end
+  return math.floor(value) % 4
+end
+
+function M.rotation(viewport)
+  return normalized_rotation(type(viewport) == "table" and viewport.rotation_quarters or 0)
+end
+
+---Convert a direction expressed in screen axes (right/up) to world axes
+---(east/north) for the active quarter-turn projection.
+function M.view_delta_to_world(viewport, dx, dy)
+  local rotation = M.rotation(viewport)
+  if rotation == 1 then
+    return -dy, dx
+  elseif rotation == 2 then
+    return -dx, -dy
+  elseif rotation == 3 then
+    return dy, -dx
+  end
+  return dx, dy
+end
+
+---Return the visible cell scale for each world axis.
+function M.world_axis_scales(viewport)
+  if M.rotation(viewport) % 2 == 1 then
+    return viewport.mm_per_row, viewport.mm_per_column
+  end
+  return viewport.mm_per_column, viewport.mm_per_row
+end
+
 function M.copy(viewport)
   return {
     world_left_mm = viewport.world_left_mm,
@@ -31,6 +63,7 @@ function M.copy(viewport)
     mm_per_column = viewport.mm_per_column,
     mm_per_row = viewport.mm_per_row,
     cell_aspect = viewport.cell_aspect,
+    rotation_quarters = M.rotation(viewport),
   }
 end
 
@@ -59,6 +92,7 @@ function M.new(opts)
     mm_per_column = mm_per_column,
     mm_per_row = mm_per_row,
     cell_aspect = aspect,
+    rotation_quarters = normalized_rotation(opts.rotation_quarters),
   }
 end
 
@@ -71,26 +105,71 @@ function M.valid(viewport)
 end
 
 function M.world_to_screen(viewport, x, y)
-  return (x - viewport.world_left_mm) / viewport.mm_per_column,
-    (viewport.world_top_mm - y) / viewport.mm_per_row
+  local dx = x - viewport.world_left_mm
+  local dy = y - viewport.world_top_mm
+  local rotation = M.rotation(viewport)
+  if rotation == 1 then
+    return dy / viewport.mm_per_column, dx / viewport.mm_per_row
+  elseif rotation == 2 then
+    return -dx / viewport.mm_per_column, dy / viewport.mm_per_row
+  elseif rotation == 3 then
+    return -dy / viewport.mm_per_column, -dx / viewport.mm_per_row
+  end
+  return dx / viewport.mm_per_column, -dy / viewport.mm_per_row
 end
 
 M.project = M.world_to_screen
 
 function M.screen_to_world(viewport, column, row)
-  return viewport.world_left_mm + column * viewport.mm_per_column,
-    viewport.world_top_mm - row * viewport.mm_per_row
+  local column_mm = column * viewport.mm_per_column
+  local row_mm = row * viewport.mm_per_row
+  local rotation = M.rotation(viewport)
+  if rotation == 1 then
+    return viewport.world_left_mm + row_mm, viewport.world_top_mm + column_mm
+  elseif rotation == 2 then
+    return viewport.world_left_mm - column_mm, viewport.world_top_mm + row_mm
+  elseif rotation == 3 then
+    return viewport.world_left_mm - row_mm, viewport.world_top_mm - column_mm
+  end
+  return viewport.world_left_mm + column_mm, viewport.world_top_mm - row_mm
 end
 
 M.unproject = M.screen_to_world
 
 function M.visible_bounds(viewport, columns, rows)
-  return {
-    left = viewport.world_left_mm,
-    right = viewport.world_left_mm + math.max(0, columns - 1) * viewport.mm_per_column,
-    top = viewport.world_top_mm,
-    bottom = viewport.world_top_mm - math.max(0, rows - 1) * viewport.mm_per_row,
+  local last_column = math.max(0, columns - 1)
+  local last_row = math.max(0, rows - 1)
+  local corners = {
+    { M.screen_to_world(viewport, 0, 0) },
+    { M.screen_to_world(viewport, last_column, 0) },
+    { M.screen_to_world(viewport, 0, last_row) },
+    { M.screen_to_world(viewport, last_column, last_row) },
   }
+  local left, right = corners[1][1], corners[1][1]
+  local bottom, top = corners[1][2], corners[1][2]
+  for index = 2, #corners do
+    left, right = math.min(left, corners[index][1]), math.max(right, corners[index][1])
+    bottom, top = math.min(bottom, corners[index][2]), math.max(top, corners[index][2])
+  end
+  return {
+    left = left,
+    right = right,
+    top = top,
+    bottom = bottom,
+  }
+end
+
+local function origin_for_anchor(rotation, world_x, world_y, screen_x, screen_y, column_scale, row_scale)
+  local column_mm = screen_x * column_scale
+  local row_mm = screen_y * row_scale
+  if rotation == 1 then
+    return world_x - row_mm, world_y - column_mm
+  elseif rotation == 2 then
+    return world_x + column_mm, world_y - row_mm
+  elseif rotation == 3 then
+    return world_x + row_mm, world_y + column_mm
+  end
+  return world_x - column_mm, world_y + row_mm
 end
 
 local function normalized_bounds(bounds)
@@ -125,6 +204,7 @@ function M.fit(bounds, columns, rows, opts)
   rows = math.max(1, math.floor(rows or 1))
   local base = M.valid(opts) and M.copy(opts) or M.new(opts)
   local aspect = base.mm_per_row / base.mm_per_column
+  local rotation = M.rotation(base)
   local margin = tonumber(opts.fit_margin_cells or opts.margin_cells) or 2
   margin = math.max(0, margin)
   local usable_columns = math.max(1, columns - 2 * margin)
@@ -134,18 +214,28 @@ function M.fit(bounds, columns, rows, opts)
   if not left then
     local scale = clamp(base.mm_per_column, opts.min_mm_per_column, opts.max_mm_per_column)
     local row_scale = scale * aspect
+    local origin_x, origin_y = origin_for_anchor(
+      rotation, 0, 0, (columns - 1) / 2, (rows - 1) / 2, scale, row_scale
+    )
     return M.new({
-      world_left_mm = -((columns - 1) / 2) * scale,
-      world_top_mm = ((rows - 1) / 2) * row_scale,
+      world_left_mm = origin_x,
+      world_top_mm = origin_y,
       mm_per_column = scale,
       mm_per_row = row_scale,
+      rotation_quarters = rotation,
     })
   end
 
   local span_x = math.max(0, right - left)
   local span_y = math.max(0, top - bottom)
-  local scale_x = span_x > 0 and span_x / usable_columns or 0
-  local scale_y = span_y > 0 and span_y / (usable_rows * aspect) or 0
+  local scale_x, scale_y
+  if rotation % 2 == 1 then
+    scale_x = span_y > 0 and span_y / usable_columns or 0
+    scale_y = span_x > 0 and span_x / (usable_rows * aspect) or 0
+  else
+    scale_x = span_x > 0 and span_x / usable_columns or 0
+    scale_y = span_y > 0 and span_y / (usable_rows * aspect) or 0
+  end
   local scale = math.max(scale_x, scale_y)
   if not finite_positive(scale) then
     scale = base.mm_per_column
@@ -154,12 +244,16 @@ function M.fit(bounds, columns, rows, opts)
   local row_scale = scale * aspect
   local center_x = (left + right) / 2
   local center_y = (bottom + top) / 2
+  local origin_x, origin_y = origin_for_anchor(
+    rotation, center_x, center_y, (columns - 1) / 2, (rows - 1) / 2, scale, row_scale
+  )
 
   return M.new({
-    world_left_mm = center_x - ((columns - 1) / 2) * scale,
-    world_top_mm = center_y + ((rows - 1) / 2) * row_scale,
+    world_left_mm = origin_x,
+    world_top_mm = origin_y,
     mm_per_column = scale,
     mm_per_row = row_scale,
+    rotation_quarters = rotation,
   })
 end
 
@@ -205,11 +299,16 @@ function M.zoom(viewport, factor, anchor, limits)
   )
   local ratio = viewport.mm_per_row / viewport.mm_per_column
   local new_row_scale = new_column_scale * ratio
+  local rotation = M.rotation(viewport)
+  local origin_x, origin_y = origin_for_anchor(
+    rotation, world_x, world_y, screen_x, screen_y, new_column_scale, new_row_scale
+  )
   return M.new({
-    world_left_mm = world_x - screen_x * new_column_scale,
-    world_top_mm = world_y + screen_y * new_row_scale,
+    world_left_mm = origin_x,
+    world_top_mm = origin_y,
     mm_per_column = new_column_scale,
     mm_per_row = new_row_scale,
+    rotation_quarters = rotation,
   })
 end
 
@@ -220,6 +319,36 @@ end
 
 function M.zoom_out(viewport, factor, anchor, limits)
   return M.zoom(viewport, factor or 1.25, anchor, limits)
+end
+
+---Rotate the view in 90-degree clockwise steps while preserving an anchor.
+---The model remains in world coordinates; only projection changes.
+function M.rotate(viewport, delta_quarters, anchor, limits)
+  assert(M.valid(viewport), "invalid viewport")
+  limits = limits or {}
+  local world_x, world_y, screen_x, screen_y = anchor_values(
+    viewport,
+    anchor,
+    limits.columns,
+    limits.rows
+  )
+  local rotation = normalized_rotation(M.rotation(viewport) + (tonumber(delta_quarters) or 1))
+  local origin_x, origin_y = origin_for_anchor(
+    rotation,
+    world_x,
+    world_y,
+    screen_x,
+    screen_y,
+    viewport.mm_per_column,
+    viewport.mm_per_row
+  )
+  return M.new({
+    world_left_mm = origin_x,
+    world_top_mm = origin_y,
+    mm_per_column = viewport.mm_per_column,
+    mm_per_row = viewport.mm_per_row,
+    rotation_quarters = rotation,
+  })
 end
 
 ---Pan by world millimetres. Positive Y pans north/up.
@@ -233,31 +362,31 @@ end
 ---Pan by logical cells. Positive row cells pan north/up, matching pan intent
 ---rather than buffer row direction.
 function M.pan_cells(viewport, columns, rows)
-  return M.pan(
-    viewport,
-    (columns or 0) * viewport.mm_per_column,
-    (rows or 0) * viewport.mm_per_row
-  )
+  local origin_x, origin_y = M.screen_to_world(viewport, 0, 0)
+  local target_x, target_y = M.screen_to_world(viewport, columns or 0, -(rows or 0))
+  return M.pan(viewport, target_x - origin_x, target_y - origin_y)
 end
 
 ---Shift the viewport just enough to include a world point plus a cell margin.
 function M.ensure_visible(viewport, x, y, columns, rows, margin_cells)
   local result = M.copy(viewport)
   margin_cells = math.max(0, margin_cells or 1)
-  local min_x = result.world_left_mm + margin_cells * result.mm_per_column
-  local max_x = result.world_left_mm + math.max(0, columns - 1 - margin_cells) * result.mm_per_column
-  local max_y = result.world_top_mm - margin_cells * result.mm_per_row
-  local min_y = result.world_top_mm - math.max(0, rows - 1 - margin_cells) * result.mm_per_row
-  if x < min_x then
-    result.world_left_mm = result.world_left_mm - (min_x - x)
-  elseif x > max_x then
-    result.world_left_mm = result.world_left_mm + (x - max_x)
-  end
-  if y > max_y then
-    result.world_top_mm = result.world_top_mm + (y - max_y)
-  elseif y < min_y then
-    result.world_top_mm = result.world_top_mm - (min_y - y)
-  end
+  local column, row = M.world_to_screen(result, x, y)
+  local min_column = math.min(margin_cells, math.max(0, columns - 1))
+  local max_column = math.max(min_column, columns - 1 - margin_cells)
+  local min_row = math.min(margin_cells, math.max(0, rows - 1))
+  local max_row = math.max(min_row, rows - 1 - margin_cells)
+  local target_column = math.max(min_column, math.min(max_column, column))
+  local target_row = math.max(min_row, math.min(max_row, row))
+  result.world_left_mm, result.world_top_mm = origin_for_anchor(
+    M.rotation(result),
+    x,
+    y,
+    target_column,
+    target_row,
+    result.mm_per_column,
+    result.mm_per_row
+  )
   return result
 end
 

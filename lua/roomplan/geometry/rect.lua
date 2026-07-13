@@ -1,5 +1,3 @@
-local interval = require("roomplan.geometry.interval")
-
 local M = {}
 
 local function unpack_rect(rect)
@@ -35,11 +33,6 @@ function M.bounds(rect)
   return unpack_rect(rect)
 end
 
-function M.translate(rect, dx, dy)
-  local left, bottom, right, top = unpack_rect(rect)
-  return M.new(left + dx, bottom + dy, right - left, top - bottom)
-end
-
 function M.overlaps_positive(a, b)
   local al, ab, ar, at = unpack_rect(a)
   local bl, bb, br, bt = unpack_rect(b)
@@ -60,12 +53,6 @@ function M.contains_point(rect, x, y, include_boundary)
   return x >= left and x <= right and y >= bottom and y <= top
 end
 
-function M.contains_rect(outer, inner)
-  local ol, ob, oright, ot = unpack_rect(outer)
-  local il, ib, iright, it = unpack_rect(inner)
-  return il >= ol and iright <= oright and ib >= ob and it <= ot
-end
-
 function M.intersection(a, b)
   local al, ab, ar, at = unpack_rect(a)
   local bl, bb, br, bt = unpack_rect(b)
@@ -77,22 +64,6 @@ function M.intersection(a, b)
     return M.new(left, bottom, right - left, top - bottom)
   end
   return nil
-end
-
-function M.hit_test(rect, x, y)
-  local left, bottom, right, top = unpack_rect(rect)
-  if not M.contains_point(rect, x, y, true) then
-    return nil
-  end
-  local edges = {}
-  if x == left then edges[#edges + 1] = "west" end
-  if x == right then edges[#edges + 1] = "east" end
-  if y == bottom then edges[#edges + 1] = "south" end
-  if y == top then edges[#edges + 1] = "north" end
-  if #edges > 0 then
-    return "edge", edges
-  end
-  return "interior", edges
 end
 
 function M.union(rectangles)
@@ -119,7 +90,7 @@ function M.room_rect2(room)
   return { left2 = 2 * x, bottom2 = 2 * y, right2 = 2 * (x + width), top2 = 2 * (y + depth) }
 end
 
-function M.effective_furniture_dimensions(furniture)
+local function effective_furniture_dimensions(furniture)
   local width = furniture.size_mm[1]
   local depth = furniture.size_mm[2]
   if furniture.rotation_deg == 90 or furniture.rotation_deg == 270 then
@@ -129,7 +100,7 @@ function M.effective_furniture_dimensions(furniture)
 end
 
 function M.furniture_rect2(room, furniture)
-  local width, depth = M.effective_furniture_dimensions(furniture)
+  local width, depth = effective_furniture_dimensions(furniture)
   local center_x = room.origin_mm[1] + furniture.center_mm[1]
   local center_y = room.origin_mm[2] + furniture.center_mm[2]
   return {
@@ -192,11 +163,5 @@ function M.edges(rect)
     { side = "west", x1 = left, y1 = bottom, x2 = left, y2 = top },
   }
 end
-
-M.interval = interval
-M.positive_overlap = M.overlaps_positive
-M.overlap = M.overlaps_positive
-M.contains = M.contains_rect
-M.point_inside = M.contains_point
 
 return M

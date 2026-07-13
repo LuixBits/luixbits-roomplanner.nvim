@@ -50,6 +50,7 @@ local DEFAULT_LINKS = {
   RoomPlanActions = "StatusLine",
   RoomPlanEmptyTitle = "Title",
   RoomPlanChrome = "Comment",
+  RoomPlanCompass = "Special",
   RoomPlanMuted = "Comment",
 }
 
@@ -138,36 +139,40 @@ local function session_header(session, canvas_config)
   local room_count = #(plan.rooms or {})
   local door_count = #(plan.doors or {})
   local furniture_count = #(plan.furniture or {})
-  local selected_text = "none"
+  local plan_name = plan.metadata and plan.metadata.name or "Untitled plan"
+  local selected_text = plan_name
   if selection then
-    selected_text = string.format(
-      "%s %q [%s]",
-      selection.kind or "object",
-      tostring(object and (object.name or object.id) or selection.id),
-      tostring(selection.id)
-    )
+    selected_text = string.format("%s: %s", selection.kind or "object",
+      tostring(object and (object.name or object.id) or selection.id))
   end
   local display_mode = session.mode or "NAV"
   if session.workspace and session.workspace.state and session.workspace.state.interaction then
     display_mode = session.workspace.state.interaction
   end
+  local issue_parts = {}
+  if errors > 0 then issue_parts[#issue_parts + 1] = errors .. "E" end
+  if warnings > 0 then issue_parts[#issue_parts + 1] = warnings .. "W" end
+  local issues = #issue_parts > 0 and (" · " .. table.concat(issue_parts, " ")) or ""
+  local subject = selection and (plan_name .. " / " .. selected_text) or plan_name
+  local workspace_owns_status = session.workspace and session.workspace.owns_footer
+  local context_parts = {}
+  if not workspace_owns_status then
+    context_parts[#context_parts + 1] = display_mode
+    if status ~= "" then context_parts[#context_parts + 1] = status end
+  end
+  local context_status = #context_parts > 0 and (" · " .. table.concat(context_parts, " ")) or ""
   return {
+    string.format("RoomPlan · %s%s%s", subject, context_status, issues),
     string.format(
-      "RoomPlan | %s | %s | %s | zoom %.2f | snap %s",
+      "%s · %s · %s · %d rooms · %d doors · %d items · zoom %.2f · snap %s",
       source,
       display_mode,
       status,
-      zoom,
-      session.snap_enabled == false and "off" or "on"
-    ),
-    string.format(
-      "Objects: %d rooms, %d doors, %d items | Selected: %s | errors %d warnings %d",
       room_count,
       door_count,
       furniture_count,
-      selected_text,
-      errors,
-      warnings
+      zoom,
+      session.snap_enabled == false and "off" or "on"
     ),
   }
 end
@@ -214,6 +219,7 @@ local function options_for_session(session, callbacks)
     max_mm_per_column = canvas_config.max_mm_per_column,
     fit_margin_cells = canvas_config.fit_margin_cells,
     header_lines = canvas_config.header_lines,
+    show_compass = canvas_config.show_compass,
     viewport = session.viewport,
     fit_on_open = session.viewport == nil,
   }
@@ -221,7 +227,6 @@ local function options_for_session(session, callbacks)
     return require("roomplan.scene.build").build(current_model(session), session.validation, {
       selected = session.selection,
       show_grid = canvas_config.show_grid,
-      show_rulers = canvas_config.show_rulers,
       show_dimensions = canvas_config.show_dimensions,
     })
   end
@@ -377,7 +382,10 @@ local function header_lines(handle, width)
   end
   local lines = {}
   for index = 1, configured do
-    lines[index] = safe_header_line(value[index] or "", width, "?")
+    local line_width = index == 1 and handle.opts.show_compass ~= false and width >= 3
+        and width - 3
+      or width
+    lines[index] = safe_header_line(value[index] or "", line_width, "?")
   end
   return lines
 end
@@ -570,6 +578,19 @@ local function apply_highlights(handle, output, header_count, footer_count)
           strict = false,
         })
       end
+    end
+    if handle.opts.show_compass ~= false then
+      local arrows = output.glyph_mode == "ascii"
+          and { "^", ">", "v", "<" }
+        or { "↑", "→", "↓", "←" }
+      local label = "N" .. arrows[viewport_module.rotation(output.viewport) + 1]
+      vim.api.nvim_buf_set_extmark(handle.buf, handle.namespace, 0, 0, {
+        virt_text = { { label, "RoomPlanCompass" } },
+        virt_text_pos = "right_align",
+        hl_mode = "combine",
+        priority = 120,
+        strict = false,
+      })
     end
   end
   if footer_count > 0 then
@@ -789,6 +810,7 @@ function M.redraw(handle, scene, viewport, redraw_opts)
       fit_margin_cells = handle.opts.fit_margin_cells,
       min_mm_per_column = handle.opts.min_mm_per_column,
       max_mm_per_column = handle.opts.max_mm_per_column,
+      rotation_quarters = viewport_module.rotation(viewport),
     }
     viewport = viewport_module.fit_scene(scene, width, drawable_height, fit_options)
   end

@@ -256,7 +256,7 @@ function M.structural(model)
     structural_field(result, "INVALID_SETTINGS", "settings", "settings", "settings must be an object")
   elseif type(model.settings) == "table" then
     local keys = { "grid_mm", "fine_step_mm", "normal_step_mm", "coarse_step_mm",
-      "default_door_width_mm", "default_wall_thickness_mm" }
+      "default_door_width_mm" }
     for i = 1, #keys do
       local key = keys[i]
       if not valid_integer(model.settings[key], 1, number.MAX_LOCAL_DIMENSION) then
@@ -649,21 +649,9 @@ function M.run(model, options)
   return diagnostics, summary
 end
 
-M.validate = M.run
-
-function M.has_errors(diagnostics)
-  local i
-  for i = 1, #(diagnostics or {}) do
-    if diagnostics[i].severity == "error" then return true end
-  end
-  return false
-end
-
 function M.is_structurally_valid(model)
   local diagnostics = M.structural(model)
   return #diagnostics == 0, diagnostics
 end
-
-setmetatable(M, { __call = function(_, ...) return M.run(...) end })
 
 return M

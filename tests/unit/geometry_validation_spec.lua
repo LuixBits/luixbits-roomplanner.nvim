@@ -320,6 +320,37 @@ describe("structured validation", function()
 end)
 
 describe("atomic actions", function()
+  it("keeps newly placed furniture selected when also saving its template", function()
+    local value = base_model()
+    add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
+    local changed, result = actions.apply(value, {
+      type = "add_furniture",
+      furniture = {
+        id = "furniture-desk", room_id = "room-a", template_id = "custom:desk",
+        name = "Desk", category = "work", center_mm = { 500, 500 },
+        size_mm = { 500, 300, 750 }, rotation_deg = 0,
+      },
+      custom_template = {
+        id = "custom:desk", name = "Desk", category = "work", shape = "rectangle",
+        default_size_mm = { 500, 300, 750 },
+      },
+    })
+    assert_true(changed ~= nil, result and result.message)
+    assert_equal({ kind = "furniture", id = "furniture-desk" }, result.touched[1])
+    assert_equal({ kind = "template", id = "custom:desk" }, result.touched[2])
+  end)
+
+  it("accepts only the canonical documented action shape", function()
+    local value = base_model()
+    local draft = { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 100, 100 } }
+    local changed, err = actions.apply(value, { action = "add_room", room = draft })
+    assert_equal(nil, changed)
+    assert_equal("UNKNOWN_ACTION", err.code)
+    changed, err = actions.apply(value, { type = "add_room", entity = draft })
+    assert_equal(nil, changed)
+    assert_equal("INVALID_ACTION", err.code)
+  end)
+
   it("canonicalizes plain UI drafts into safely encodable tagged JSON", function()
     local value = base_model()
     local changed, result = actions.apply(value, {
@@ -412,6 +443,7 @@ describe("atomic actions", function()
 
   it("commits door, furniture, template, metadata, and settings edits atomically", function()
     local value = base_model()
+    value.settings.default_wall_thickness_mm = json.decimal(1, "120", 0)
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
     add(value, "rooms", room("room-b", 1000, 0, 1000, 1000))
     add(value, "doors", model.new_door({
@@ -455,6 +487,7 @@ describe("atomic actions", function()
     assert_equal("Atomic plan edit", value.metadata.name)
     assert_equal(75, value.settings.grid_mm)
     assert_equal(150, value.settings.normal_step_mm)
+    assert_true(json.is_decimal(value.settings.default_wall_thickness_mm))
     assert_true(model.encode(value) ~= nil)
   end)
 end)

@@ -70,15 +70,17 @@ describe("controller lifecycle", function()
     cleanup()
   end)
 
-  it("completes room, furniture, and connected-door UI workflows", function()
+  it("completes structured room, furniture, and connected-door workflows", function()
     cleanup()
-    local runtime_config = require("roomplan.config")
-    runtime_config.setup({ ui = { experience = "classic" } })
     local path = temp(".roomplan.json")
     local session = h.truthy(controller.init_source(nil, { path = path }))
-    drive_ui({ "Living room", "5m", "4m" }, { "World origin" }, function()
-      controller.add_room(session)
-    end)
+    local form = require("roomplan.ui.form")
+    local room_form = h.truthy(controller.add_room(session))
+    h.eq("Living room", h.truthy(form.set_value(room_form, "name", "Living room")))
+    h.eq(5000, h.truthy(form.set_value(room_form, "width_mm", "5m")))
+    h.eq(4000, h.truthy(form.set_value(room_form, "depth_mm", "4m")))
+    h.eq("origin", h.truthy(form.set_value(room_form, "placement", "origin", { raw = false })))
+    h.truthy(form.apply(room_form))
     h.eq("room-living-room", session:model().rooms[1].id)
     h.truthy(controller.dispatch(session, {
       type = "add_room",
@@ -87,13 +89,34 @@ describe("controller lifecycle", function()
         origin_mm = { 5000, 0 }, size_mm = { 3000, 3000 },
       }),
     }))
-    drive_ui({ "2100", "900", "800", "Sofa" }, {
-      "room-living-room", "builtin:sofa", "Room centre",
-    }, function() controller.add_furniture(session) end)
+    local furniture_form = h.truthy(controller.add_furniture(session))
+    h.eq("room-living-room", h.truthy(form.set_value(
+      furniture_form, "room_id", "room-living-room", { raw = false }
+    )))
+    h.eq("builtin:sofa", h.truthy(form.set_value(
+      furniture_form, "template_id", "builtin:sofa", { raw = false }
+    )))
+    h.eq(2100, h.truthy(form.set_value(furniture_form, "width_mm", "2100")))
+    h.eq(900, h.truthy(form.set_value(furniture_form, "depth_mm", "900")))
+    h.eq(800, h.truthy(form.set_value(furniture_form, "height_mm", "800")))
+    h.eq("Sofa", h.truthy(form.set_value(furniture_form, "name", "Sofa")))
+    h.eq("centre", h.truthy(form.set_value(furniture_form, "placement", "centre", { raw = false })))
+    h.truthy(form.apply(furniture_form))
     h.eq("builtin:sofa", session:model().furniture[1].template_id)
-    drive_ui({ "900", "1000" }, {
-      "room-living-room", "east", "Numeric offset", "start", "room-bedroom", "connected",
-    }, function() controller.add_door(session) end)
+    session.selection = { kind = "room", id = "room-living-room" }
+    local door_form = h.truthy(controller.add_door(session))
+    h.eq("room-living-room", h.truthy(form.set_value(
+      door_form, "room_id", "room-living-room", { raw = false }
+    )))
+    h.eq("east", h.truthy(form.set_value(door_form, "side", "east", { raw = false })))
+    h.eq(900, h.truthy(form.set_value(door_form, "width_mm", "900")))
+    h.eq("exact", h.truthy(form.set_value(door_form, "placement", "exact", { raw = false })))
+    h.eq(1000, h.truthy(form.set_value(door_form, "offset_mm", "1000")))
+    h.eq("room-bedroom", h.truthy(form.set_value(
+      door_form, "connects_to_room_id", "room-bedroom", { raw = false }
+    )))
+    h.eq("connected", h.truthy(form.set_value(door_form, "opens_into", "connected", { raw = false })))
+    h.truthy(form.apply(door_form))
     h.eq("room-bedroom", session:model().doors[1].connects_to_room_id)
     h.truthy(controller.dispatch(session, {
       type = "toggle_door_hinge", id = session:model().doors[1].id,
@@ -120,7 +143,37 @@ describe("controller lifecycle", function()
     h.eq(1, #reopened_model.furniture)
     h.eq(1, #reopened_model.doors)
     controller.close(session, { bang = true })
-    runtime_config.reset()
+    cleanup()
+  end)
+
+  it("opens workspace Issues when an invalid save is reviewed", function()
+    cleanup()
+    local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    for index = 1, 2 do
+      local result, err = controller.dispatch(session, {
+        type = "add_room",
+        room = model.new_room({
+          id = "room-overlap-" .. index,
+          name = "Overlap " .. index,
+          origin_mm = { 0, 0 },
+          size_mm = { 2000, 2000 },
+        }),
+        force = index == 2,
+      })
+      h.truthy(result, vim.inspect(err))
+    end
+
+    local saved, save_err
+    drive_ui({}, { "Review errors" }, function()
+      controller.save(session, { interactive = true }, function(result, err)
+        saved, save_err = result, err
+      end)
+    end)
+    h.falsy(saved)
+    h.eq("SAVE_CANCELLED", h.truthy(save_err).code)
+    h.eq("issues", session.workspace.state.focused_pane)
+
+    controller.close(session, { bang = true })
     cleanup()
   end)
 
@@ -149,11 +202,29 @@ describe("controller lifecycle", function()
       if hit.type == "room" and hit.id == "room-living-room" then selected_hit = true end
     end
     h.truthy(selected_hit, "first room should receive cursor focus after fitting")
+
+    session.selection = nil
+    controller.refresh(session)
+    local workspace = require("roomplan.ui.workspace")
+    h.truthy(workspace.focus(session, "objects"))
+    local room_row
+    for row, item in pairs(session.workspace.rendered.objects.row_map) do
+      if item.id == "room-living-room" then room_row = row; break end
+    end
+    h.truthy(room_row)
+    local navigator_window = session.workspace.windows.left or session.workspace.windows.drawer
+    h.truthy(navigator_window)
+    vim.api.nvim_win_set_cursor(navigator_window, { room_row, 0 })
+    h.eq({ kind = "room", id = "room-living-room" }, workspace.select_focused(session))
+    h.truthy(vim.wait(200, function()
+      local header = vim.api.nvim_buf_get_lines(handle.buf, 0, 1, false)[1] or ""
+      return header:find("room: Living room", 1, true) ~= nil
+    end, 5), "workspace selection should redraw the canvas header and highlight")
     h.eq(handle.win, vim.api.nvim_get_current_win())
     local footer_buf = session.workspace and session.workspace.buffers.action_bar or handle.buf
     local footer = table.concat(vim.api.nvim_buf_get_lines(footer_buf, 0, -1, false), " ")
     h.matches("%[e%] Edit", footer)
-    h.matches("%[f%] Fit", footer)
+    h.matches("%[%?%] More", footer)
     controller.close(session, { bang = true })
     cleanup()
   end)
@@ -217,9 +288,18 @@ describe("controller lifecycle", function()
     expect_mode(door_edit, "DOOR EDIT")
     h.truthy(form.cancel(door_edit))
 
+    local door_duplicate = h.truthy(controller.duplicate_selected(session))
+    expect_mode(door_duplicate, "DOOR DUPLICATE")
+    h.eq("end", h.truthy(form.set_value(door_duplicate, "hinge", "end", { raw = false })))
+    applied, apply_err = form.apply(door_duplicate)
+    h.truthy(applied, vim.inspect(apply_err))
+    h.eq(2, #session:model().doors)
+    h.eq("end", session:model().doors[2].hinge)
+    h.eq(session:model().doors[1].connects_to_room_id, session:model().doors[2].connects_to_room_id)
+
     h.truthy(vim.wait(200, function()
-      local header = vim.api.nvim_buf_get_lines(session.canvas.bufnr, 0, 1, false)[1] or ""
-      return header:find("| NAV |", 1, true) ~= nil
+      local footer = vim.api.nvim_buf_get_lines(session.workspace.buffers.action_bar, 0, 1, false)[1] or ""
+      return footer:find("NAV", 1, true) ~= nil
     end, 10), "canvas mode label should return to NAV after forms close")
     controller.close(session, { bang = true })
     cleanup()
@@ -240,6 +320,89 @@ describe("controller lifecycle", function()
     h.eq(2.4, rendered.viewport.mm_per_row / rendered.viewport.mm_per_column)
     h.eq(revision, session:revision_id())
     h.falsy(session:model_dirty())
+
+    controller.close(session, { bang = true })
+    runtime_config.reset()
+    cleanup()
+  end)
+
+  it("refits every live canvas after process-wide aspect calibration", function()
+    cleanup()
+    local runtime_config = require("roomplan.config")
+    runtime_config.setup({ canvas = { cell_aspect = 2 } })
+    local first = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    local second = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    local first_revision, second_revision = first:revision_id(), second:revision_id()
+
+    h.eq(2.3, controller.set_aspect(first, { ratio = 2.3, quiet = true }))
+    for _, session in ipairs({ first, second }) do
+      h.eq(2.3, session.viewport.mm_per_row / session.viewport.mm_per_column)
+      local rendered = h.truthy(h.truthy(session.canvas.handle).last_raster)
+      h.eq(2.3, rendered.viewport.mm_per_row / rendered.viewport.mm_per_column)
+      h.falsy(session:model_dirty())
+    end
+    h.eq(first_revision, first:revision_id())
+    h.eq(second_revision, second:revision_id())
+
+    controller.close(second, { bang = true })
+    controller.close(first, { bang = true })
+    runtime_config.reset()
+    cleanup()
+  end)
+
+  it("keeps view rotation transient across fit, aspect calibration, commands, and reset", function()
+    cleanup()
+    local runtime_config = require("roomplan.config")
+    local viewport = require("roomplan.render.viewport")
+    runtime_config.setup({ canvas = { cell_aspect = 2 } })
+    require("roomplan.commands").register()
+    local path = temp(".roomplan.json")
+    local session = h.truthy(controller.init_source(nil, { path = path }))
+    local revision = session:revision_id()
+    local plan = vim.deepcopy(session:model())
+    local history = session.history:stats()
+    local dirty = session:model_dirty()
+
+    local function unchanged()
+      h.eq(revision, session:revision_id())
+      h.eq(plan, session:model())
+      h.eq(history, session.history:stats())
+      h.eq(dirty, session:model_dirty())
+    end
+
+    h.eq(1, viewport.rotation(h.truthy(controller.rotate_view(session, {
+      direction = "clockwise", quiet = true,
+    }))))
+    unchanged()
+
+    h.truthy(controller.fit(session, { immediate = true }))
+    h.eq(1, viewport.rotation(session.viewport))
+    h.eq(1, viewport.rotation(h.truthy(session.canvas.handle).last_raster.viewport))
+    unchanged()
+
+    h.eq(2.25, controller.set_aspect(session, { ratio = 2.25, quiet = true }))
+    h.eq(1, viewport.rotation(session.viewport))
+    h.eq(1, viewport.rotation(session.canvas.handle.last_raster.viewport))
+    unchanged()
+
+    vim.cmd("RoomPlanRotateView counterclockwise")
+    h.eq(0, viewport.rotation(session.viewport))
+    h.eq(1, viewport.rotation(h.truthy(controller.rotate_view(session, {
+      direction = "clockwise", quiet = true,
+    }))))
+    h.eq(0, viewport.rotation(h.truthy(controller.rotate_view(session, {
+      direction = "reset", quiet = true,
+    }))))
+    unchanged()
+
+    local before_invalid = viewport.copy(session.viewport)
+    local invalid, invalid_err = controller.rotate_view(session, {
+      direction = "diagonal", quiet = true,
+    })
+    h.eq(nil, invalid)
+    h.eq("VIEW_ROTATION_INVALID", h.truthy(invalid_err).code)
+    h.eq(before_invalid, session.viewport)
+    unchanged()
 
     controller.close(session, { bang = true })
     runtime_config.reset()

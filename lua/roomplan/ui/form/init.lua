@@ -102,7 +102,6 @@ local function publish_workspace(handle)
     dirty = handle.state.dirty,
     error_count = vim.tbl_count(handle.state.errors or {}),
   })
-  workspace.set_preview(handle.session, handle.state.preview)
 end
 
 local function form_keys()
@@ -178,7 +177,6 @@ local function finish(handle, reason, opts)
     local ok, workspace = pcall(require, "roomplan.ui.workspace")
     if ok then
       workspace.set_interaction(handle.session, handle.session.mode or "NAV", nil)
-      workspace.set_preview(handle.session, nil)
     end
   end
   detach_buffer(handle)
@@ -393,6 +391,8 @@ local function install_keymaps(handle)
   map("<Space>", function() M.cycle(handle, 1) end, "Toggle RoomPlan form choice", "form_toggle")
   map("<C-s>", function() M.apply(handle) end, "Apply RoomPlan form", "form_apply")
   map("R", function() M.reset(handle) end, "Reset RoomPlan form", "form_reset")
+  map("?", function() require("roomplan.ui.help").open(handle.session) end,
+    "Open RoomPlan form actions", "help")
   map("q", function() M.cancel(handle, "cancelled") end, "Cancel RoomPlan form")
   map("<Esc>", function() M.cancel(handle, "cancelled") end, "Cancel RoomPlan form", "form_cancel")
 end

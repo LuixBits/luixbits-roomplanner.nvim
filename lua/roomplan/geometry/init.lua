@@ -9,6 +9,4 @@ local geometry = {
   door = require("roomplan.geometry.door"),
   sector = require("roomplan.geometry.sector"),
 }
-geometry.rectangle = geometry.rect
-geometry.snap = geometry.snapping
 return geometry

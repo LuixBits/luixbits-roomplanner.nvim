@@ -37,7 +37,8 @@ describe("workspace UI", function()
     local wide = workspace_state.calculate_layout(120, 40)
     assert_equal("wide", wide.kind)
     assert_true(wide.panes.canvas.width >= 55)
-    assert_equal(120, wide.panes.left.width + wide.panes.canvas.width + wide.panes.properties.width + 2)
+    assert_equal(120, wide.panes.left.width + wide.panes.canvas.width + 1)
+    assert_equal(false, wide.panes.properties.visible)
 
     local medium = workspace_state.calculate_layout(119, 35)
     assert_equal("medium", medium.kind)
@@ -51,6 +52,50 @@ describe("workspace UI", function()
       compact_min_rows = 5, min_canvas_height = 12, footer_height = 2,
     }).kind)
     assert_true(workspace_state.calculate_layout(80, 24).compact_reason:match("width") ~= nil)
+
+    local forced_wide = workspace_state.calculate_layout(40, 12, {
+      layout = "wide", min_canvas_width = 55,
+    })
+    assert_equal(false, forced_wide.panes.left.persistent)
+    assert_equal(false, forced_wide.panes.properties.persistent)
+    assert_equal(40, forced_wide.panes.canvas.width)
+    local forced_medium = workspace_state.calculate_layout(40, 12, {
+      layout = "medium", min_canvas_width = 55,
+    })
+    assert_equal(false, forced_medium.panes.left.persistent)
+    assert_equal(40, forced_medium.panes.canvas.width)
+  end)
+
+  it("gives hidden side panes back to the canvas without changing the layout kind", function()
+    local state = workspace_state.initial()
+    state = workspace_state.reduce(state, { type = "layout", kind = "wide" })
+    local navigator = workspace_state.calculate_layout(120, 40, nil, state)
+    assert_equal("wide", navigator.kind)
+    assert_equal(true, navigator.panes.left.visible)
+    assert_equal(false, navigator.panes.properties.visible)
+    assert_equal(0, navigator.panes.properties.width)
+    assert_equal(120, navigator.panes.left.width + navigator.panes.canvas.width + 1)
+
+    local canvas_only = workspace_state.calculate_layout(120, 40, nil, {
+      navigator = false, details = false,
+    })
+    assert_equal(120, canvas_only.panes.canvas.width)
+    assert_equal(0, canvas_only.panes.left.width)
+    assert_equal(0, canvas_only.panes.properties.width)
+
+    local details = workspace_state.calculate_layout(119, 35, nil, {
+      navigator = false, details = true,
+    })
+    assert_equal("medium", details.kind)
+    assert_equal(false, details.panes.left.visible)
+    assert_equal(true, details.panes.properties.visible)
+    assert_equal(119, details.panes.properties.width + details.panes.canvas.width + 1)
+
+    -- Calls without transient state use the same clean startup defaults as a
+    -- mounted workspace: Navigator visible, Details hidden.
+    local default_wide = workspace_state.calculate_layout(120, 40)
+    assert_equal(true, default_wide.panes.left.visible)
+    assert_equal(false, default_wide.panes.properties.visible)
   end)
 
   it("reduces focus, drawers, expansion and escape without mutating prior state", function()
@@ -70,6 +115,68 @@ describe("workspace UI", function()
 
     local cycled = workspace_state.reduce(escaped, { type = "cycle_focus", direction = -1 })
     assert_equal("issues", cycled.focused_pane)
+  end)
+
+  it("maintains adaptive pane visibility and cycles only reachable panes", function()
+    local initial = workspace_state.initial()
+    assert_equal(true, initial.visibility.navigator)
+    assert_equal(false, initial.visibility.details)
+    assert_equal(1, workspace_state.defaults().footer_height)
+
+    local wide = workspace_state.reduce(initial, { type = "layout", kind = "wide" })
+    assert_equal({ "objects", "issues", "canvas" }, workspace_state.focus_order(wide))
+
+    local details = workspace_state.reduce(wide, { type = "focus", pane = "properties" })
+    assert_equal(true, details.visibility.navigator)
+    assert_equal(true, details.visibility.details)
+    local hidden = workspace_state.reduce(details, { type = "toggle_pane", pane = "details" })
+    assert_equal(false, hidden.visibility.details)
+    assert_equal("canvas", hidden.focused_pane)
+    assert_equal(true, details.visibility.details)
+
+    local canvas_only = workspace_state.reduce(hidden, { type = "toggle_pane", pane = "navigator" })
+    assert_equal({ "canvas" }, workspace_state.focus_order(canvas_only))
+    assert_equal("canvas", workspace_state.next_focus(canvas_only, 1))
+
+    local medium = workspace_state.reduce(details, { type = "layout", kind = "medium" })
+    assert_equal(true, medium.visibility.navigator)
+    assert_equal(true, medium.visibility.details)
+    assert_equal("details", medium.active_side)
+    local canvas_focused = workspace_state.reduce(medium, { type = "focus", pane = "canvas" })
+    local medium_layout = workspace_state.calculate_layout(119, 35, nil, canvas_focused)
+    assert_equal(true, medium_layout.panes.properties.visible)
+    assert_equal(false, medium_layout.panes.left.visible)
+    local navigator = workspace_state.reduce(medium, {
+      type = "set_pane_visible", pane = "details", visible = false,
+    })
+    assert_equal(true, navigator.visibility.navigator)
+    assert_equal(false, navigator.visibility.details)
+
+    local compact = workspace_state.reduce(navigator, { type = "layout", kind = "compact" })
+    local drawer = workspace_state.reduce(compact, { type = "toggle_pane", pane = "details" })
+    assert_equal("properties", drawer.drawer)
+    assert_equal("properties", drawer.focused_pane)
+    assert_equal(navigator.visibility.navigator, drawer.visibility.navigator)
+    assert_equal(navigator.visibility.details, drawer.visibility.details)
+  end)
+
+  it("keeps accordion expansion state independent and immutable", function()
+    local initial = workspace_state.initial()
+    assert_equal(true, initial.collapsed_sections.advanced)
+    assert_equal(true, initial.collapsed_sections.source)
+
+    local toggled = workspace_state.reduce(initial, { type = "toggle_section", key = "advanced" })
+    assert_equal(false, toggled.collapsed_sections.advanced)
+    assert_equal(true, initial.collapsed_sections.advanced)
+
+    local collapsed = workspace_state.reduce(toggled, {
+      type = "set_section", key = "geometry", expanded = false,
+    })
+    assert_equal(true, collapsed.collapsed_sections.geometry)
+    local expanded = workspace_state.reduce(collapsed, {
+      type = "set_section", key = "geometry", expanded = true,
+    })
+    assert_equal(false, expanded.collapsed_sections.geometry)
   end)
 
   it("presents a hierarchical object tree with selection and diagnostics", function()
@@ -119,10 +226,19 @@ describe("workspace UI", function()
     local view = presenter.properties(session)
     assert_equal("Living", view.title)
     assert_equal("room", view.kind)
-    assert_equal("Position", view.groups[2].title)
-    assert_equal("0 mm", view.groups[2].fields[1].value)
-    assert_equal("5000 mm (5 m)", view.groups[3].fields[1].value)
-    assert_equal("20.00 m²", view.groups[3].fields[3].value)
+    assert_equal("Geometry", view.groups[1].title)
+    assert_equal("0 mm", view.groups[1].fields[1].value)
+    assert_equal("5 m", view.groups[1].fields[3].value)
+    assert_equal("20.00 m²", view.groups[1].fields[5].value)
+    assert_equal("1.234 m", presenter.compact_mm(1234))
+
+    local ctx = presenter.context({
+      model = fixture(), selection = nil, viewport = { mm_per_column = 50 },
+      canvas = { handle = { opts = { mm_per_column = 100 } } },
+    }, { focused_pane = "properties" })
+    assert_equal("plan", ctx.selection.kind)
+    assert_equal("edit_plan", registry.get("edit", ctx).handler)
+    assert_equal(2, ctx.zoom)
   end)
 
   it("reports contextual actions, disabled reasons, and explicit interaction modes", function()
@@ -189,8 +305,9 @@ describe("workspace UI", function()
     local view = presenter.objects(fixture(), { selection = { kind = "room", id = "room-living" } })
     local panel = objects_panel.render(view, 32, 12)
     assert_equal(12, #panel.lines)
-    assert_equal("room", panel.row_map[6].kind)
-    assert_true(vim.fn.strdisplaywidth(panel.lines[6]) <= 32)
+    assert_equal("room-living", panel.row_map[3].id)
+    assert_true(vim.fn.strdisplaywidth(panel.lines[3]) <= 32)
+    assert_true(#panel.highlights > 0)
 
     local ctx = {
       model = fixture(), selection = { kind = "furniture", id = "sofa-1" },
@@ -200,9 +317,25 @@ describe("workspace UI", function()
     local bar = action_bar.render(ctx, 72, { height = 2 })
     assert_equal(2, #bar.lines)
     assert_true(bar.lines[1]:match("Apply") ~= nil)
-    assert_true(bar.lines[2]:match("FURNITURE EDIT") ~= nil)
-    assert_true(bar.lines[2]:match("DIRTY") ~= nil)
+    assert_true(bar.lines[1]:match("More") ~= nil)
+    assert_true(bar.lines[1]:match("FURNITURE EDIT") ~= nil)
+    assert_true(bar.lines[1]:match("DIRTY") ~= nil)
+    assert_true(bar.overflow_count > 0)
+    assert_true(#bar.shown_actions <= 5)
     assert_true(vim.fn.strdisplaywidth(bar.lines[1]) <= 72)
+  end)
+
+  it("keeps the workspace facade API stable", function()
+    local workspace = require("roomplan.ui.workspace")
+    for _, name in ipairs({
+      "action_context", "apply_canvas_keymaps", "attach", "close", "collapse_focused",
+      "cycle_focus", "escape", "expand_focused", "filter_focused", "filter_prompt",
+      "focus", "hide", "invoke", "invoke_key", "is_visible", "layout", "mount",
+      "owns_window", "reflow", "refresh", "select_focused", "set_details_section",
+      "set_filter", "set_interaction", "toggle", "toggle_details_section", "update_cursor",
+    }) do
+      assert_equal("function", type(workspace[name]), "missing workspace method " .. name)
+    end
   end)
 
   it("mounts around but never assumes ownership of the canonical canvas", function()
@@ -234,12 +367,40 @@ describe("workspace UI", function()
     assert_equal(false, workspace.owns_window(session, canvas_window))
     assert_true(vim.api.nvim_win_is_valid(canvas_window))
     assert_true(vim.api.nvim_win_is_valid(shell.windows.left))
-    assert_true(vim.api.nvim_win_is_valid(shell.windows.properties))
+    assert_equal(1, vim.api.nvim_win_get_height(shell.windows.action_bar))
+    assert_true(#vim.api.nvim_buf_get_extmarks(
+      shell.buffers.objects,
+      shell.namespaces.objects,
+      0,
+      -1,
+      {}
+    ) > 0)
+    assert_equal(nil, shell.windows.properties)
+    assert_equal(false, shell.state.visibility.details)
+    local side_tab = vim.api.nvim_buf_call(shell.buffers.objects, function()
+      return vim.fn.maparg("<Tab>", "n", false, true)
+    end)
+    assert_equal(nil, next(side_tab))
 
     assert_true(workspace.focus(session, "properties"))
+    assert_true(vim.api.nvim_win_is_valid(shell.windows.properties))
+    assert_equal(true, shell.state.visibility.details)
     workspace.reflow(session, true)
     assert_equal(shell.windows.properties, vim.api.nvim_get_current_win())
     assert_equal(shell.buffers.objects, vim.api.nvim_win_get_buf(shell.windows.left))
+    assert_true(workspace.toggle(session, "properties"))
+    assert_equal(nil, shell.windows.properties)
+    assert_equal(false, shell.state.visibility.details)
+    assert_true(workspace.toggle(session, "properties"))
+    assert_true(vim.api.nvim_win_is_valid(shell.windows.properties))
+    local old_properties_buffer = shell.buffers.properties
+    vim.api.nvim_buf_delete(old_properties_buffer, { force = true })
+    assert_true(vim.wait(200, function()
+      return type(shell.buffers.properties) == "number"
+        and shell.buffers.properties ~= old_properties_buffer
+        and vim.api.nvim_buf_is_valid(shell.buffers.properties)
+        and shell.reflowing == false
+    end, 5), "wiped workspace buffers should be repaired")
     workspace.focus(session, "canvas")
 
     -- Native window commands and mouse focus do not pass through
@@ -252,11 +413,25 @@ describe("workspace UI", function()
     end
     assert_true(room_row ~= nil)
     vim.api.nvim_win_set_cursor(shell.windows.left, { room_row, 0 })
+    workspace.refresh(session, "action_bar")
+    local row_footer = vim.api.nvim_buf_get_lines(shell.buffers.action_bar, 0, 1, false)[1] or ""
+    assert_true(row_footer:find("Collapse", 1, true) ~= nil, "object footer: " .. row_footer)
+    assert_true(row_footer:find("Expand", 1, true) == nil, "object footer: " .. row_footer)
     assert_equal({ kind = "room", id = "room-living" }, workspace.select_focused(session))
 
     -- Contextual modes entered from a side pane must transfer control to the
     -- canvas, where their directional mappings actually operate.
     assert_true(workspace.focus(session, "properties"))
+    local geometry_row
+    for line, row in pairs(shell.rendered.properties.row_map) do
+      if row.kind == "section" and row.section == "geometry" then geometry_row = line; break end
+    end
+    assert_true(geometry_row ~= nil)
+    assert_equal(true, shell.rendered.properties.row_map[geometry_row].expanded)
+    vim.api.nvim_win_set_cursor(shell.windows.properties, { geometry_row, 0 })
+    assert_true(workspace.toggle_details_section(session))
+    assert_equal(true, shell.state.collapsed_sections.geometry)
+    assert_equal(false, shell.rendered.properties.row_map[geometry_row].expanded)
     assert_equal("MOVE", workspace.invoke(session, "move"))
     assert_equal("MOVE", session.mode)
     assert_equal("MOVE", shell.state.interaction)
@@ -264,11 +439,14 @@ describe("workspace UI", function()
     require("roomplan.controller").escape(session)
     assert_equal("NAV", shell.state.interaction)
 
-    -- A user may close a split directly with :close. A same-size reflow still
-    -- has to recreate required panes instead of treating the layout as valid.
+    -- A manually closed side pane becomes a visibility preference instead of
+    -- being resurrected by the next resize/reflow.
     local closed_left = shell.windows.left
     vim.api.nvim_win_close(closed_left, true)
+    assert_true(vim.wait(100, function() return shell.state.visibility.navigator == false end, 5))
     workspace.reflow(session)
+    assert_equal(nil, shell.windows.left)
+    assert_true(workspace.toggle(session, "objects"))
     assert_true(vim.api.nvim_win_is_valid(shell.windows.left))
     assert_true(shell.windows.left ~= closed_left)
 
@@ -277,10 +455,18 @@ describe("workspace UI", function()
     shell.opts.lines = 24
     workspace.reflow(session, true)
     assert_equal("compact", shell.layout.kind)
+    local workspace_tab = shell.tabpage
+    vim.cmd("tabnew")
+    local other_tab = vim.api.nvim_get_current_tabpage()
+    assert_true(other_tab ~= workspace_tab)
     assert_true(workspace.focus(session, "objects"))
+    assert_equal(workspace_tab, vim.api.nvim_get_current_tabpage())
     assert_true(vim.api.nvim_win_is_valid(shell.windows.drawer))
     workspace.focus(session, "canvas")
     assert_equal(nil, shell.windows.drawer)
+    vim.api.nvim_set_current_tabpage(other_tab)
+    vim.cmd("tabclose")
+    vim.api.nvim_set_current_tabpage(workspace_tab)
 
     assert_true(workspace.close(session))
     assert_true(vim.api.nvim_win_is_valid(canvas_window))

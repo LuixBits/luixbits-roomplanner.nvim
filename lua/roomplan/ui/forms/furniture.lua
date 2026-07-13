@@ -7,19 +7,25 @@ local M = {}
 
 local function templates(context)
   local result = {}
-  for _, template in ipairs(catalog.all()) do
+  local seen = {}
+  local plan = common.model(context)
+  for _, template in ipairs(catalog.all(plan)) do
+    seen[template.id] = true
     result[#result + 1] = {
       value = template.id,
       label = string.format("%s (%d x %d x %d mm)", template.name, unpack(template.default_size_mm)),
       raw = template,
     }
   end
-  local plan = common.model(context)
-  for _, template in ipairs(plan and plan.custom_templates or {}) do
+  -- A hidden built-in remains selectable while editing an existing item that
+  -- already references it. Other hidden built-ins stay out of new choices.
+  local furniture = context.furniture_id and common.find(context, "furniture", context.furniture_id) or nil
+  local current = furniture and not seen[furniture.template_id] and catalog.resolve(plan, furniture.template_id) or nil
+  if current then
     result[#result + 1] = {
-      value = template.id,
-      label = string.format("%s (%d x %d x %d mm)", template.name, unpack(template.default_size_mm)),
-      raw = template,
+      value = current.id,
+      label = string.format("%s (%d x %d x %d mm)", current.name, unpack(current.default_size_mm)),
+      raw = current,
     }
   end
   return result
@@ -49,8 +55,14 @@ function M.add(session, opts)
   opts = opts or {}
   local runtime = config.get()
   local context = { session = session, cursor_mm = opts.cursor_mm }
-  local template_id = opts.template_id or "builtin:sofa"
-  local template = resolved_template(context, template_id) or catalog.get("builtin:custom-rectangle")
+  local available = templates(context)
+  local template = available[1] and available[1].raw or nil
+  if opts.template_id then
+    for _, choice in ipairs(available) do
+      if choice.value == opts.template_id then template = choice.raw; break end
+    end
+  end
+  assert(template, "RoomPlan furniture catalogue has no visible templates")
   local room_id = opts.room_id or common.selected_room(context)
   local room = room_id and common.find(context, "room", room_id) or nil
   local spec = {

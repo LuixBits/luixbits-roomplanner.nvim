@@ -18,53 +18,15 @@ local function connected_id(door)
   return value
 end
 
-local collection_for_kind = {
-  room = "rooms",
-  door = "doors",
-  furniture = "furniture",
-  template = "custom_templates",
-}
-
-local function deep_copy(value, seen)
-  if json and json.deep_copy then return json.deep_copy(value) end
-  if type(value) ~= "table" then return value end
-  seen = seen or {}
-  if seen[value] then return seen[value] end
-  local result = {}
-  seen[value] = result
-  local key, child
-  for key, child in pairs(value) do
-    result[deep_copy(key, seen)] = deep_copy(child, seen)
-  end
-  return setmetatable(result, getmetatable(value))
-end
-
-local function deep_equal(a, b, seen)
-  if json and json.deep_equal then return json.deep_equal(a, b) end
-  if a == b then return true end
-  if type(a) ~= type(b) or type(a) ~= "table" then return false end
-  seen = seen or {}
-  if seen[a] == b then return true end
-  seen[a] = b
-  local key, value
-  for key, value in pairs(a) do
-    if not deep_equal(value, b[key], seen) then return false end
-  end
-  for key in pairs(b) do
-    if a[key] == nil then return false end
-  end
-  return true
-end
-
-M.deep_copy = deep_copy
-M.deep_equal = deep_equal
+local deep_copy = json.deep_copy
+local deep_equal = json.deep_equal
 
 local function failure(code, message, details)
   return { code = code, message = message, details = details or {} }
 end
 
 local function action_type(action)
-  return action and (action.type or action.action or action.kind)
+  return action and action.type
 end
 
 local function find(values, id)
@@ -89,10 +51,6 @@ end
 
 local function touched(kind, id)
   return { kind = kind, id = id }
-end
-
-local function entity_from(action, key)
-  return action[key] or action.entity or action.value or action.draft
 end
 
 local function table_is_array(value)
@@ -148,7 +106,7 @@ end
 local handlers = {}
 
 function handlers.add_room(model, action)
-  local room = entity_from(action, "room")
+  local room = action.room
   if type(room) ~= "table" then return nil, failure("INVALID_ACTION", "add_room requires a room draft") end
   room = canonical_entity("room", room)
   model.rooms[#model.rooms + 1] = room
@@ -156,16 +114,16 @@ function handlers.add_room(model, action)
 end
 
 function handlers.edit_room(model, action)
-  local room = find_room(model, action.id or action.room_id)
-  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id or action.room_id }) end
-  local _, err = copy_patch(room, action.patch or action.changes, room.id)
+  local room = find_room(model, action.id)
+  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id }) end
+  local _, err = copy_patch(room, action.patch, room.id)
   if err then return nil, err end
   return { label = "Edit room " .. tostring(room.name or room.id), touched = { touched("room", room.id) } }
 end
 
 function handlers.move_room(model, action, context)
-  local room = find_room(model, action.id or action.room_id)
-  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id or action.room_id }) end
+  local room = find_room(model, action.id)
+  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id }) end
   local origin
   if action.origin_mm then
     local err
@@ -191,8 +149,8 @@ function handlers.move_room(model, action, context)
 end
 
 function handlers.resize_room(model, action)
-  local room = find_room(model, action.id or action.room_id)
-  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id or action.room_id }) end
+  local room = find_room(model, action.id)
+  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id }) end
   local size, err = vector2(action.size_mm, "size_mm")
   if not size then return nil, err end
   room.size_mm = action_json_value(size, "array")
@@ -200,9 +158,9 @@ function handlers.resize_room(model, action)
 end
 
 function handlers.align_room(model, action)
-  local room = find_room(model, action.id or action.room_id or action.moving_room_id)
+  local room = find_room(model, action.id)
   local reference = find_room(model, action.reference_room_id)
-  if not room then return nil, failure("NOT_FOUND", "moving room was not found", { id = action.id or action.room_id }) end
+  if not room then return nil, failure("NOT_FOUND", "moving room was not found", { id = action.id }) end
   if not reference then return nil, failure("NOT_FOUND", "reference room was not found", { id = action.reference_room_id }) end
   if room.id == reference.id then return nil, failure("INVALID_ACTION", "a room cannot be aligned to itself") end
   local proposed, err = alignment.propose(room, reference, action.operation, {
@@ -221,8 +179,8 @@ function handlers.align_room(model, action)
 end
 
 function handlers.duplicate_room(model, action, context)
-  local source = find_room(model, action.id or action.room_id)
-  if not source then return nil, failure("NOT_FOUND", "source room was not found", { id = action.id or action.room_id }) end
+  local source = find_room(model, action.id)
+  if not source then return nil, failure("NOT_FOUND", "source room was not found", { id = action.id }) end
   if type(action.new_id) ~= "string" then return nil, failure("INVALID_ACTION", "duplicate_room requires new_id") end
   local clone = deep_copy(source)
   clone.id = action.new_id
@@ -279,8 +237,8 @@ local function remove_if(values, predicate)
 end
 
 function handlers.delete_room_cascade(model, action)
-  local room, index = find_room(model, action.id or action.room_id)
-  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id or action.room_id }) end
+  local room, index = find_room(model, action.id)
+  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id }) end
   local dependencies = M.room_dependencies(model, room.id)
   table.remove(model.rooms, index)
   remove_if(model.furniture, function(value) return value.room_id == room.id end)
@@ -293,39 +251,40 @@ function handlers.delete_room_cascade(model, action)
 end
 
 function handlers.rename_room(model, action)
-  local room = find_room(model, action.id or action.room_id)
-  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id or action.room_id }) end
+  local room = find_room(model, action.id)
+  if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id }) end
   room.name = action.name
   return { label = "Rename room " .. room.id, touched = { touched("room", room.id) } }
 end
 
 function handlers.add_furniture(model, action)
-  local furniture = entity_from(action, "furniture")
+  local furniture = action.furniture
   if type(furniture) ~= "table" then return nil, failure("INVALID_ACTION", "add_furniture requires a furniture draft") end
-  local result_touched = {}
+  furniture = canonical_entity("furniture", furniture)
+  model.furniture[#model.furniture + 1] = furniture
+  -- The first touched object becomes the session selection. Keep the placed
+  -- item primary even when the same action also creates a reusable template.
+  local result_touched = { touched("furniture", furniture.id) }
   if action.custom_template then
     local custom_template = canonical_entity("template", action.custom_template)
     model.custom_templates[#model.custom_templates + 1] = custom_template
-    result_touched[#result_touched + 1] = touched("template", action.custom_template.id)
+    result_touched[#result_touched + 1] = touched("template", custom_template.id)
   end
-  furniture = canonical_entity("furniture", furniture)
-  model.furniture[#model.furniture + 1] = furniture
-  result_touched[#result_touched + 1] = touched("furniture", furniture.id)
   return { label = "Add furniture " .. tostring(furniture.name or furniture.id), touched = result_touched }
 end
 
 function handlers.edit_furniture(model, action)
-  local furniture = find(model.furniture, action.id or action.furniture_id)
-  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id or action.furniture_id }) end
-  local _, err = copy_patch(furniture, action.patch or action.changes, furniture.id)
+  local furniture = find(model.furniture, action.id)
+  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id }) end
+  local _, err = copy_patch(furniture, action.patch, furniture.id)
   if err then return nil, err end
   return { label = "Edit furniture " .. tostring(furniture.name or furniture.id),
     touched = { touched("furniture", furniture.id) } }
 end
 
 function handlers.move_furniture(model, action, context)
-  local furniture = find(model.furniture, action.id or action.furniture_id)
-  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id or action.furniture_id }) end
+  local furniture = find(model.furniture, action.id)
+  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id }) end
   local center
   if action.center_mm then
     local err
@@ -365,8 +324,8 @@ function handlers.move_furniture(model, action, context)
 end
 
 function handlers.resize_furniture(model, action)
-  local furniture = find(model.furniture, action.id or action.furniture_id)
-  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id or action.furniture_id }) end
+  local furniture = find(model.furniture, action.id)
+  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id }) end
   if type(action.size_mm) ~= "table" or #action.size_mm < 3 then
     return nil, failure("INVALID_ACTION", "size_mm must contain width, depth, and height")
   end
@@ -376,16 +335,16 @@ function handlers.resize_furniture(model, action)
 end
 
 function handlers.rotate_furniture(model, action)
-  local furniture = find(model.furniture, action.id or action.furniture_id)
-  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id or action.furniture_id }) end
+  local furniture = find(model.furniture, action.id)
+  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id }) end
   furniture.rotation_deg = action.rotation_deg ~= nil and action.rotation_deg or ((furniture.rotation_deg + (action.delta_deg or 90)) % 360)
   return { label = "Rotate furniture " .. tostring(furniture.name or furniture.id),
     touched = { touched("furniture", furniture.id) } }
 end
 
 function handlers.duplicate_furniture(model, action)
-  local source = find(model.furniture, action.id or action.furniture_id)
-  if not source then return nil, failure("NOT_FOUND", "source furniture was not found", { id = action.id or action.furniture_id }) end
+  local source = find(model.furniture, action.id)
+  if not source then return nil, failure("NOT_FOUND", "source furniture was not found", { id = action.id }) end
   if type(action.new_id) ~= "string" then return nil, failure("INVALID_ACTION", "duplicate_furniture requires new_id") end
   local clone = deep_copy(source)
   clone.id = action.new_id
@@ -398,24 +357,24 @@ function handlers.duplicate_furniture(model, action)
 end
 
 function handlers.delete_furniture(model, action)
-  local furniture, index = find(model.furniture, action.id or action.furniture_id)
-  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id or action.furniture_id }) end
+  local furniture, index = find(model.furniture, action.id)
+  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id }) end
   table.remove(model.furniture, index)
   return { label = "Delete furniture " .. tostring(furniture.name or furniture.id),
     touched = { touched("furniture", furniture.id) } }
 end
 
 function handlers.rename_furniture(model, action)
-  return handlers.edit_furniture(model, { id = action.id or action.furniture_id, patch = { name = action.name } })
+  return handlers.edit_furniture(model, { id = action.id, patch = { name = action.name } })
 end
 
 function handlers.change_furniture_template(model, action)
-  return handlers.edit_furniture(model, { id = action.id or action.furniture_id,
+  return handlers.edit_furniture(model, { id = action.id,
     patch = { template_id = action.template_id, category = action.category } })
 end
 
 function handlers.add_door(model, action)
-  local door = entity_from(action, "door")
+  local door = action.door
   if type(door) ~= "table" then return nil, failure("INVALID_ACTION", "add_door requires a door draft") end
   door = canonical_entity("door", door)
   model.doors[#model.doors + 1] = door
@@ -423,9 +382,9 @@ function handlers.add_door(model, action)
 end
 
 function handlers.edit_door(model, action, context)
-  local door = find(model.doors, action.id or action.door_id)
-  if not door then return nil, failure("NOT_FOUND", "door was not found", { id = action.id or action.door_id }) end
-  local _, err = copy_patch(door, action.patch or action.changes, door.id)
+  local door = find(model.doors, action.id)
+  if not door then return nil, failure("NOT_FOUND", "door was not found", { id = action.id }) end
+  local _, err = copy_patch(door, action.patch, door.id)
   if err then return nil, err end
   local snap_options = action.snap or context.snapping
   if snap_options and not action.exact then
@@ -469,15 +428,15 @@ function handlers.edit_door(model, action, context)
 end
 
 function handlers.toggle_door_hinge(model, action)
-  local door = find(model.doors, action.id or action.door_id)
-  if not door then return nil, failure("NOT_FOUND", "door was not found", { id = action.id or action.door_id }) end
+  local door = find(model.doors, action.id)
+  if not door then return nil, failure("NOT_FOUND", "door was not found", { id = action.id }) end
   door.hinge = door.hinge == "start" and "end" or "start"
   return { label = "Toggle hinge " .. door.id, touched = { touched("door", door.id) } }
 end
 
 function handlers.toggle_door_swing(model, action)
-  local door = find(model.doors, action.id or action.door_id)
-  if not door then return nil, failure("NOT_FOUND", "door was not found", { id = action.id or action.door_id }) end
+  local door = find(model.doors, action.id)
+  if not door then return nil, failure("NOT_FOUND", "door was not found", { id = action.id }) end
   if connected_id(door) then
     door.opens_into = door.opens_into == "owner" and "connected" or "owner"
   else
@@ -487,15 +446,15 @@ function handlers.toggle_door_swing(model, action)
 end
 
 function handlers.delete_door(model, action)
-  local door, index = find(model.doors, action.id or action.door_id)
-  if not door then return nil, failure("NOT_FOUND", "door was not found", { id = action.id or action.door_id }) end
+  local door, index = find(model.doors, action.id)
+  if not door then return nil, failure("NOT_FOUND", "door was not found", { id = action.id }) end
   table.remove(model.doors, index)
   return { label = "Delete door " .. door.id, touched = { touched("door", door.id) } }
 end
 
 function handlers.duplicate_door_from_draft(model, action)
-  local source = find(model.doors, action.id or action.door_id)
-  if not source then return nil, failure("NOT_FOUND", "source door was not found", { id = action.id or action.door_id }) end
+  local source = find(model.doors, action.id)
+  if not source then return nil, failure("NOT_FOUND", "source door was not found", { id = action.id }) end
   local clone = deep_copy(source)
   if type(action.new_id) ~= "string" then return nil, failure("INVALID_ACTION", "duplicate_door_from_draft requires new_id") end
   clone.id = action.new_id
@@ -507,7 +466,7 @@ function handlers.duplicate_door_from_draft(model, action)
 end
 
 function handlers.add_custom_template(model, action)
-  local template = entity_from(action, "template")
+  local template = action.template
   if type(template) ~= "table" then return nil, failure("INVALID_ACTION", "add_custom_template requires a template draft") end
   template = canonical_entity("template", template)
   model.custom_templates[#model.custom_templates + 1] = template
@@ -515,16 +474,16 @@ function handlers.add_custom_template(model, action)
 end
 
 function handlers.edit_custom_template(model, action)
-  local template = find(model.custom_templates, action.id or action.template_id)
-  if not template then return nil, failure("NOT_FOUND", "custom template was not found", { id = action.id or action.template_id }) end
-  local _, err = copy_patch(template, action.patch or action.changes, template.id)
+  local template = find(model.custom_templates, action.id)
+  if not template then return nil, failure("NOT_FOUND", "custom template was not found", { id = action.id }) end
+  local _, err = copy_patch(template, action.patch, template.id)
   if err then return nil, err end
   return { label = "Edit template " .. tostring(template.name or template.id), touched = { touched("template", template.id) } }
 end
 
 function handlers.duplicate_custom_template(model, action)
-  local source = find(model.custom_templates, action.id or action.template_id)
-  if not source then return nil, failure("NOT_FOUND", "custom template was not found", { id = action.id or action.template_id }) end
+  local source = find(model.custom_templates, action.id)
+  if not source then return nil, failure("NOT_FOUND", "custom template was not found", { id = action.id }) end
   if type(action.new_id) ~= "string" then return nil, failure("INVALID_ACTION", "duplicate_custom_template requires new_id") end
   local clone = deep_copy(source)
   clone.id, clone.name = action.new_id, action.name or (source.name .. " copy")
@@ -534,8 +493,8 @@ function handlers.duplicate_custom_template(model, action)
 end
 
 function handlers.delete_custom_template(model, action)
-  local template, index = find(model.custom_templates, action.id or action.template_id)
-  if not template then return nil, failure("NOT_FOUND", "custom template was not found", { id = action.id or action.template_id }) end
+  local template, index = find(model.custom_templates, action.id)
+  if not template then return nil, failure("NOT_FOUND", "custom template was not found", { id = action.id }) end
   local references = {}
   local i
   for i = 1, #model.furniture do
@@ -550,14 +509,14 @@ end
 
 function handlers.edit_metadata(model, action)
   model.metadata = model.metadata or {}
-  local _, err = copy_patch(model.metadata, action.patch or action.changes, nil)
+  local _, err = copy_patch(model.metadata, action.patch, nil)
   if err then return nil, err end
   return { label = "Edit plan metadata", touched = { touched("plan", "roomplan.nvim") } }
 end
 
 function handlers.edit_plan_settings(model, action)
   model.settings = model.settings or {}
-  local _, err = copy_patch(model.settings, action.patch or action.changes, nil)
+  local _, err = copy_patch(model.settings, action.patch, nil)
   if err then return nil, err end
   return { label = "Edit plan settings", touched = { touched("settings", "settings") } }
 end
@@ -574,9 +533,6 @@ function handlers.edit_plan(model, action)
     touched = { touched("plan", "roomplan.nvim"), touched("settings", "settings") },
   }
 end
-
-handlers.delete_room = handlers.delete_room_cascade
-handlers.rename_template = handlers.edit_custom_template
 
 local room_actions = {
   add_room = true, edit_room = true, move_room = true, resize_room = true,
@@ -679,7 +635,5 @@ function M.apply(model, action, context)
   result.validation_summary = after_summary
   return copy, result
 end
-
-M.handlers = handlers
 
 return M

@@ -3,11 +3,11 @@ local rect = require("roomplan.geometry.rect")
 
 local M = {}
 
-local corner_aliases = {
-  southwest = "southwest", sw = "southwest", bottom_left = "southwest",
-  southeast = "southeast", se = "southeast", bottom_right = "southeast",
-  northwest = "northwest", nw = "northwest", top_left = "northwest",
-  northeast = "northeast", ne = "northeast", top_right = "northeast",
+local corners = {
+  southwest = true,
+  southeast = true,
+  northwest = true,
+  northeast = true,
 }
 
 local function origin_result(x2, y2, operation)
@@ -33,8 +33,7 @@ local function origin_result(x2, y2, operation)
 end
 
 local function corner2(room, name)
-  name = corner_aliases[name]
-  if not name then return nil end
+  if not corners[name] then return nil end
   local x2 = 2 * room.origin_mm[1]
   local y2 = 2 * room.origin_mm[2]
   if name == "southeast" or name == "northeast" then x2 = x2 + 2 * room.size_mm[1] end
@@ -74,8 +73,8 @@ function M.propose(moving, reference, operation, options)
   elseif operation == "place_south" then
     x2, y2 = 2 * rx, 2 * (ry - md - gap)
   elseif operation == "snap_corner" then
-    local moving_corner = corner_aliases[options.moving_corner]
-    local reference_corner = corner_aliases[options.reference_corner]
+    local moving_corner = corners[options.moving_corner] and options.moving_corner
+    local reference_corner = corners[options.reference_corner] and options.reference_corner
     if not moving_corner or not reference_corner then
       return nil, { code = "INVALID_ALIGNMENT", message = "snap_corner requires valid moving and reference corners" }
     end
@@ -201,21 +200,5 @@ function M.auto_place(size_mm, rooms, options)
   if candidates[1] then return candidates[1] end
   return nil, { code = "AUTO_PLACEMENT_FAILED", message = "no non-overlapping automatic placement was found" }
 end
-
-local operation_names = {
-  "align_min_x", "align_max_x", "align_min_y", "align_max_y", "align_center_x", "align_center_y",
-  "place_north", "place_east", "place_south", "place_west",
-}
-local operation_index
-for operation_index = 1, #operation_names do
-  local name = operation_names[operation_index]
-  M[name] = function(moving, reference, options)
-    return M.propose(moving, reference, name, options)
-  end
-end
-M.align_left = M.align_min_x
-M.align_right = M.align_max_x
-M.align_bottom = M.align_min_y
-M.align_top = M.align_max_y
 
 return M

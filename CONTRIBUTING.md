@@ -1,6 +1,7 @@
 # Contributing
 
-Read `plan.md` before changing persistence, geometry, or lifecycle behavior.
+Read [`docs/development/architecture.md`](docs/development/architecture.md)
+before changing persistence, geometry, or lifecycle behavior.
 Keep model, schema, actions, geometry, validation, scene extraction, and the
 logical rasterizer independent of Neovim wherever their module contract says
 so. All user-visible model mutations must be semantic actions with tests.
@@ -37,4 +38,7 @@ its license notice and be recorded in `NOTICE` before merge.
 
 Run `./scripts/test.sh`, `:checkhealth roomplan`, and `:helptags doc` before a
 release change. Persistence/lifecycle changes should include a recovery or
-conflict regression, not only a happy-path unit test.
+conflict regression, not only a happy-path unit test. The complete local and
+manual release gates are in [`RELEASE.md`](RELEASE.md); timing from
+`./scripts/benchmark.sh` is diagnostic rather than a machine-dependent CI
+threshold.

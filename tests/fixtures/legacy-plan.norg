@@ -1,0 +1,24 @@
+* Existing note
+
+This fixture uses the legacy, unmarked JSON ranged tag.
+
+@code json
+{
+  "format": "roomplan.nvim",
+  "schema_version": 1,
+  "units": "mm",
+  "metadata": { "name": "Legacy embedded plan", "notes": "" },
+  "settings": {
+    "grid_mm": 100,
+    "fine_step_mm": 10,
+    "normal_step_mm": 100,
+    "coarse_step_mm": 500,
+    "default_door_width_mm": 900
+  },
+  "rooms": [],
+  "doors": [],
+  "furniture": [],
+  "custom_templates": [],
+  "extensions": {}
+}
+@end

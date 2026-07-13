@@ -1,0 +1,40 @@
+{
+  "format": "roomplan.nvim",
+  "schema_version": 1,
+  "units": "mm",
+  "metadata": {
+    "name": "Extension round trip",
+    "notes": "",
+    "vendor": { "enabled": true }
+  },
+  "settings": {
+    "grid_mm": 100,
+    "fine_step_mm": 10,
+    "normal_step_mm": 100,
+    "coarse_step_mm": 500,
+    "default_door_width_mm": 900
+  },
+  "rooms": [
+    {
+      "id": "room-extension",
+      "name": "Extension room",
+      "origin_mm": [0, 0],
+      "size_mm": [3000, 2000],
+      "vendor": { "source": "example" }
+    }
+  ],
+  "doors": [],
+  "furniture": [],
+  "custom_templates": [],
+  "extensions": {
+    "example.nvim": {
+      "empty_object": {},
+      "empty_array": [],
+      "nothing": null,
+      "exact_decimal": 1.250
+    }
+  },
+  "vendor-root": {
+    "nested": [false, { "value": 2.500 }]
+  }
+}

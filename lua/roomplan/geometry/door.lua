@@ -47,12 +47,12 @@ function M.aperture(room, door)
   }
 end
 
-function M.same_wall(a, b)
+local function same_wall(a, b)
   return a.axis == b.axis and a.fixed_mm == b.fixed_mm
 end
 
 function M.apertures_overlap(a, b)
-  return M.same_wall(a, b) and interval.overlaps_positive(a.start_mm, a.finish_mm, b.start_mm, b.finish_mm)
+  return same_wall(a, b) and interval.overlaps_positive(a.start_mm, a.finish_mm, b.start_mm, b.finish_mm)
 end
 
 local function rotated_endpoint(hinge, vector_x, vector_y, radians)
@@ -87,12 +87,6 @@ function M.swing(room, door)
   return sector
 end
 
-function M.open_leaf(room, door)
-  local swing, err = M.swing(room, door)
-  if not swing then return nil, err end
-  return { p0 = swing.hinge, p1 = swing.open_endpoint, sector = swing }
-end
-
 function M.connection(room, other_room, door)
   local aperture = M.aperture(room, door)
   if not aperture then return nil end
@@ -102,12 +96,6 @@ function M.connection(room, other_room, door)
     return nil
   end
   return record
-end
-
-function M.sector_intersects_rect(room, door, rectangle)
-  local swing, err = M.swing(room, door)
-  if not swing then return false, err end
-  return sector_geometry.intersects_rect(swing, rectangle)
 end
 
 function M.interferes(room_a, door_a, room_b, door_b)
@@ -143,9 +131,5 @@ function M.wall_piece_segment(edge, start_mm, finish_mm)
   end
   return point(edge.fixed_mm, start_mm), point(edge.fixed_mm, finish_mm)
 end
-
-M.aperture_segment = M.aperture
-M.swing_sector = M.swing
-M.opening_overlap = M.apertures_overlap
 
 return M

@@ -25,8 +25,7 @@
         "fine_step_mm": 10,
         "normal_step_mm": 100,
         "coarse_step_mm": 500,
-        "default_door_width_mm": 900,
-        "default_wall_thickness_mm": 120
+        "default_door_width_mm": 900
       }
     },
     "rooms": {
@@ -161,8 +160,7 @@
         "fine_step_mm": { "$ref": "#/$defs/positive_local_mm", "default": 10 },
         "normal_step_mm": { "$ref": "#/$defs/positive_local_mm", "default": 100 },
         "coarse_step_mm": { "$ref": "#/$defs/positive_local_mm", "default": 500 },
-        "default_door_width_mm": { "$ref": "#/$defs/positive_local_mm", "default": 900 },
-        "default_wall_thickness_mm": { "$ref": "#/$defs/positive_local_mm", "default": 120 }
+        "default_door_width_mm": { "$ref": "#/$defs/positive_local_mm", "default": 900 }
       },
       "additionalProperties": true
     },

@@ -22,7 +22,6 @@ M.defaults = {
     normal_step_mm = 100,
     coarse_step_mm = 500,
     default_door_width_mm = 900,
-    default_wall_thickness_mm = 120,
   },
 }
 
@@ -157,6 +156,16 @@ local function text(context, value, path, options)
   return value
 end
 
+---Validate a standalone value against the same text contract used by plan
+---fields. This keeps configuration-supplied labels safe before they enter a
+---model or renderer.
+function M.validate_text(value, options)
+  options = options or {}
+  local context = { errors = {}, normalized = false, added_fields = {} }
+  local normalized = text(context, value, options.path or "$", options)
+  return normalized, context.errors[1]
+end
+
 local function object(context, value, path)
   if not json.is_object(value) then
     add_error(context, "SCHEMA_OBJECT", path, "must be a JSON object", value)
@@ -251,7 +260,6 @@ local SETTING_FIELDS = {
   "normal_step_mm",
   "coarse_step_mm",
   "default_door_width_mm",
-  "default_wall_thickness_mm",
 }
 
 local function normalize_settings(context, value, path)

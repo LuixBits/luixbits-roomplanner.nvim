@@ -148,8 +148,6 @@ local function room_features(room)
   }
 end
 
-M.room_features = room_features
-
 function M.snap_room(proposed_room, other_rooms, options)
   options = options or {}
   local moving = room_features(proposed_room)
@@ -177,7 +175,7 @@ function M.snap_room(proposed_room, other_rooms, options)
   return result
 end
 
-function M.furniture_features(room, furniture)
+local function furniture_features(room, furniture)
   local bounds = rect.furniture_rect2(room, furniture)
   local id = furniture.id or ""
   return {
@@ -196,7 +194,7 @@ end
 
 function M.snap_furniture(room, proposed, furniture_with_rooms, door_apertures, options)
   options = options or {}
-  local moving = M.furniture_features(room, proposed)
+  local moving = furniture_features(room, proposed)
   local tx, ty = {}, {}
   local room_target = room_features(room)
   local i, j
@@ -207,7 +205,7 @@ function M.snap_furniture(room, proposed, furniture_with_rooms, door_apertures, 
     local furniture = item.furniture or item[1]
     local owner = item.room or item[2]
     if furniture and owner and furniture.id ~= proposed.id then
-      local features = M.furniture_features(owner, furniture)
+      local features = furniture_features(owner, furniture)
       for j = 1, #features.x do tx[#tx + 1] = features.x[j] end
       for j = 1, #features.y do ty[#ty + 1] = features.y[j] end
     end
@@ -270,11 +268,5 @@ function M.snap_door_offset(offset_mm, width_mm, edge_length_mm, targets_mm, opt
   return { offset_mm = proposed, delta_mm = proposed - offset_mm, residual_mm = residual,
     snapped = best ~= nil, candidate = best }
 end
-
-M.room = M.snap_room
-M.furniture = M.snap_furniture
-M.door_offset = M.snap_door_offset
-M.snap = M.resolve
-M.grid = number.round_to_grid
 
 return M
