@@ -1,20 +1,5 @@
 local M = {}
 
-function M.version_at_least(major, minor, patch)
-  local current = vim.version()
-  if current.major ~= major then
-    return current.major > major
-  end
-  if current.minor ~= minor then
-    return current.minor > minor
-  end
-  return current.patch >= (patch or 0)
-end
-
-function M.supported()
-  return M.version_at_least(0, 10, 0)
-end
-
 function M.notify(message, level, opts)
   vim.schedule(function()
     if not level then
@@ -29,10 +14,6 @@ function M.notify(message, level, opts)
     end
     vim.notify(message, level, vim.tbl_extend("force", { title = "RoomPlan" }, opts or {}))
   end)
-end
-
-function M.set_option(name, value, scope)
-  vim.api.nvim_set_option_value(name, value, scope or {})
 end
 
 function M.normalize_path(path)

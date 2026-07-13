@@ -11,8 +11,7 @@
     "fine_step_mm": 10,
     "normal_step_mm": 100,
     "coarse_step_mm": 500,
-    "default_door_width_mm": 900,
-    "default_wall_thickness_mm": 120
+    "default_door_width_mm": 900
   },
   "rooms": [
     {

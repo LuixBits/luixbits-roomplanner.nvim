@@ -191,7 +191,7 @@ function M.format_mm(value)
   return string.format("%.0f mm", value)
 end
 
--- Compact exact formatting intended for prompts and inspector summaries.
+-- Compact exact formatting intended for prompts and Details summaries.
 function M.format_metric(value)
   if type(value) ~= "number" or value ~= math.floor(value) or math.abs(value) > HARD_MAX_ABS_MM then
     return nil, { code = "UNIT_VALUE", message = "millimetre value must be a safe integer" }

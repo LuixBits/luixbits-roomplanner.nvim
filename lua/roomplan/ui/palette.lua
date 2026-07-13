@@ -25,7 +25,7 @@ local function display_key(key)
 end
 
 local function item_line(item)
-  local key = item.key and ("[" .. item.key .. "] ") or ""
+  local key = item.palette_shortcut and ("[" .. display_key(item.palette_shortcut) .. "] ") or ""
   local reason = not item.enabled and ("  × " .. tostring(item.reason or "Unavailable")) or ""
   return "  " .. key .. tostring(item.label or item.id or "Action") .. reason
 end
@@ -85,23 +85,7 @@ function M.open(opts)
   local title = opts.title or "RoomPlan actions"
   local lines = { title, string.rep("-", math.max(16, text_width(title))), "" }
   local row_map, item_rows = {}, {}
-  local maximum = text_width(title)
-  for _, source in ipairs(items) do
-    local item = vim.deepcopy(source)
-    item.default_key = item.key
-    item.key = item.default_key and mappings.resolve(item.default_key, item.mapping) or nil
-    if item.enabled == nil then item.enabled = true end
-    local line = item_line(item)
-    lines[#lines + 1] = line
-    row_map[#lines] = item
-    item_rows[#item_rows + 1] = #lines
-    maximum = math.max(maximum, text_width(line))
-    if item.description and item.description ~= "" then
-      local detail = "      " .. tostring(item.description)
-      lines[#lines + 1] = detail
-      maximum = math.max(maximum, text_width(detail))
-    end
-  end
+  local group_rows, disabled_rows = {}, {}
   local palette_keys = {
     next = mappings.resolve("j", "palette_next"),
     previous = mappings.resolve("k", "palette_previous"),
@@ -109,6 +93,42 @@ function M.open(opts)
     cancel = mappings.resolve("<Esc>", "palette_cancel"),
     cancel_alt = mappings.resolve("q"),
   }
+  local reserved, claimed_shortcuts = {}, {}
+  for _, key in pairs(palette_keys) do
+    if key then reserved[key] = true end
+  end
+  local maximum = text_width(title)
+  local previous_group
+  for _, source in ipairs(items) do
+    local item = vim.deepcopy(source)
+    item.default_key = item.default_key or item.key
+    if opts.resolve_keys ~= false then
+      item.key = item.default_key and mappings.resolve(item.default_key, item.mapping, opts.keymaps) or nil
+    end
+    if item.key and not reserved[item.key] and not claimed_shortcuts[item.key] then
+      item.palette_shortcut = item.key
+      claimed_shortcuts[item.key] = true
+    end
+    if item.enabled == nil then item.enabled = true end
+    if opts.grouped and item.group and item.group ~= previous_group then
+      if previous_group ~= nil then lines[#lines + 1] = "" end
+      lines[#lines + 1] = tostring(item.group_label or item.group)
+      group_rows[#group_rows + 1] = #lines
+      maximum = math.max(maximum, text_width(lines[#lines]))
+      previous_group = item.group
+    end
+    local line = item_line(item)
+    lines[#lines + 1] = line
+    row_map[#lines] = item
+    item_rows[#item_rows + 1] = #lines
+    if not item.enabled then disabled_rows[#disabled_rows + 1] = #lines end
+    maximum = math.max(maximum, text_width(line))
+    if item.description and item.description ~= "" then
+      local detail = "      " .. tostring(item.description)
+      lines[#lines + 1] = detail
+      maximum = math.max(maximum, text_width(detail))
+    end
+  end
   lines[#lines + 1] = ""
   lines[#lines + 1] = string.format("[%s/%s] Move  [%s] Run  [%s/%s] Cancel",
     display_key(palette_keys.next), display_key(palette_keys.previous), display_key(palette_keys.choose),
@@ -124,6 +144,18 @@ function M.open(opts)
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   vim.bo[bufnr].modifiable = false
   pcall(vim.api.nvim_buf_set_name, bufnr, "roomplan://palette/" .. next_id)
+  vim.api.nvim_buf_add_highlight(bufnr, -1, "Title", 0, 0, -1)
+  for _, row in ipairs(group_rows) do
+    vim.api.nvim_buf_add_highlight(bufnr, -1, "Special", row - 1, 0, -1)
+  end
+  for _, row in ipairs(disabled_rows) do
+    vim.api.nvim_buf_add_highlight(bufnr, -1, "Comment", row - 1, 0, -1)
+  end
+  for _, row in ipairs(item_rows) do
+    local line = lines[row]
+    local first, last = line:find("%b[]")
+    if first then vim.api.nvim_buf_add_highlight(bufnr, -1, "Special", row - 1, first - 1, last) end
+  end
 
   local width = math.min(math.max(44, maximum + 2), math.max(20, vim.o.columns - 6))
   local height = math.min(#lines, math.max(6, vim.o.lines - 6))
@@ -139,6 +171,7 @@ function M.open(opts)
   vim.wo[winid].relativenumber = false
   vim.wo[winid].signcolumn = "no"
   vim.wo[winid].wrap = false
+  vim.wo[winid].winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder"
 
   local handle = {
     id = next_id, bufnr = bufnr, winid = winid, session = opts.session,
@@ -151,11 +184,14 @@ function M.open(opts)
   mappings.set(bufnr, "<CR>", function() choose(handle) end, "Run RoomPlan action", "palette_choose")
   mappings.set(bufnr, "<Esc>", function() close(handle, "cancelled") end, "Cancel RoomPlan action palette", "palette_cancel")
   mappings.set(bufnr, "q", function() close(handle, "cancelled") end, "Cancel RoomPlan action palette")
-  for _, item in pairs(row_map) do
-    if item.key then
+  local installed = {}
+  for _, row in ipairs(item_rows) do
+    local item = row_map[row]
+    if item.palette_shortcut and not installed[item.palette_shortcut] then
       local selected = item
-      mappings.set(bufnr, selected.default_key, function() choose(handle, selected) end,
-        "Run " .. tostring(selected.label), selected.mapping)
+      installed[selected.palette_shortcut] = true
+      mappings.set(bufnr, selected.palette_shortcut, function() choose(handle, selected) end,
+        "Run " .. tostring(selected.label), nil, { enabled = true, mappings = {} })
     end
   end
   handle.augroup = vim.api.nvim_create_augroup("RoomPlanPalette" .. next_id, { clear = true })

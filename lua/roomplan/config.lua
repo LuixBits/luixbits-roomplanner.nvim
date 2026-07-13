@@ -1,18 +1,20 @@
 local util = require("roomplan.util")
+local schema = require("roomplan.schema")
+local workspace_defaults = require("roomplan.ui.workspace_defaults")
 
 local M = {}
 
 local defaults = {
   plan_defaults = {
-    metadata = { name = nil, notes = "" },
-    settings = {
-      grid_mm = 100,
-      fine_step_mm = 10,
-      normal_step_mm = 100,
-      coarse_step_mm = 500,
-      default_door_width_mm = 900,
-      default_wall_thickness_mm = 120,
-    },
+    -- A nil name lets model.new() apply the canonical schema name. It is
+    -- declared separately in nullable_options because Lua cannot retain nil.
+    metadata = { name = nil, notes = schema.defaults.metadata.notes },
+    settings = util.deepcopy(schema.defaults.settings),
+  },
+  furniture = {
+    include_builtins = true,
+    definitions = {},
+    files = {},
   },
   limits = {
     max_dimension_mm = 100000,
@@ -32,12 +34,12 @@ local defaults = {
     min_mm_per_column = 1,
     max_mm_per_column = 100000,
     fit_margin_cells = 2,
-    header_lines = 2,
+    header_lines = 1,
     pan_step_cells = 5,
     pan_coarse_step_cells = 20,
     show_grid = false,
-    show_rulers = false,
     show_dimensions = true,
+    show_compass = true,
   },
   snapping = {
     enabled = true,
@@ -46,24 +48,9 @@ local defaults = {
     priority = { "door", "room_edge", "room_center", "furniture", "grid" },
   },
   ui = {
-    experience = "workspace",
-    inspector = "float",
     confirm_delete = true,
     notify_level = "info",
-    workspace = {
-      layout = "auto",
-      left_width = 32,
-      right_width = 36,
-      wide_min_columns = 120,
-      compact_max_columns = 89,
-      compact_min_rows = 22,
-      min_canvas_width = 55,
-      min_canvas_height = 10,
-      footer_height = 2,
-      cycle_tabs = true,
-      ascii = false,
-      border = "rounded",
-    },
+    workspace = workspace_defaults.get(),
   },
   autosave = { enabled = false, debounce_ms = 1000, norg = false },
   keymaps = { enabled = true, mappings = {} },
@@ -90,6 +77,8 @@ local function merge_checked(target, source, template, path, errors)
       end
     elseif template[key] == nil then
       errors[#errors + 1] = here .. ": unknown option"
+    elseif (here == "furniture.definitions" or here == "furniture.files") and type(value) == "table" then
+      target[key] = util.deepcopy(value)
     elseif here == "keymaps.mappings" and type(value) == "table" then
       target[key] = {}
       for mapping, lhs in pairs(value) do
@@ -166,12 +155,6 @@ function M.setup(opts)
   if candidate.canvas.unicode ~= "auto" and candidate.canvas.unicode ~= "unicode" and candidate.canvas.unicode ~= "ascii" then
     errors[#errors + 1] = "canvas.unicode: expected auto, unicode, or ascii"
   end
-  if candidate.ui.inspector ~= "float" and candidate.ui.inspector ~= "split" and candidate.ui.inspector ~= "off" then
-    errors[#errors + 1] = "ui.inspector: expected float, split, or off"
-  end
-  if candidate.ui.experience ~= "workspace" and candidate.ui.experience ~= "classic" then
-    errors[#errors + 1] = "ui.experience: expected workspace or classic"
-  end
   if candidate.ui.workspace.layout ~= "auto" and candidate.ui.workspace.layout ~= "wide"
     and candidate.ui.workspace.layout ~= "medium" and candidate.ui.workspace.layout ~= "compact" then
     errors[#errors + 1] = "ui.workspace.layout: expected auto, wide, medium, or compact"
@@ -182,6 +165,10 @@ function M.setup(opts)
   end
   if #errors > 0 then
     error("roomplan.setup failed:\n- " .. table.concat(errors, "\n- "), 2)
+  end
+  local catalog_ok, catalog_errors = require("roomplan.catalog").configure(candidate.furniture, candidate.limits)
+  if not catalog_ok then
+    error("roomplan.setup failed:\n- " .. table.concat(catalog_errors, "\n- "), 2)
   end
   effective = candidate
   return util.deepcopy(effective)
@@ -209,6 +196,7 @@ end
 
 function M.reset()
   effective = util.deepcopy(defaults)
+  require("roomplan.catalog").reset()
 end
 
 return M

@@ -22,7 +22,6 @@ function M.edit(session)
       normal_step_mm = plan.settings.normal_step_mm,
       coarse_step_mm = plan.settings.coarse_step_mm,
       default_door_width_mm = plan.settings.default_door_width_mm,
-      default_wall_thickness_mm = plan.settings.default_wall_thickness_mm,
     },
     fields = {
       { key = "name", label = "Plan name", type = "text", required = true, trim = true, max_length = 256 },
@@ -32,7 +31,6 @@ function M.edit(session)
       { key = "normal_step_mm", label = "Normal move", type = "measurement", max = limits.max_dimension_mm },
       { key = "coarse_step_mm", label = "Coarse move", type = "measurement", max = limits.max_dimension_mm },
       { key = "default_door_width_mm", label = "Default door width", type = "measurement", max = limits.max_dimension_mm },
-      { key = "default_wall_thickness_mm", label = "Wall metadata", type = "measurement", max = limits.max_dimension_mm },
       {
         key = "summary", label = "Contents", type = "readonly",
         value = function(ctx)
@@ -47,8 +45,7 @@ function M.edit(session)
         lines = {
           string.format("Grid %d mm; movement %d / %d / %d mm",
             draft.grid_mm, draft.fine_step_mm, draft.normal_step_mm, draft.coarse_step_mm),
-          string.format("Door default %d mm; wall thickness remains metadata-only",
-            draft.default_door_width_mm),
+          string.format("Default door width %d mm", draft.default_door_width_mm),
         },
       }
     end,
@@ -63,7 +60,6 @@ function M.edit(session)
         normal_step_mm = draft.normal_step_mm,
         coarse_step_mm = draft.coarse_step_mm,
         default_door_width_mm = draft.default_door_width_mm,
-        default_wall_thickness_mm = draft.default_wall_thickness_mm,
       },
     }
   end

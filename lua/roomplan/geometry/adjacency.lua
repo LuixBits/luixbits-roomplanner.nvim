@@ -1,8 +1,7 @@
 local interval = require("roomplan.geometry.interval")
 
 local M = {}
-
-M.SIDES = { "south", "east", "north", "west" }
+local SIDES = { "south", "east", "north", "west" }
 
 local opposites = { north = "south", south = "north", east = "west", west = "east" }
 local inward = {
@@ -40,8 +39,8 @@ end
 function M.edges(room)
   local result = {}
   local i
-  for i = 1, #M.SIDES do
-    result[#result + 1] = M.edge(room, M.SIDES[i])
+  for i = 1, #SIDES do
+    result[#result + 1] = M.edge(room, SIDES[i])
   end
   return result
 end
@@ -72,19 +71,11 @@ function M.between(a, b)
   return nil
 end
 
-function M.aperture_is_covered(record, side, start_mm, finish_mm)
-  return record and record.a_side == side
-    and interval.contains_interval(record.start_mm, record.finish_mm, start_mm, finish_mm)
-end
-
 function M.normal(side, outward)
   local value = inward[side]
   if not value then return nil end
   if outward then return { -value[1], -value[2] } end
   return { value[1], value[2] }
 end
-
-M.find = M.between
-M.shared_edge = M.between
 
 return M

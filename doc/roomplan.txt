@@ -1,1035 +1,450 @@
-*roomplan.txt* *roomplan*  Terminal-native flat planning for Neovim
+*roomplan.txt*  Keyboard-first floor planning for Neovim
 
-===============================================================================
-CONTENTS                                                     *roomplan-contents*
+==============================================================================
+CONTENTS                                                        *roomplan*
 
-1. Introduction ..................................... |roomplan-introduction|
-2. Requirements and installation .................... |roomplan-installation|
-3. Quick start ....................................... |roomplan-quick-start|
-4. Storage ........................................... |roomplan-storage|
-5. Workspace, forms, and canvas ...................... |roomplan-workspace|
-6. Commands .......................................... |roomplan-commands|
-7. Configuration ..................................... |roomplan-configuration|
-8. Data model and coordinates ........................ |roomplan-schema|
-9. Furniture catalogue ............................... |roomplan-catalogue|
-10. Validation ....................................... |roomplan-validation|
-11. History, saving, and lifecycle ................... |roomplan-lifecycle|
-12. Lua API .......................................... |roomplan-api|
-13. Health and troubleshooting ....................... |roomplan-health|
-14. Contributing and license ......................... |roomplan-contributing|
+1. Introduction                                      |roomplan-introduction|
+2. Installation                                             |roomplan-install|
+3. First plan                                            |roomplan-quickstart|
+4. Commands                                               |roomplan-commands|
+5. Workspace                                             |roomplan-workspace|
+6. Keymaps                                                 |roomplan-keymaps|
+7. Configuration                                           |roomplan-config|
+8. Furniture catalogues                                 |roomplan-furniture|
+9. Aspect and view rotation                               |roomplan-display|
+10. Storage and safety                                    |roomplan-storage|
+11. Lua API                                                   |roomplan-api|
+12. Health and troubleshooting                            |roomplan-troubles|
 
-===============================================================================
-1. INTRODUCTION                                          *roomplan-introduction*
+==============================================================================
+1. INTRODUCTION                                      *roomplan-introduction*
 
-roomplan.nvim is a 2D spatial-planning plugin. It creates rectangular rooms,
-aligns them, places single-leaf hinged doors and rectangular furniture, shows
-door swing, validates the layout, and saves exact integer-millimetre geometry.
+RoomPlan stores exact millimetre geometry in structured JSON or a marked
+Neorg block and renders an interactive terminal view. Display rounding,
+zooming, aspect calibration, and view rotation never alter saved geometry.
 
-The default interface is a dependency-free planning workspace: an object/issue
-pane, interactive canvas, human-readable Properties pane, and persistent
-context action bar. Primary geometry workflows use structured forms that keep
-all related values and validation visible together.
-
-The same canonical plan may live in a standalone `*.roomplan.json` file or in
-a JSON ranged tag inside a `.norg` note. The Unicode/ASCII canvas is always a
-rendered view. RoomPlan never infers geometry from canvas characters.
-
-Version 1 intentionally has these limits:
-
-- one plan and one floor per source;
-- axis-aligned rectangular rooms;
-- zero-thickness abstract room boundaries;
-- rectangular furniture rotated only 0, 90, 180, or 270 degrees;
-- one-leaf hinged doors;
-- no CAD/BIM import, 3D view, code certification, or layout optimizer.
-
-Neorg, Tree-sitter, Telescope, fzf-lua, Snacks, nui.nvim, and a mouse are not
-runtime requirements.
-
-===============================================================================
-2. REQUIREMENTS AND INSTALLATION                         *roomplan-installation*
+Version 1 supports one floor, rectangular rooms, rectangular furniture,
+shared-wall doors, and furniture rotations in 90-degree steps. It is a space
+planner, not CAD/BIM software or a building-code checker.
 
 Requirements:
 
-- Neovim 0.10 or newer;
-- Neovim 0.12.4 is the primary runtime target;
-- UTF-8 terminal recommended; ASCII canvas is supported.
+- Neovim 0.10 or newer
+- no mandatory runtime dependencies
+- Neorg only when embedding plans in .norg files
 
-The repository owner is not assigned in this working tree. Replace `OWNER` in
-the examples below with the final GitHub owner.
+The complete linked handbook is in docs/README.md in the repository.
 
-NEOVIM 0.12 VIM.PACK                                  *roomplan-install-vimpack*
+==============================================================================
+2. INSTALLATION                                             *roomplan-install*
 
-`vim.pack` is a Neovim 0.12+ feature. In `init.lua`: >lua
+The repository must be on 'runtimepath' before Lua calls require("roomplan").
+The plugin loader registers commands automatically; setup() is optional when
+the defaults are sufficient.
 
-    vim.pack.add({
-      { src = "https://github.com/devluixos/luixbits-roomplanner.nvim" },
-    })
-    require("roomplan").setup({})
+lazy.nvim: >lua
+  {
+    "LuixBits/luixbits-roomplanner.nvim",
+    lazy = false,
+    main = "roomplan",
+    opts = {},
+  }
 <
 
-LAZY.NVIM                                                *roomplan-install-lazy*
->lua
-    {
-      "devluixos/luixbits-roomplanner.nvim",
-      config = function()
-        require("roomplan").setup({})
-      end,
-    }
+Neovim 0.12 vim.pack: >lua
+  vim.pack.add({
+    { src = "https://github.com/LuixBits/luixbits-roomplanner.nvim" },
+  })
+  require("roomplan").setup({})
 <
 
-Do not restrict loading to one filetype if commands with explicit source paths
-should work from arbitrary buffers.
+For Nix flakes, nvf, rocks.nvim, native packages, and local checkout examples,
+see docs/getting-started/installation.md.
 
-NATIVE PACKAGE                                      *roomplan-install-package*
+==============================================================================
+3. FIRST PLAN                                            *roomplan-quickstart*
 
-Clone into a `start` package directory: >sh
-
-    git clone https://github.com/devluixos/luixbits-roomplanner.nvim \
-      ~/.local/share/nvim/site/pack/plugins/start/roomplan.nvim
-    nvim --headless "+helptags ALL" +qa
+Create a standalone plan without overwriting an existing file: >vim
+  :RoomPlanInit ~/plans/flat.roomplan.json
 <
 
-LOCAL CHECKOUT                                        *roomplan-install-local*
->lua
-    vim.opt.runtimepath:prepend("/absolute/path/to/roomplan.nvim")
-    require("roomplan").setup({})
+Press `a` to add the first room. In the form, move with `j`/`k`, edit with
+<CR>, and apply with <C-s>. Back on the canvas, use `h`/`j`/`k`/`l`, press
+`e` for exact edits, and `s` to save.
+
+Open the plan later with: >vim
+  :RoomPlanOpen ~/plans/flat.roomplan.json
 <
 
-The plugin loader registers commands automatically. Calling |roomplan-setup|
-is optional when defaults are acceptable.
-
-===============================================================================
-3. QUICK START                                             *roomplan-quick-start*
-
-STANDALONE                                          *roomplan-quick-standalone*
-
-1. Safely create a source: >vim
-
-    :RoomPlanInit flat.roomplan.json
-<
-
-   Initialization refuses to overwrite a non-empty standalone source.
-
-2. The workspace shows `Empty floor plan`. Press `a` to open one Add Room
-   form. Use `j/k` or Tab to choose a field, Enter to edit it, set `Living
-   room`, `5m`, and `4m`, then press CTRL-S to create the room.
-
-3. Press `a`. In the native Add palette use `j/k` and Enter, or its displayed
-   `r/d/f` shortcut. Choose Room and add a `3m` by `3m` Bedroom. Select it in
-   Objects, press `A`, select Living room as the reference, choose `Place east`,
-   and apply the alignment form.
-
-4. Press `D`. The door form shows room, wall, width, placement, hinge,
-   connection, swing side, and angle together. Configure a `900mm` shared
-   east-wall door into Bedroom and apply it.
-
-5. Press `F`, choose Living room and Sofa, accept or adjust the populated
-   catalogue dimensions, choose a placement, and apply.
-
-6. Press `1`, use `j/k` and Enter to select the sofa, then `2` for the Canvas.
-   Press `m` for MOVE, use `h/j/k/l`, press `r` to rotate, and Esc to return to
-   NAV.
-
-7. Press `v`, repair errors, and `s` to save. Use |:RoomPlanSave| explicitly
-   when working outside the workspace.
-
-8. Press `q` to hide the workspace. Use |:RoomPlanOpen| to restore it and
-   |:RoomPlanClose| to unload the semantic session.
-
-Measurements accept an optional adjacent suffix: `2100`, `2100mm`, `210cm`,
-and `2.1m` all mean 2100 mm. `.5m`, `2.`, `2 m`, scientific notation, decimal
-commas, and values that do not resolve to a whole millimetre are rejected.
-
-NORG                                                    *roomplan-quick-norg*
-
-Open a `.norg` note and run |:RoomPlanInit|. RoomPlan adds a `* Floor plan`
-heading and a marked JSON block. Edit through the same workspace workflows,
-then save with |:RoomPlanSave|. On later visits use |:RoomPlanOpen|.
-
-See |roomplan-storage-norg| before saving: a RoomPlan Norg save performs a
-normal write of the entire note, including unrelated buffer edits.
-
-===============================================================================
-4. STORAGE                                                   *roomplan-storage*
-
-STANDALONE                                      *roomplan-storage-standalone*
-
-The extension is exactly: >
-
-    *.roomplan.json
-<
-
-The complete file is one strict JSON object. Serialization is UTF-8,
-two-space-indented, deterministically ordered, and ends in one newline.
-Detached creation uses a same-directory exclusive temporary file and rename
-where supported. Existing loaded buffers remain authoritative.
-
-NORG                                                    *roomplan-storage-norg*
-
-New embedded plans use: >norg
-
-    * Floor plan
-
-    @code json roomplan.nvim
-    {
-      "format": "roomplan.nvim",
-      "schema_version": 1,
-      "units": "mm",
-      "metadata": {
-        "name": "Untitled plan",
-        "notes": ""
-      },
-      "settings": {
-        "grid_mm": 100,
-        "fine_step_mm": 10,
-        "normal_step_mm": 100,
-        "coarse_step_mm": 500,
-        "default_door_width_mm": 900,
-        "default_wall_thickness_mm": 120
-      },
-      "rooms": [],
-      "doors": [],
-      "furniture": [],
-      "custom_templates": [],
-      "extensions": {}
-    }
-    @end
-<
-
-The marker makes intended RoomPlan data identifiable even when its JSON is
-damaged. Legacy unmarked `@code json` blocks remain readable when the decoded
-top-level `format` is `roomplan.nvim`.
-
-The scanner requires exactly one matching object. It stops on multiple plans,
-malformed/unterminated marked blocks, or suspected damaged legacy data instead
-of initializing a duplicate.
-
-Saving replaces only JSON payload lines through buffer APIs, then performs a
-normal `:write` of the named Norg buffer. This preserves unrelated logical
-text, but also writes unrelated unsaved note edits and runs normal write hooks.
-Configured encoding, BOM, line-ending, `fixeol`, and write hooks may therefore
-change raw bytes outside the payload as ordinary Neovim writes do.
-
-Neorg is optional. RoomPlan does not import private Neorg modules. The current
-adapter uses the specification scanner. Health reports optional Norg
-Tree-sitter availability for diagnostics/future discovery enhancements.
-
-STRICT JSON                                           *roomplan-storage-json*
-
-The pure codec rejects comments, trailing commas, duplicate decoded keys,
-invalid escapes/surrogates/UTF-8, leading-zero numbers, NaN, infinity, trailing
-content, excessive nesting/resources, and unsafe known numeric values.
-
-Missing, zero, and future schema versions are not guessed. Version 1 is the
-first schema and has no fabricated version-0 migration.
-
-Unknown members are preserved semantically at known object levels. JSON null,
-empty object, empty array, array order, and exact decimal values remain
-distinct. Whitespace and original object-key order inside the JSON payload are
-not preserved.
-
-===============================================================================
-5. WORKSPACE, FORMS, AND CANVAS                          *roomplan-workspace*
-                                                            *roomplan-canvas*
-
-The default `ui.experience` is `workspace`. One RoomPlan tab combines:
-
-- Objects/Issues: hierarchical rooms with their doors and furniture, project
-  templates, plus persistent validation results;
-- Canvas: the rendered spatial view and hit-testing surface;
-- Properties: exact, human-readable values and diagnostics for the selection;
-- a two-line action/status bar showing valid keys, mode, dirty state, snapping,
-  focus, cursor world coordinate, and zoom.
-
-Selection is shared between panes. In Objects or Issues, use `j/k` and Enter
-to select a row and return focus to Canvas. `/` filters the current list;
-`h/l` collapses or expands a room in Objects. The plan row exposes plan-level
-Properties.
-
-ACTION PALETTE                                           *roomplan-palette*
-
-|:RoomPlan| opens a RoomPlan-native action palette for the active session, or
-for choosing/opening one. On a non-empty plan, `a` uses the same component for
-Room, Door, and Furniture. Use `j/k`, Enter, a displayed item shortcut, and
-Esc/`q`; no numbered `vim.ui.select` prompt chain is used. Palette navigation
-and displayed shortcuts use the central mapping resolver.
-
-The layout responds to available space:
-
-- `wide` at 120 columns or more: Objects/Issues, Canvas, and Properties;
-- `medium` at 90 through 119 columns: left pane plus Canvas; Properties replaces
-  the left pane when focused;
-- `compact` at 89 columns or fewer, or under 22 usable rows: Canvas plus
-  floating drawers for the other panes.
-
-The canvas remains an unlisted, nonmodifiable `nofile` scratch buffer. An empty
-plan displays Add First Room guidance. The first spatial object is selected and
-fitted automatically. A populated but offscreen plan displays `press f to fit`
-instead of appearing empty. Hiding the workspace never destroys its session.
-
-MODES                                                    *roomplan-canvas-modes*
-
-NAV
-    `h/j/k/l` moves the canvas cursor. Selection is non-destructive.
-
-MOVE
-    Enter with `m` after selecting a room, door, or furniture item.
-    `h/j/k/l` applies one persisted normal step; uppercase applies one coarse
-    step. Each successful keypress is one semantic history entry.
-
-PAN
-    Enter with `p`. Direction keys move the viewport without editing geometry.
-
-`<Esc>` cancels an active workflow first, otherwise returns to NAV, otherwise
-deselects. In the workspace it closes a drawer or returns focus to Canvas
-before clearing selection.
-
-WORKSPACE MAPPINGS                                     *roomplan-keymaps*
-
-All mappings are buffer-local. No global mapping is installed. One resolver
-applies `keymaps.enabled` and semantic/default-lhs overrides to workspace,
-Canvas, forms, palettes, and contextual actions. The action bar and form footer
-display the resolved keys, including `unmapped` when disabled.
-
-    Tab / Shift-Tab   Cycle Objects, Issues, Canvas, Properties
-    1 / 2 / 3 / !     Focus Objects / Canvas / Properties / Issues
-    j / k             Navigate rows in Objects/Issues
-    Enter             Select row or hit-test Canvas
-    h / l             Collapse/expand an Objects room
-    /                 Filter Objects or Issues
-    q                 Close compact drawer, otherwise hide workspace
-    a / D / F         Add object / door / furniture from any workspace pane
-    e / d / y         Edit / delete / duplicate selection
-    m / A / r         Move / align / rotate applicable selection
-    v / s / f / ?     Validate / save / fit / help
-    u / CTRL-R        Semantic undo / redo
-
-CANVAS MAPPINGS                                 *roomplan-canvas-mappings*
-
-    <Enter>           Select/cycle object under cursor
-    m                 Enter MOVE mode
-    p                 Enter PAN mode
-    h j k l           Direction in current mode
-    H J K L           Coarse direction in current mode
-    <C-h/j/k/l>       Fine direction in current mode
-    <Esc>             Cancel workflow/mode or deselect
-    i                 Toggle inspector
-    o                 Searchable object list
-    ]e / [e           Next / previous issue
-    z+ / z-           Zoom in / out
-    f / zf            Fit plan to viewport
-    zh / zj / zk / zl Pan without changing geometry
-    gs                Toggle snapping
-    g!                Bypass snapping for next move
-    S                 Prompt for Save As
-
-STRUCTURED FORMS                                         *roomplan-forms*
-
-Add/Edit Room, Furniture, Door, Align, Plan, and Custom Template commands open
-a centered form. It shows all related values, conditional fields, normalized
-measurements, inline errors, and a textual result preview. Custom templates are
-selectable top-level Objects rows. Select the plan row or a template and press
-`e` to edit it. A form draft is transient: Apply performs one semantic action;
-Cancel changes neither model nor history.
-
-    j / k             Previous / next visible field
-    Tab / Shift-Tab   Next / previous visible field
-    Enter / e         Edit scalar or open choice list
-    h / l / Space     Cycle choice or toggle
-    CTRL-S            Validate and apply atomically
-    R                 Reset the complete draft
-    Esc / q           Cancel without changing the plan
-
-Text and measurement fields use `vim.ui.input`; enum and object fields use
-`vim.ui.select`. The surrounding form remains visible, so values may be edited
-in any order and validation errors persist. Furniture catalogue dimensions are
-pre-populated rather than requested again.
-
-Add Room and Align include `Allow invalid draft`. Enabling it explicitly
-permits the requested layout operation without automatic repair. Validation
-still reports the resulting errors and ordinary save rules still apply.
-
-CLASSIC FALLBACK                                  *roomplan-ui-classic*
-
-Set `ui.experience = "classic"` to use the original canvas, inspector/list
-buffers, and sequential `vim.ui` workflows. Model, storage, commands, history,
-and safety semantics are identical. Classic mode is a temporary compatibility
-fallback and does not include workspace panes or structured geometry forms.
-
-In classic mode, object and issue lists remain normal scratch buffers. Use `/`,
-`n`, and `N` to search, Enter to choose, and `q` to close.
-
-MAPPING CONFIGURATION                         *roomplan-keymap-configuration*
-
-Set `keymaps.enabled = false` to install no RoomPlan workspace, Canvas, form, or
-palette mappings. Otherwise replace a mapping by semantic name or default lhs;
-a value of `false` disables it. Useful semantic names include:
-
-    workspace_next_pane       workspace_previous_pane
-    focus_objects             focus_canvas
-    focus_properties          focus_issues
-    form_apply                form_edit
-    form_cancel
-    palette_next              palette_choose
-    palette_cancel
-
-Displayed action-bar and form-footer keys use these values: >lua
-
-    require("roomplan").setup({
-      keymaps = {
-        mappings = {
-          hide = "<leader>q",
-          workspace_next_pane = "]w",
-          focus_objects = "go",
-          focus_canvas = "gc",
-          form_apply = "<leader>s",
-          form_cancel = "<leader>c",
-          ["<C-h>"] = false,
-          ["s"] = "<leader>w",
-        },
-      },
-    })
-<
-
-ASCII AND GLYPHS                                         *roomplan-glyphs*
-
-Set `canvas.unicode = "ascii"` for an explicit ASCII canvas. `auto` and
-`unicode` validate every glyph with `strdisplaywidth()`, and an invalid set
-falls back atomically to ASCII.
-
-A custom `glyphs` table must provide `wall[0]` through `wall[15]`, plus:
-
-    furniture_horizontal       furniture_vertical
-    furniture_corner_nw        furniture_corner_ne
-    furniture_corner_sw        furniture_corner_se
-    furniture_marker           door_horizontal
-    door_vertical              door_slash
-    door_backslash             door_hinge
-    door_arc                    door_marker
-    grid                        error
-    warning                     replacement
-
-Every value must occupy exactly one display cell. See
-`lua/roomplan/render/glyphs.lua` for complete built-in sets.
-
-HIGHLIGHTS                                             *roomplan-highlights*
-
-    RoomPlanWall              RoomPlanDoor
-    RoomPlanFurniture         RoomPlanRoomLabel
-    RoomPlanFurnitureLabel    RoomPlanSelected
-    RoomPlanError             RoomPlanWarning
-    RoomPlanGrid              RoomPlanStatus
-    RoomPlanMuted
-
-Groups link to standard groups by default and relink on `ColorScheme`.
-
-===============================================================================
-6. COMMANDS                                                 *roomplan-commands*
+Inside a .norg buffer, |:RoomPlanInit| initializes a marked embedded block and
+|:RoomPlanOpen| discovers it. A standalone path may always be supplied
+explicitly.
+
+==============================================================================
+4. COMMANDS                                               *roomplan-commands*
 
                                                         *:RoomPlan*
-                                                        *:RoomPlanMenu*
-:RoomPlan, :RoomPlanMenu
-    Open the native context-aware action palette. It uses the current attached
-    session, the only live session, or offers session/source choices.
+:RoomPlan                 Open the complete contextual action palette.
 
                                                         *:RoomPlanOpen*
-:RoomPlanOpen [path]
-    Load/focus a `.roomplan.json` or `.norg` source and open its workspace.
-    With no path, detect from the current named buffer/filetype.
+:RoomPlanOpen [source]    Open a standalone JSON or a plan in a Norg source.
 
                                                         *:RoomPlanInit*
-:RoomPlanInit [path]
-    Initialize a safe empty plan. Standalone initialization refuses non-empty
-    content. Norg initialization refuses ambiguous or damaged candidate data.
+:RoomPlanInit [source]    Initialize a new source; never overwrites content.
 
                                                         *:RoomPlanHide*
-:RoomPlanHide
-    Hide/wipe the workspace and canvas. The session remains live and
-    protected.
+:RoomPlanHide             Hide the workspace but retain the session.
 
                                                         *:RoomPlanClose*
-:RoomPlanClose[!]
-    Unload a session. Without `!`, protected state prompts Save, Discard, or
-    Cancel. `!` explicitly discards model/session state but leaves unrelated
-    source-buffer modifications alone.
+:RoomPlanClose[!]         Close the session. ! permits discarding changes.
 
                                                         *:RoomPlanAddRoom*
-:RoomPlanAddRoom
-    Open a form containing name, exact dimensions, and initial placement.
+:RoomPlanAddRoom          Open the structured room form.
 
                                                         *:RoomPlanAlign*
-:RoomPlanAlign
-    Open a form containing moving/reference rooms and the alignment or
-    directional placement.
+:RoomPlanAlign            Open room alignment for the current selection.
 
                                                         *:RoomPlanAddDoor*
-:RoomPlanAddDoor
-    Open one form containing owner, side, width, offset, hinge, connection,
-    swing side, and opening angle.
+:RoomPlanAddDoor          Open the structured door form.
 
                                                         *:RoomPlanAddFurniture*
-:RoomPlanAddFurniture
-    Open one form for room/template, populated dimensions, label, rotation,
-    placement, and optional project template.
-
-                                                        *:RoomPlanAspect*
-:RoomPlanAspect [ratio]
-    Show/prompt for the current terminal-cell aspect calibration, or set a
-    positive ratio directly. The visible RoomPlan canvas is refitted. The
-    runtime value is not written to plan data or local configuration. See
-    |roomplan-aspect-calibration|.
+:RoomPlanAddFurniture     Open the structured furniture form.
 
                                                         *:RoomPlanEdit*
-:RoomPlanEdit
-    Open a populated structured form for the selected plan, room, door,
-    furniture item, or custom template.
+:RoomPlanEdit             Edit the selected object or plan.
 
                                                         *:RoomPlanDuplicate*
-:RoomPlanDuplicate
-    Duplicate selection. Rooms do not clone dependants. Furniture moves one
-    normal step north/east. Door duplication must produce a valid aperture.
+:RoomPlanDuplicate        Duplicate the current selection.
 
                                                         *:RoomPlanDelete*
-:RoomPlanDelete
-    Delete selection. Room deletion reports and atomically cascades furniture,
-    owner doors, and doors connected from another owner.
+:RoomPlanDelete           Delete the current selection after confirmation.
 
-                                                        *:RoomPlanObjects*
-:RoomPlanObjects
-    Focus Objects in the workspace, or open the classic searchable list.
+                                                        *:RoomPlanToggleNavigator*
+:RoomPlanToggleNavigator  Focus or toggle the Navigator pane.
 
-                                                        *:RoomPlanInspect*
-:RoomPlanInspect
-    Focus Properties in the workspace, or toggle the classic inspector.
+                                                        *:RoomPlanToggleDetails*
+:RoomPlanToggleDetails    Focus or toggle the Details pane.
 
                                                         *:RoomPlanValidate*
-:RoomPlanValidate
-    Recompute deterministic structural/layout diagnostics. Interactive use
-    focuses Issues in the workspace rather than opening an unrelated split.
+:RoomPlanValidate         Validate and open Issues.
 
                                                         *:RoomPlanNextIssue*
+:RoomPlanNextIssue        Select the next diagnostic.
+
                                                         *:RoomPlanPrevIssue*
-:RoomPlanNextIssue, :RoomPlanPrevIssue
-    Select and navigate to the next/previous diagnostic.
+:RoomPlanPrevIssue        Select the previous diagnostic.
 
                                                         *:RoomPlanUndo*
+:RoomPlanUndo             Undo one model action.
+
                                                         *:RoomPlanRedo*
-:RoomPlanUndo, :RoomPlanRedo
-    Move through model-level semantic snapshot history.
+:RoomPlanRedo             Redo one model action.
 
                                                         *:RoomPlanFit*
-:RoomPlanFit
-    Fit all semantic scene geometry into the current canvas.
+:RoomPlanFit              Fit all plan geometry in the canvas.
+
+                                                        *:RoomPlanAspect*
+:RoomPlanAspect [ratio]   Set the process-wide terminal cell aspect ratio.
+                          Without a ratio, prompt for one. Every open canvas
+                          is refitted; model data and history are unchanged.
+
+                                                        *:RoomPlanRotateView*
+:RoomPlanRotateView [dir] Rotate the view clockwise by default. dir may be
+                          clockwise, counterclockwise, or reset.
 
                                                         *:RoomPlanSave*
-:RoomPlanSave[!]
-    Serialize to the active adapter and durably write. `!` permits a
-    structurally valid model with layout errors. It never bypasses malformed
-    data, future schema, unsafe destination, or source conflict.
+:RoomPlanSave[!]          Save. ! permits saving a structurally valid draft
+                          that still has layout errors.
 
                                                         *:RoomPlanSaveAs*
-:RoomPlanSaveAs[!] {path}
-    Save to another `.roomplan.json` or `.norg` source and rebind the session.
-    `!` may replace an existing valid standalone RoomPlan JSON file. Save As
-    refuses to steal another live session or overwrite a Norg plan block.
+:RoomPlanSaveAs[!] path   Save to another source with destination checks.
 
                                                         *:RoomPlanReload*
-:RoomPlanReload[!]
-    Replace the model from its source. Protected state prompts unless `!`
-    explicitly discards it. A replacing reload resets model history.
+:RoomPlanReload[!]        Reload. ! permits discarding local changes.
 
                                                         *:RoomPlanResolveConflict*
-:RoomPlanResolveConflict
-    Resolve detected source divergence by reviewing source, reloading, or Save
-    As. There is no implicit conflict overwrite.
+:RoomPlanResolveConflict  Choose how to resolve a changed source.
 
-SESSION TARGETING                                    *roomplan-command-target*
+                                                        *:RoomPlanMenu*
+                                                        *:RoomPlanObjects*
+                                                        *:RoomPlanInspect*
+:RoomPlanMenu is a convenience alias for :RoomPlan. :RoomPlanObjects and
+:RoomPlanInspect focus or toggle Navigator and Details respectively.
 
-Commands use the session attached to the current source/workspace/classic-list
-buffer.
-If there is exactly one session it is the fallback. When multiple unattached
-sessions make targeting ambiguous, focus one or choose through |:RoomPlan|.
+==============================================================================
+5. WORKSPACE                                             *roomplan-workspace*
 
-===============================================================================
-7. CONFIGURATION                                       *roomplan-configuration*
-                                                        *roomplan-setup*
+The workspace has a canvas, a left Navigator/Issues pane, an optional right
+Details pane, and a one-line contextual footer. The Navigator starts visible;
+Details starts hidden. Both retain their selection and can be toggled to give
+the canvas more room.
 
-`require("roomplan").setup(opts)` validates and returns the effective config.
-Each call merges over fresh defaults, never the previous call. Unknown keys or
-invalid values raise an aggregated path error and retain the old config.
+Wide terminals use side panes. Medium layouts retain only the panes that fit.
+Compact layouts open bordered drawers. Manually closing a pane keeps it closed
+until explicitly toggled again.
 
-DEFAULTS                                              *roomplan-config-defaults*
->lua
-    require("roomplan").setup({
-      plan_defaults = {
-        metadata = { name = nil, notes = "" },
-        settings = {
-          grid_mm = 100,
-          fine_step_mm = 10,
-          normal_step_mm = 100,
-          coarse_step_mm = 500,
-          default_door_width_mm = 900,
-          default_wall_thickness_mm = 120,
+Navigator shows rooms with nested doors and furniture. Issues filters and
+selects diagnostics. Details presents compact, collapsible sections whose
+contents change with the selection. `?` always exposes the full action set,
+including disabled actions and their reasons.
+
+Structured forms keep their complete draft visible. A form is revision-bound:
+if the plan changes elsewhere, the stale form cannot apply over newer data.
+
+==============================================================================
+6. KEYMAPS                                                 *roomplan-keymaps*
+
+Workspace:
+
+  1 / o          focus or toggle Navigator
+  2              focus canvas
+  3 / i          focus or toggle Details
+  !              focus or toggle Issues
+  <Tab>          next pane
+  <S-Tab>        previous pane
+  <CR>           select a Navigator/Issue row; toggle Details section
+  /              filter Navigator or Issues
+  h / l          collapse / expand a room or Details section
+  ?              complete action palette or contextual help
+  q              return to canvas, close a drawer, or hide workspace
+  <Esc>          cancel the current interaction, then return to canvas
+
+Canvas and editing:
+
+  h j k l        move cursor/object, or pan in PAN mode
+  H J K L        coarse movement
+  <C-h/j/k/l>    fine movement
+  <CR>           select object under cursor
+  m / p          MOVE / PAN mode
+  a              Add palette
+  D / F          add door / furniture
+  A              align room
+  e              exact edit
+  d / y / r      delete / duplicate / rotate furniture
+  v / ]e / [e    validate / next issue / previous issue
+  u / <C-r>      undo / redo
+  z+ / z- / f    zoom in / zoom out / fit
+  zh zj zk zl    pan without entering PAN mode
+  ]r / [r / g0   rotate view clockwise / counterclockwise / north-up
+  gs / g!        toggle snapping / bypass the next snap
+  s / S          save / save as
+
+Forms:
+
+  j k / Tab      next / previous field
+  <CR> / e       edit the active field
+  h l            cycle a choice
+  <Space>        toggle or advance a choice
+  <C-s>          apply atomically
+  R              reset the form draft
+  q / <Esc>      cancel
+
+Set keymaps.enabled=false to install no RoomPlan mappings. Override a semantic
+mapping name or its default left-hand side in keymaps.mappings. Use false to
+disable one mapping. Displayed hints use the same resolver as installed maps.
+
+==============================================================================
+7. CONFIGURATION                                           *roomplan-config*
+
+Call require("roomplan").setup({...}). Unknown options and invalid values are
+errors; options are not silently ignored. The important defaults are: >lua
+  {
+    plan_defaults = {
+      metadata = { name = nil, notes = "" },
+      settings = {
+        grid_mm = 100,
+        fine_step_mm = 10,
+        normal_step_mm = 100,
+        coarse_step_mm = 500,
+        default_door_width_mm = 900,
+      },
+    },
+    furniture = { include_builtins = true, definitions = {}, files = {} },
+    canvas = {
+      open = "tab",
+      unicode = "auto",
+      mm_per_column = 100,
+      cell_aspect = 2.0,
+      zoom_factor = 1.25,
+      min_mm_per_column = 1,
+      max_mm_per_column = 100000,
+      fit_margin_cells = 2,
+      header_lines = 1,
+      pan_step_cells = 5,
+      pan_coarse_step_cells = 20,
+      show_grid = false,
+      show_dimensions = true,
+      show_compass = true,
+    },
+    snapping = {
+      enabled = true,
+      tolerance_cells = 1.5,
+      max_distance_mm = 250,
+      priority = { "door", "room_edge", "room_center", "furniture", "grid" },
+    },
+    ui = {
+      confirm_delete = true,
+      notify_level = "info",
+      workspace = {
+        layout = "auto",
+        left_width = 26,
+        right_width = 30,
+        navigator_visible = true,
+        details_visible = false,
+        wide_min_columns = 120,
+        compact_max_columns = 89,
+        compact_min_rows = 22,
+        min_canvas_width = 55,
+        min_canvas_height = 10,
+        footer_height = 1,
+        cycle_tabs = true,
+        ascii = false,
+        border = "rounded",
+      },
+    },
+    autosave = { enabled = false, debounce_ms = 1000, norg = false },
+    keymaps = { enabled = true, mappings = {} },
+    glyphs = nil,
+  }
+<
+
+Resource ceilings live under limits. See docs/configuration/settings.md for
+the complete list and docs/configuration/keymaps.md for semantic mapping names.
+
+Highlight groups start with RoomPlan and use default links, so colorschemes or
+user configuration can override them normally. See docs/display/appearance.md.
+
+==============================================================================
+8. FURNITURE CATALOGUES                                 *roomplan-furniture*
+
+RoomPlan includes generic built-in templates. Add process-wide defaults inline
+or load one or more dependency-free JSON files. Set
+furniture.include_builtins=false to make imported and inline definitions the
+complete visible catalogue. Built-in IDs remain resolvable for existing plans.
+Project-local templates saved inside a plan take precedence over imported
+templates with the same custom ID; built-in IDs remain reserved.
+
+Inline example: >lua
+  require("roomplan").setup({
+    furniture = {
+      definitions = {
+        {
+          id = "custom:standing-desk",
+          name = "Standing desk",
+          category = "work",
+          shape = "rectangle",
+          default_size_mm = { 1600, 800, 1250 },
         },
       },
-      limits = {
-        max_dimension_mm = 100000,
-        max_abs_coordinate_mm = 1000000,
-        max_plan_span_mm = 1000000,
-        max_auto_place_distance_mm = 100000,
-        max_history = 100,
-        max_history_bytes_per_session = 64 * 1024 * 1024,
-        max_history_bytes_global = 256 * 1024 * 1024,
-      },
-      canvas = {
-        open = "tab",
-        unicode = "auto",
-        mm_per_column = 100,
-        cell_aspect = 2.0,
-        zoom_factor = 1.25,
-        min_mm_per_column = 1,
-        max_mm_per_column = 100000,
-        fit_margin_cells = 2,
-        header_lines = 2,
-        pan_step_cells = 5,
-        pan_coarse_step_cells = 20,
-        show_grid = false,
-        show_rulers = false,
-        show_dimensions = true,
-      },
-      snapping = {
-        enabled = true,
-        tolerance_cells = 1.5,
-        max_distance_mm = 250,
-        priority = {
-          "door", "room_edge", "room_center", "furniture", "grid",
-        },
-      },
-      ui = {
-        experience = "workspace",
-        inspector = "float",
-        confirm_delete = true,
-        notify_level = "info",
-        workspace = {
-          layout = "auto",
-          left_width = 32,
-          right_width = 36,
-          wide_min_columns = 120,
-          compact_max_columns = 89,
-          compact_min_rows = 22,
-          min_canvas_width = 55,
-          min_canvas_height = 10,
-          footer_height = 2,
-          cycle_tabs = true,
-          ascii = false,
-          border = "rounded",
-        },
-      },
-      autosave = {
-        enabled = false,
-        debounce_ms = 1000,
-        norg = false,
-      },
-      keymaps = { enabled = true, mappings = {} },
-      glyphs = nil,
-    })
+      files = { vim.fn.stdpath("config") .. "/roomplan-furniture.json" },
+    },
+  })
 <
 
-PLAN DEFAULTS                                      *roomplan-plan-defaults*
-
-These seed only a newly initialized plan. Existing v1 documents use fixed
-schema defaults, so their meaning does not depend on local setup. Persisted
-settings control grid/movement/door defaults for that plan.
-
-`default_wall_thickness_mm` is inert metadata in schema v1. It does not affect
-bounds, collision, adjacency, apertures, snapping, or rendering.
-
-LIMITS                                                   *roomplan-limits*
-
-Local limits report oversized layouts without weakening hard codec/arithmetic
-ceilings. Default max room dimension is 100m and max absolute plan coordinate
-is 1km. Snapshot history is bounded by node and estimated memory budgets.
-
-CANVAS                                            *roomplan-config-canvas*
-
-`open` accepts `tab`, `split`, or `vsplit`. Separate horizontal and vertical
-scale is derived from `mm_per_column` and `cell_aspect` because terminal cells
-are not square. `show_rulers` is reserved for a later renderer enhancement;
-the current release candidate renders the optional grid and room dimensions
-but not viewport rulers.
-
-TERMINAL ASPECT                               *roomplan-aspect-calibration*
-
-Terminal cells are rectangular. Kitty derives their pixel size from the font,
-font size, DPI, and spacing, while Neovim does not expose that ratio portably.
-RoomPlan therefore defaults `canvas.cell_aspect` to `2.0`: one terminal row is
-assumed to be twice as tall as one column is wide.
-
-This affects rendering only; stored millimetres and rotations remain exact. A
-mismatch is easiest to notice after furniture rotation because its long edge
-moves between columns and rows. Low zoom can add one-cell raster rounding.
-
-Use `:RoomPlanAspect` (or “Calibrate terminal aspect” in `:RoomPlan`) to inspect
-and interactively change the runtime value, or `:RoomPlanAspect 2.2` to set it
-directly. The visible plan is refitted. Increase the value when geometry looks
-too tall; decrease it when geometry looks too flat. Persist the calibrated
-value with: >lua
-
-    require("roomplan").setup({
-      canvas = { cell_aspect = 2.2 },
-    })
+File format: >json
+  {
+    "version": 1,
+    "furniture": [
+      {
+        "id": "custom:reading-chair",
+        "name": "Reading chair",
+        "category": "seating",
+        "shape": "rectangle",
+        "default_size_mm": [850, 900, 1000]
+      }
+    ]
+  }
 <
 
-Runtime calibration does not write the plan or configuration because different
-terminals, fonts, displays, and remote sessions may require different values.
+Catalogue setup is atomic: an invalid definition or file leaves the previous
+effective catalogue unchanged. Files are limited to 1 MiB.
 
-WORKSPACE                                      *roomplan-config-workspace*
+==============================================================================
+9. ASPECT AND VIEW ROTATION                               *roomplan-display*
 
-`ui.experience` accepts `workspace` (default) or the temporary `classic`
-fallback described at |roomplan-ui-classic|. `ui.workspace.layout` accepts
-`auto`, `wide`, `medium`, or `compact`. Auto uses the configured column/row
-breakpoints while preserving `min_canvas_width` where possible. `footer_height`
-may be zero. `cycle_tabs=false` leaves the Canvas Tab mappings available for
-customization instead of replacing them with pane cycling.
+Terminal cells are usually taller than they are wide. canvas.cell_aspect is
+cell height divided by cell width; the default is 2.0. If a square room looks
+vertically stretched, use :RoomPlanAspect with a measured ratio. This updates
+the current Neovim process and refits every live canvas; no rebuild is needed.
 
-`ui.workspace.ascii` controls tree chrome; `canvas.unicode` independently
-controls spatial glyphs. `ui.inspector` controls the classic inspector and the
-workspace's `i` compatibility alias; the normal Properties pane is
-independent.
+View rotation is also transient. ]r and [r rotate by 90 degrees, g0 restores
+north-up, and the compass shows where world north points. Movement and panning
+remain screen-relative. Saved room, door, and furniture coordinates never
+rotate.
 
-SNAPPING                                        *roomplan-config-snapping*
+==============================================================================
+10. STORAGE AND SAFETY                                    *roomplan-storage*
 
-Movement considers door edges, room edges/centres, furniture edges/centres,
-and the plan grid. Screen-cell tolerance converts to bounded world-mm
-tolerance. Use `gs` to toggle and `g!` for one bypass.
+Standalone files conventionally end in .roomplan.json. Neorg plans use a
+marked ranged tag. RoomPlan preserves unknown extension fields and refuses
+ambiguous or unsafe source operations.
 
-AUTOSAVE                                        *roomplan-config-autosave*
+One writable session owns a source at a time. Other plans can remain open.
+Writes use revision checks and staged/atomic replacement where applicable.
+Source changes produce a conflict instead of silently overwriting either side.
+Dirty sessions are protected on close, reload, :q, and process exit.
 
-Autosave is disabled by default. When enabled, model edits schedule a
-debounced noninteractive save only for a conflict-free plan with zero errors.
-Norg also requires `autosave.norg = true` and no unrelated modified note text.
-Manual |:RoomPlanSave| is recommended for side-effectful write hooks.
+Structural schema failures cannot be saved. Layout-invalid drafts may be
+reviewed in Issues, repaired, or explicitly saved with !. That escape hatch is
+not a claim that the layout is safe or physically constructible.
 
-===============================================================================
-8. DATA MODEL AND COORDINATES                              *roomplan-schema*
+The current schema is schema/roomplan.schema.json. Geometry uses integer
+millimetres; derived door geometry may use doubled-millimetre arithmetic so
+half-millimetre endpoints stay exact.
 
-The tooling schema is `schema/roomplan.schema.json` (Draft 2020-12). Runtime
-validation additionally enforces byte/resource limits, tagged JSON types,
-global ID uniqueness, and exact known integer conversion.
+==============================================================================
+11. LUA API                                                   *roomplan-api*
 
-ROOT                                                   *roomplan-schema-root*
+Public entry points: >lua
+  local roomplan = require("roomplan")
 
-    format              exact "roomplan.nvim"
-    schema_version      exact integer 1
-    units               exact "mm"
-    metadata            name and notes
-    settings            persisted interaction defaults
-    rooms               ordered array
-    doors               ordered array
-    furniture           ordered array
-    custom_templates    ordered array
-    extensions          namespaced extension object
-
-COORDINATES                                         *roomplan-coordinates*
-
-- Positive X is east/right; positive Y is north/up.
-- Room `origin_mm` is the lower-left world point.
-- Room `size_mm` is `[width, depth]`.
-- Furniture `center_mm` is local to its owning room.
-- Furniture `size_mm` is `[width, depth, height]`.
-- Furniture rotation is clockwise: 0/90/180/270.
-- North/south door offsets run west to east.
-- East/west door offsets run south to north.
-- Door hinge `start`/`end` uses that direction.
-- Door swing target is `owner`, `connected`, or `outside`.
-- Boundaries may touch; only positive-area intersection is overlap.
-
-Derived odd-width edges and centres use doubled-millimetre integer predicates.
-A requested half-millimetre stored position rounds to nearest integer with ties
-away from zero and reports the 0.5mm residual.
-
-IDENTITY                                               *roomplan-identifiers*
-
-Entity IDs are immutable, globally unique ASCII strings, 1-128 bytes:
-
-    room-*              rooms
-    door-*              doors
-    furniture-*         furniture
-    custom:*            project templates
-    builtin:*           built-in template references (not stored entities)
-
-Renaming does not change an ID. Generated readable IDs gain numeric collision
-suffixes and are not automatically reused within a session.
-
-ROOMS                                                        *roomplan-rooms*
-
-Rooms are non-rotating rectangles. Version-1 boundaries are zero-thickness
-topological wall centre-lines/nominal interior bounds. Future wall solids must
-not reinterpret v1 coordinates.
-
-DOORS                                                        *roomplan-doors*
-
-A shared physical door is stored once. `room_id` owns its side/offset;
-`connects_to_room_id` is another room or JSON null. A valid connection cuts
-both coincident boundary contributors. Width/offset must fit the owner edge,
-and the named room must cover the full opposite aperture.
-
-FURNITURE                                                *roomplan-furniture*
-
-Dimensions are explicit and authoritative. Changing template/category does
-not replace them. An unresolved template is a warning because exact geometry
-still exists. Furniture can temporarily overlap or leave its room as a visible
-repair draft.
-
-EXTENSIONS                                                *roomplan-extensions*
-
-Unknown members survive supported-v1 normalization, model actions, history,
-and save. Prefer reverse-domain keys in `extensions`, for example
-`org.example.clearance`. RoomPlan preserves semantics, not original JSON
-whitespace/key order.
-
-===============================================================================
-9. FURNITURE CATALOGUE                                   *roomplan-catalogue*
-
-Generic planning seeds in width x depth x height millimetres:
-
-    builtin:bed                 2000 x 1600 x 500
-    builtin:sofa                2100 x  900 x 850
-    builtin:armchair             900 x  900 x 900
-    builtin:table               1600 x  900 x 750
-    builtin:chair                500 x  500 x 900
-    builtin:desk                1400 x  700 x 750
-    builtin:wardrobe            1200 x  600 x 2000
-    builtin:bookcase             900 x  300 x 1800
-    builtin:cabinet              800 x  450 x 900
-    builtin:kitchen-unit         600 x  600 x 900
-    builtin:appliance            600 x  600 x 850
-    builtin:bathroom-fixture     700 x  400 x 850
-    builtin:custom-rectangle    1000 x 1000 x 1000
-
-Every dimension is overrideable. Seeds are not manufacturer specifications or
-building/accessibility standards. Custom templates are stored in the current
-plan and appear as top-level Objects rows for inspection and editing; no global
-user catalogue exists in v1.
-
-===============================================================================
-10. VALIDATION                                           *roomplan-validation*
-
-Validation returns deterministic diagnostics with severity, stable code,
-primary object ID, related objects, message, and details. It never mutates
-geometry.
-
-STRUCTURAL CODES                            *roomplan-validation-structural*
-
-Examples include:
-
-    INVALID_MODEL               INVALID_FORMAT
-    UNSUPPORTED_SCHEMA_VERSION  INVALID_UNITS
-    MISSING_COLLECTION          INVALID_ENTITY
-    INVALID_ID                  DUPLICATE_ID
-    INVALID_NAME                INVALID_COORDINATE
-    NON_POSITIVE_DIMENSION      INVALID_REFERENCE_SHAPE
-    UNSUPPORTED_ROTATION        UNSUPPORTED_OBJECT_KIND
-    INVALID_ENUM                INVALID_DOOR_APERTURE
-    INVALID_DOOR_ANGLE          INVALID_SETTINGS
-    INVALID_SETTING
-
-Structural errors prevent opening/committing/saving.
-
-LAYOUT ERROR CODES                            *roomplan-validation-errors*
-
-    INVALID_REFERENCE           PLAN_LIMIT_EXCEEDED
-    ROOM_OVERLAP                FURNITURE_OUTSIDE_ROOM
-    FURNITURE_OVERLAP           DOOR_OUTSIDE_EDGE
-    DOOR_CONNECTION_INVALID     DOOR_SWING_TARGET_INVALID
-    DOOR_CONNECTION_MISSING     DOOR_EXTERIOR_OBSTRUCTED
-    DOOR_OPENING_OVERLAP
-
-Furniture layout errors may remain during exploratory repair. New room/door
-errors normally block the action unless it has an explicit force policy.
-Add Room and Align expose that policy as `Allow invalid draft`; it never hides
-the resulting diagnostics or bypasses save/source/schema safety.
-Ordinary save blocks errors; |:RoomPlanSave| with `!` deliberately saves a
-structurally valid layout-invalid draft.
-
-WARNING CODES                                  *roomplan-validation-warnings*
-
-    TEMPLATE_UNRESOLVED          DOOR_SWING_FURNITURE
-    DOOR_SWING_WALL              DOOR_SWING_DOOR
-
-Swing collision is an approximation appropriate to a planning tool, not a
-clearance certification.
-
-===============================================================================
-11. HISTORY, SAVING, AND LIFECYCLE                         *roomplan-lifecycle*
-
-HISTORY                                                  *roomplan-history*
-
-All model edits are semantic full-model snapshots. Add, move, resize, align,
-rotate, duplicate, delete, and exact-property edit each create at most one
-node. Cancelled, failed, and semantic no-op actions create none.
-
-Saving records the current revision as durable savepoint and retains history.
-Undoing away from it is dirty; redoing exactly to it is clean. A new action
-after undo discards the redo branch. Reload installs a fresh initial node.
-
-History defaults to 100 configured nodes plus estimated 64MiB per session and
-256MiB globally. Old non-current history trims before correctness is affected;
-the current model is never discarded for a budget.
-
-SAVE STATES                                           *roomplan-saving-states*
-
-RoomPlan separately tracks:
-
-    model dirty             history cursor differs from durable savepoint
-    staged payload          model revision serialized in source buffer
-    source modified         Neovim source buffer has unsaved text
-    pending write           staged payload was not durably written
-    conflict                source differs from expected revision
-    retained model at risk  live model no longer exists at active source
-
-The workspace action/status bar and canvas header expose relevant states rather
-than collapsing them to one asterisk.
-
-CONFLICTS                                               *roomplan-conflicts*
-
-Immediately before write, RoomPlan compares the selected source content to the
-revision opened/staged by the session. A changed payload/document blocks save.
-Use |:RoomPlanResolveConflict| to review, reload, or Save As. A source conflict
-cannot be bypassed with a save bang. If only a valid authoritative-buffer
-payload changed and disk has not diverged, conflict resolution conditionally
-offers a separately double-confirmed payload overwrite. Norg text outside the
-payload remains untouched.
-
-Norg save writes the whole source buffer normally. Write-hook failures or a
-post-write modified/semantically changed buffer do not advance the savepoint.
-
-WORKSPACE, CLOSE, AND GUARD                           *roomplan-quit-protection*
-
-`q` and |:RoomPlanHide| remove only the workspace/canvas. Session/model/history
-continue to exist. |:RoomPlanClose| is the semantic unload operation.
-
-Each session owns a hidden `acwrite` guard buffer whose modified flag protects
-dirty, staged, or at-risk state from ordinary `:qall`, `:wall`, and buffer
-deletion. Do not force-wipe it to work around a warning; save or close the
-session. |:RoomPlanClose| with `!` and Neovim `:qa!` are explicit discard
-operations.
-
-RoomPlan supports multiple independent sources but one writable session per
-canonical source identity and one canvas window per session.
-
-===============================================================================
-12. LUA API                                                   *roomplan-api*
-
-CONVENIENCE API                                      *roomplan-api-convenience*
->lua
-    local roomplan = require("roomplan")
-
-    roomplan.setup(opts)
-    roomplan.open(opts, callback)
-    roomplan.init(opts, callback)
-    roomplan.save(opts, callback)
-    roomplan.save_as(path, opts, callback)
-    roomplan.reload(opts, callback)
-    roomplan.hide(opts)
-    roomplan.close(opts, callback)
-    roomplan.validate(opts)
-    roomplan.sessions()
+  roomplan.setup(opts)
+  roomplan.open(opts, callback)
+  roomplan.init(opts, callback)
+  roomplan.save(opts, callback)
+  roomplan.save_as(path, opts, callback)
+  roomplan.reload(opts, callback)
+  roomplan.set_aspect(ratio, opts, callback)
+  roomplan.rotate_view(direction)
+  roomplan.hide(opts)
+  roomplan.close(opts, callback)
+  roomplan.validate(opts)
+  roomplan.sessions()
 <
 
-`opts` may contain `path`, `bufnr`, or `session_id` where meaningful.
-Callbacks receive `(value, error)`. Errors are structured tables containing at
-least `code` and `message`. Public Lua calls are noninteractive unless
-`opts.interactive = true`; confirmation-required operations return a
-structured error rather than opening a prompt.
+roomplan.aspect is retained as a compatibility alias for set_aspect; new
+configuration should use the explicit canonical name.
 
-ACTION API                                              *roomplan-api-actions*
->lua
-    local result, err = require("roomplan.api").dispatch(session_id, {
-      type = "move_furniture",
-      id = "furniture-sofa",
-      delta_mm = { 100, 0 },
-    })
-<
+Callbacks receive (result, error). With no callback, noninteractive operations
+return those values directly. Errors are structured tables with at least code
+and message where possible.
 
-Every action validates stable IDs/parameters, copies the tagged model, applies
-one mutation, checks structural and action-specific layout policy, and returns
-one complete model/result or no model. UI code must never mutate nested model
-tables directly.
+For low-level integrations, require("roomplan.api").dispatch(session_id,
+action) sends a model action through the normal controller/history boundary;
+session(session_id) returns the live session.
 
-The Lua API is provisional before plugin 1.0. Plugin SemVer and persisted
-`schema_version` are independent.
-
-===============================================================================
-13. HEALTH AND TROUBLESHOOTING                                *roomplan-health*
+==============================================================================
+12. HEALTH AND TROUBLESHOOTING                            *roomplan-troubles*
 
 Run: >vim
-
-    :checkhealth roomplan
+  :checkhealth roomplan
 <
 
-The report covers supported Neovim version, Unicode cell widths, ASCII advice,
-optional Norg parser/Neorg availability, active adapter/session state, and
-autosave status.
+It checks Neovim/runtime compatibility, encoding, display capabilities,
+configuration and mappings, optional Neorg, workspace sizing, live sessions,
+and source writability.
 
-TROUBLESHOOTING                                    *roomplan-troubleshooting*
+If require("roomplan") says the module is missing, the package is not on
+'runtimepath' at the time configuration executes. Fix the package-manager or
+Nix/nvf wiring; do not add a separate Lua package. If :RoomPlan is missing,
+the plugin loader was not sourced for the same reason. Restart Neovim after
+changing the installed package/generation.
 
-Broken or double-width canvas glyphs ~
-    Set `canvas.unicode = "ascii"`, choose a suitable terminal font, and rerun
-    health.
+If the canvas looks stretched, run :RoomPlanAspect; this never requires a Nix
+or system rebuild. If a plan is not visible, press `f`. If an action is not in
+the compact footer, press `?` to see the complete contextual palette.
 
-No active session ~
-    Open/init a supported named source. With multiple plans, focus one of its
-    attached buffers or choose through |:RoomPlan|.
+For detailed diagnosis see docs/reference/troubleshooting.md.
 
-Save refuses due to errors ~
-    Run |:RoomPlanValidate| or press `v`. Repair errors or deliberately use
-    |:RoomPlanSave| with `!` for a structurally valid repair draft.
-
-Source conflict ~
-    Run |:RoomPlanResolveConflict|. Save As best preserves both versions. Do
-    not expect `:RoomPlanSave!` to overwrite external edits.
-
-Norg save also writes notes ~
-    This is normal behavior. RoomPlan invokes a standard whole-buffer write
-    after replacing only its JSON payload.
-
-Malformed Norg data ~
-    Repair the marked/suspected block. RoomPlan refuses to initialize another
-    plan beside damaged candidate data.
-
-Unsupported source encoding ~
-    In-place save supports UTF-8. Convert deliberately or Save As; surrounding
-    Norg text is never silently transcoded.
-
-Hidden modified buffer blocks quit ~
-    It is likely the RoomPlan guard. Save or close the protected session.
-
-No canvas mappings ~
-    Check `keymaps.enabled` and disabled overrides. Workspace, Canvas, form,
-    and palette mappings are buffer-local and installed only in visible
-    buffers. Action-bar/form hints show the resolved key or `unmapped`.
-
-===============================================================================
-14. CONTRIBUTING AND LICENSE                            *roomplan-contributing*
-
-Run: >sh
-
-    ./scripts/test.sh
-<
-
-Read `CONTRIBUTING.md` and `plan.md` before changing schema, persistence,
-geometry, door handedness, conflicts, or lifecycle. Pure modules must stay free
-of Neovim dependencies where their contract requires. Every model mutation is
-an action with tests.
-
-A schema version requires sequential migration code, before/after fixtures,
-unknown-field retention tests, JSON Schema/help changes, and recovery guidance.
-Do not copy Neorg implementation code. Adapted third-party code requires its
-license and exact attribution in `NOTICE`.
-
-roomplan.nvim is MIT licensed; see `LICENSE`. Generic furniture dimensions are
-planning seeds without manufacturer or code-standard claims.
-
+==============================================================================
 vim:tw=78:ts=8:noet:ft=help:norl:

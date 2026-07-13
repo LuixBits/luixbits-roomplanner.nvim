@@ -340,9 +340,4 @@ function M.intersects_sector(a, b, options)
   return false
 end
 
-M.atan2 = atan2
-M.point = point
-M.intersects_rectangle = M.intersects_rect
-M.intersects_wall_segment = M.intersects_segment
-
 return M

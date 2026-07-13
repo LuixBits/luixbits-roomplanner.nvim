@@ -24,27 +24,11 @@ function M.overlaps_positive(a0, a1, b0, b1)
   return math.max(a0, b0) < math.min(a1, b1)
 end
 
-function M.overlap_length(a0, a1, b0, b1)
-  a0, a1 = M.normalize(a0, a1)
-  b0, b1 = M.normalize(b0, b1)
-  return math.max(0, math.min(a1, b1) - math.max(a0, b0))
-end
-
 -- Closed intersection. Endpoint contact returns true.
 function M.intersects_closed(a0, a1, b0, b1)
   a0, a1 = M.normalize(a0, a1)
   b0, b1 = M.normalize(b0, b1)
   return math.max(a0, b0) <= math.min(a1, b1)
-end
-
-function M.contains_closed(a0, a1, value)
-  a0, a1 = M.normalize(a0, a1)
-  return value >= a0 and value <= a1
-end
-
-function M.contains_half_open(a0, a1, value)
-  a0, a1 = M.normalize(a0, a1)
-  return value >= a0 and value < a1
 end
 
 function M.contains_interval(a0, a1, b0, b1)
@@ -62,16 +46,6 @@ function M.intersection(a0, a1, b0, b1, include_contact)
     return start_value, finish_value
   end
   return nil
-end
-
-function M.distance_to_point(a0, a1, value)
-  a0, a1 = M.normalize(a0, a1)
-  if value < a0 then
-    return a0 - value
-  elseif value > a1 then
-    return value - a1
-  end
-  return 0
 end
 
 -- Subtract positive-length cuts and return ordered closed-boundary pieces.
@@ -123,9 +97,5 @@ function M.subtract(a0, a1, cuts)
   end
   return pieces
 end
-
-M.positive_overlap = M.overlaps_positive
-M.closed_overlap = M.intersects_closed
-M.contains = M.contains_closed
 
 return M

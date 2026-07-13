@@ -26,6 +26,10 @@ while index <= #BUILTINS do
   index = index + 1
 end
 
+local imported = {}
+local imported_by_id = {}
+local include_builtins = true
+
 local function copy_template(template)
   if not template then
     return nil
@@ -44,30 +48,65 @@ local function copy_template(template)
   }
 end
 
-function M.all()
+---Return the visible process catalogue, optionally merged with a plan's local
+---templates. Plan-local custom IDs replace imported defaults. Built-ins stay
+---resolvable for existing plans even when configuration hides them here.
+function M.all(model)
+  local local_templates = type(model) == "table" and model.custom_templates or {}
+  local local_by_id = {}
+  for position = 1, #local_templates do
+    local_by_id[local_templates[position].id] = true
+  end
   local result = {}
   local position = 1
-  while position <= #BUILTINS do
-    result[position] = copy_template(BUILTINS[position])
+  if include_builtins then
+    while position <= #BUILTINS do
+      result[position] = copy_template(BUILTINS[position])
+      position = position + 1
+    end
+  end
+  position = 1
+  while position <= #imported do
+    if not local_by_id[imported[position].id] then
+      result[#result + 1] = copy_template(imported[position])
+    end
+    position = position + 1
+  end
+  position = 1
+  while position <= #local_templates do
+    if not BY_ID[local_templates[position].id] then
+      result[#result + 1] = copy_template(local_templates[position])
+    end
     position = position + 1
   end
   return result
 end
 
 function M.get(id)
-  return copy_template(BY_ID[id])
+  return copy_template(BY_ID[id] or imported_by_id[id])
 end
 
 function M.exists(id)
-  return BY_ID[id] ~= nil
+  return BY_ID[id] ~= nil or imported_by_id[id] ~= nil
 end
 
 function M.categories()
   local seen = {}
   local result = {}
   local position = 1
-  while position <= #BUILTINS do
-    local category = BUILTINS[position].category
+  if include_builtins then
+    while position <= #BUILTINS do
+      local category = BUILTINS[position].category
+      if not seen[category] then
+        seen[category] = true
+        result[#result + 1] = category
+      end
+      position = position + 1
+    end
+  end
+  position = 1
+  while position <= #imported do
+    local category = imported[position].category
     if not seen[category] then
       seen[category] = true
       result[#result + 1] = category
@@ -81,6 +120,9 @@ end
 -- Resolve a built-in or plan-local template without retaining a mutable
 -- reference to the model.
 function M.resolve(model, id)
+  if id == nil and type(model) == "string" then
+    id, model = model, nil
+  end
   local builtin = BY_ID[id]
   if builtin then
     return copy_template(builtin)
@@ -95,7 +137,30 @@ function M.resolve(model, id)
       position = position + 1
     end
   end
-  return nil
+  return copy_template(imported_by_id[id])
+end
+
+-- Replace only the user-supplied portion of the process-local catalogue.
+-- Validation and file loading complete before state is swapped, so a failed
+-- setup leaves the prior effective catalogue intact.
+function M.configure(options, limits)
+  local loaded, errors = require("roomplan.catalog.import").load(
+    options,
+    limits and limits.max_dimension_mm or nil
+  )
+  if not loaded then return nil, errors end
+  local index = {}
+  for position = 1, #loaded do index[loaded[position].id] = loaded[position] end
+  imported = loaded
+  imported_by_id = index
+  include_builtins = options.include_builtins ~= false
+  return true
+end
+
+function M.reset()
+  imported = {}
+  imported_by_id = {}
+  include_builtins = true
 end
 
 return M

@@ -178,6 +178,7 @@ describe("structured forms", function()
     h.eq("edit_plan", plan_action.type)
     h.eq("Renovation", plan_action.metadata.name)
     h.eq(100, plan_action.settings.grid_mm)
+    h.eq(nil, plan_action.settings.default_wall_thickness_mm)
 
     local room_spec = forms.room.edit(session, plan.rooms[1])
     h.eq("ROOM EDIT", room_spec.mode)
@@ -250,6 +251,10 @@ describe("structured forms", function()
     h.truthy(line_contains(lines, "Size"))
     h.truthy(line_contains(lines, "Choice"))
     h.truthy(line_contains(lines, "Summary"))
+    local help_mapping = vim.api.nvim_buf_call(handle.bufnr, function()
+      return vim.fn.maparg("?", "n", false, true)
+    end)
+    h.eq("Open RoomPlan form actions", help_mapping.desc)
 
     local original_input = vim.ui.input
     local pending

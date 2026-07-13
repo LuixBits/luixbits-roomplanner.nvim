@@ -118,24 +118,4 @@ function M.intersects_rect(a, b, rect, epsilon)
     or M.intersects(a, b, nw, sw, epsilon)
 end
 
-function M.distance_point(p, a, b)
-  local px, py = xy(p)
-  local ax, ay = xy(a)
-  local bx, by = xy(b)
-  local dx, dy = bx - ax, by - ay
-  local length2 = dx * dx + dy * dy
-  if length2 == 0 then
-    local ox, oy = px - ax, py - ay
-    return math.sqrt(ox * ox + oy * oy), point(ax, ay), 0
-  end
-  local t = ((px - ax) * dx + (py - ay) * dy) / length2
-  t = number.clamp(t, 0, 1)
-  local qx, qy = ax + t * dx, ay + t * dy
-  local ox, oy = px - qx, py - qy
-  return math.sqrt(ox * ox + oy * oy), point(qx, qy), t
-end
-
-M.intersects_closed = M.intersects
-M.segment_rect_intersects = M.intersects_rect
-
 return M

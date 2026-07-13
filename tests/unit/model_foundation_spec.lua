@@ -99,6 +99,7 @@ describe("pure model foundation", function()
     local plan = assert(model.new({ name = "Test flat" }))
     assert_equal("roomplan.nvim", plan.format)
     assert_equal(100, plan.settings.normal_step_mm)
+    assert_nil(plan.settings.default_wall_thickness_mm)
     assert_true(json.is_array(plan.rooms))
     assert_true(json.is_object(plan.extensions))
     local encoded = assert(model.encode(plan))
@@ -117,7 +118,7 @@ describe("pure model foundation", function()
         "schema_version":1,
         "units":"mm",
         "metadata":{"x-extra":{"empty":{},"nothing":null}},
-        "settings":{"foreign":[1.25,[]]},
+        "settings":{"foreign":[1.25,[]],"default_wall_thickness_mm":123},
         "rooms":[{"id":"room-a","name":"A","origin_mm":[0,0],"size_mm":[1000,1000],"plugin":{"v":1.5}}],
         "doors":[],
         "furniture":[],
@@ -133,6 +134,13 @@ describe("pure model foundation", function()
     assert_true(json.is_null(plan.metadata["x-extra"].nothing))
     assert_true(json.is_decimal(plan.settings.foreign[1]))
     assert_true(json.is_array(plan.settings.foreign[2]))
+    -- Former schema fields are retained as ordinary unknown JSON data so old
+    -- plans remain losslessly readable without keeping inert runtime settings.
+    assert_true(json.is_decimal(plan.settings.default_wall_thickness_mm))
+    local sign, coefficient, exponent = json.decimal_parts(plan.settings.default_wall_thickness_mm)
+    assert_equal(sign, 1)
+    assert_equal(coefficient, "123")
+    assert_equal(exponent, 0)
     assert_true(json.is_decimal(plan.rooms[1].plugin.v))
     local reloaded = assert(schema.decode(assert(schema.encode(plan))))
     assert_true(json.deep_equal(plan, reloaded))

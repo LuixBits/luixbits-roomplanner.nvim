@@ -47,17 +47,6 @@ function M.from_doubled(value2)
   return rounded, rounded - value2 / 2
 end
 
-function M.round_div_away(numerator, denominator)
-  if not M.is_finite(numerator) or not M.is_finite(denominator) or denominator == 0 then
-    return nil, "round_div_away requires finite values and a non-zero denominator"
-  end
-  return M.round_half_away(numerator / denominator)
-end
-
-function M.to_doubled(value)
-  return value * 2
-end
-
 -- Deterministic grid rounding, including negative values and negative halves.
 function M.round_to_grid(value, grid)
   if not M.is_integer(grid) or grid <= 0 then
@@ -83,24 +72,6 @@ end
 function M.almost_equal(a, b, epsilon)
   epsilon = epsilon or M.local_epsilon(a, b)
   return math.abs(a - b) <= epsilon
-end
-
-function M.assert_integer(value, name, options)
-  options = options or {}
-  name = name or "value"
-  if not M.is_integer(value) then
-    return nil, name .. " must be a finite integer"
-  end
-  if options.minimum ~= nil and value < options.minimum then
-    return nil, name .. " must be at least " .. tostring(options.minimum)
-  end
-  if options.maximum ~= nil and value > options.maximum then
-    return nil, name .. " must be at most " .. tostring(options.maximum)
-  end
-  if options.abs_below ~= nil and math.abs(value) >= options.abs_below then
-    return nil, name .. " is outside the safe range"
-  end
-  return value
 end
 
 return M

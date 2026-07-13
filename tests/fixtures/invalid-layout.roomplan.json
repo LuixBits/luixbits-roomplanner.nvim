@@ -1,0 +1,45 @@
+{
+  "format": "roomplan.nvim",
+  "schema_version": 1,
+  "units": "mm",
+  "metadata": {
+    "name": "Invalid repair draft",
+    "notes": "Structurally valid on purpose; rooms overlap and furniture is outside its room."
+  },
+  "settings": {
+    "grid_mm": 100,
+    "fine_step_mm": 10,
+    "normal_step_mm": 100,
+    "coarse_step_mm": 500,
+    "default_door_width_mm": 900
+  },
+  "rooms": [
+    {
+      "id": "room-a",
+      "name": "Room A",
+      "origin_mm": [0, 0],
+      "size_mm": [2000, 2000]
+    },
+    {
+      "id": "room-b",
+      "name": "Room B",
+      "origin_mm": [1000, 1000],
+      "size_mm": [2000, 2000]
+    }
+  ],
+  "doors": [],
+  "furniture": [
+    {
+      "id": "furniture-outside",
+      "room_id": "room-a",
+      "template_id": "builtin:chair",
+      "name": "Outside chair",
+      "category": "seating",
+      "center_mm": [2500, 2500],
+      "size_mm": [500, 500, 900],
+      "rotation_deg": 0
+    }
+  ],
+  "custom_templates": [],
+  "extensions": {}
+}

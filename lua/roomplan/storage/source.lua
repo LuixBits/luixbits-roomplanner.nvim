@@ -9,7 +9,8 @@ local function uv_error(code, message, path)
   return nil, util.err(code, message .. (path and (": " .. path) or ""), { path = path })
 end
 
-function M.read_file(path)
+function M.read_file(path, opts)
+  opts = opts or {}
   local fd, open_err = vim.uv.fs_open(path, "r", 438)
   if not fd then
     return uv_error("SOURCE_OPEN_FAILED", tostring(open_err), path)
@@ -22,6 +23,10 @@ function M.read_file(path)
   if stat.type ~= "file" then
     vim.uv.fs_close(fd)
     return uv_error("SOURCE_NOT_REGULAR", "source is not a regular file", path)
+  end
+  if type(opts.max_bytes) == "number" and stat.size > opts.max_bytes then
+    vim.uv.fs_close(fd)
+    return uv_error("SOURCE_SIZE_LIMIT", "source exceeds the configured byte limit", path)
   end
   local chunks = {}
   local offset = 0

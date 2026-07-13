@@ -6,6 +6,11 @@ local glyphs = require("roomplan.render.glyphs")
 local text = require("roomplan.render.text")
 local raster = require("roomplan.render.raster")
 
+local function assert_close(expected, actual, message)
+  assert_true(math.abs(expected - actual) < 1e-8,
+    (message or "values differ") .. string.format(": expected %.12g, got %.12g", expected, actual))
+end
+
 local function has_segment_at(segments, orientation, fixed, scalar)
   for _, segment in ipairs(segments) do
     if segment.orientation == orientation
@@ -181,6 +186,120 @@ describe("scene extraction and rendering", function()
     assert_equal(zoomed.world_top_mm - 3 * zoomed.mm_per_row, panned.world_top_mm)
   end)
 
+  it("round-trips screen coordinates and maps cardinals through every view rotation", function()
+    local east = {
+      [0] = { 1, 0 }, [1] = { 0, 1 }, [2] = { -1, 0 }, [3] = { 0, -1 },
+    }
+    local north = {
+      [0] = { 0, -1 }, [1] = { 1, 0 }, [2] = { 0, 1 }, [3] = { -1, 0 },
+    }
+    local world_deltas = {
+      [0] = { 3, 2 }, [1] = { -2, 3 }, [2] = { -3, -2 }, [3] = { 2, -3 },
+    }
+
+    for rotation = 0, 3 do
+      local cardinal_view = viewport.new({
+        world_left_mm = 0,
+        world_top_mm = 0,
+        mm_per_column = 100,
+        mm_per_row = 100,
+        rotation_quarters = rotation,
+      })
+      local east_column, east_row = viewport.world_to_screen(cardinal_view, 100, 0)
+      local north_column, north_row = viewport.world_to_screen(cardinal_view, 0, 100)
+      assert_close(east[rotation][1], east_column)
+      assert_close(east[rotation][2], east_row)
+      assert_close(north[rotation][1], north_column)
+      assert_close(north[rotation][2], north_row)
+      local world_dx, world_dy = viewport.view_delta_to_world(cardinal_view, 3, 2)
+      assert_equal(world_deltas[rotation], { world_dx, world_dy })
+
+      local view = viewport.new({
+        world_left_mm = -370,
+        world_top_mm = 910,
+        mm_per_column = 80,
+        mm_per_row = 160,
+        rotation_quarters = rotation,
+      })
+      for _, point in ipairs({ { 0, 0 }, { 7.25, 3.5 }, { -2, 11 } }) do
+        local world_x, world_y = viewport.screen_to_world(view, point[1], point[2])
+        local column, row = viewport.world_to_screen(view, world_x, world_y)
+        assert_close(point[1], column, "column round-trip")
+        assert_close(point[2], row, "row round-trip")
+      end
+    end
+  end)
+
+  it("preserves rotated fit, zoom, and rotation anchors", function()
+    local fitted = viewport.fit({ left = -200, bottom = 100, right = 1800, top = 900 }, 24, 12, {
+      mm_per_column = 100,
+      cell_aspect = 2,
+      fit_margin_cells = 2,
+      rotation_quarters = 1,
+    })
+    assert_equal(1, viewport.rotation(fitted))
+    local center_column, center_row = viewport.world_to_screen(fitted, 800, 500)
+    assert_close(11.5, center_column)
+    assert_close(5.5, center_row)
+
+    local anchor_column, anchor_row = 7, 3
+    local anchor_x, anchor_y = viewport.screen_to_world(fitted, anchor_column, anchor_row)
+    local zoomed = viewport.zoom_in(fitted, 1.25, {
+      world_x = anchor_x,
+      world_y = anchor_y,
+      screen_x = anchor_column,
+      screen_y = anchor_row,
+    })
+    local zoomed_column, zoomed_row = viewport.world_to_screen(zoomed, anchor_x, anchor_y)
+    assert_close(anchor_column, zoomed_column)
+    assert_close(anchor_row, zoomed_row)
+    assert_equal(1, viewport.rotation(zoomed))
+
+    local rotated = viewport.rotate(zoomed, 1, {
+      world_x = anchor_x,
+      world_y = anchor_y,
+      screen_x = anchor_column,
+      screen_y = anchor_row,
+    })
+    local rotated_column, rotated_row = viewport.world_to_screen(rotated, anchor_x, anchor_y)
+    assert_close(anchor_column, rotated_column)
+    assert_close(anchor_row, rotated_row)
+    assert_equal(2, viewport.rotation(rotated))
+  end)
+
+  it("returns to north-up after four turns and pans in visible screen axes", function()
+    local original = viewport.new({
+      world_left_mm = -500,
+      world_top_mm = 700,
+      mm_per_column = 100,
+      mm_per_row = 200,
+    })
+    local center_x, center_y = viewport.screen_to_world(original, 9.5, 4.5)
+    local turned = original
+    for expected = 1, 4 do
+      turned = viewport.rotate(turned, 1, nil, { columns = 20, rows = 10 })
+      assert_equal(expected % 4, viewport.rotation(turned))
+      local current_x, current_y = viewport.screen_to_world(turned, 9.5, 4.5)
+      assert_close(center_x, current_x)
+      assert_close(center_y, current_y)
+    end
+    assert_close(original.world_left_mm, turned.world_left_mm)
+    assert_close(original.world_top_mm, turned.world_top_mm)
+
+    local east_at_right = viewport.new({
+      world_left_mm = 10,
+      world_top_mm = 20,
+      mm_per_column = 100,
+      mm_per_row = 200,
+      rotation_quarters = 1,
+    })
+    local panned = viewport.pan_cells(east_at_right, 2, 3)
+    assert_close(-590, panned.world_left_mm)
+    assert_close(220, panned.world_top_mm)
+    local scale_x, scale_y = viewport.world_axis_scales(east_at_right)
+    assert_equal({ 200, 100 }, { scale_x, scale_y })
+  end)
+
   it("maps every structural direction mask in Unicode and ASCII", function()
     local unicode = glyphs.builtin("unicode")
     assert_equal("└", unicode.wall[glyphs.N + glyphs.E])
@@ -266,6 +385,47 @@ describe("scene extraction and rendering", function()
     assert_equal("furniture", hits[2].type)
     assert_equal("room", hits[3].type)
     assert_equal("wall", hits[3].context)
+  end)
+
+  it("rotates walls, grid points, and ordered hits together", function()
+    local room_ref = { type = "room", id = "room-a", order = 1 }
+    local scene = {
+      primitives = {
+        { kind = "grid", layer = 10, spacing_mm = 200 },
+        {
+          kind = "wall", layer = 50, orientation = "horizontal",
+          x1 = 100, y1 = 200, x2 = 300, y2 = 200, refs = { room_ref },
+        },
+        {
+          kind = "door_hinge", layer = 61, x = 200, y = 200,
+          ref = { type = "door", id = "door-a", order = 1 },
+        },
+      },
+      warnings = {},
+    }
+    local output = raster.rasterize(scene, viewport.new({
+      world_left_mm = 0,
+      world_top_mm = 0,
+      mm_per_column = 100,
+      mm_per_row = 100,
+      rotation_quarters = 1,
+    }), {
+      width = 5,
+      height = 5,
+      glyph_mode = "ascii",
+    })
+
+    assert_equal(table.concat({
+      ". . .",
+      "  |  ",
+      ". o .",
+      "  |  ",
+      ". . .",
+    }, "\n"), table.concat(output.lines, "\n"))
+    assert_equal("room-a", output.hit_map[2][3][1].id)
+    assert_equal("wall", output.hit_map[2][3][1].context)
+    assert_equal("door", output.hit_map[3][3][1].type)
+    assert_equal("room", output.hit_map[3][3][2].type)
   end)
 
   it("uses a semantic low-resolution door marker", function()
@@ -408,6 +568,49 @@ describe("scene extraction and rendering", function()
     assert_equal(true, closed)
   end)
 
+  it("renders the rotated compass as Unicode and ASCII header chrome", function()
+    local canvas = require("roomplan.render.canvas")
+    local scene = { primitives = {}, warnings = {}, bounds = { empty = true } }
+    local function compass_text(handle)
+      for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(
+        handle.buf, handle.namespace, 0, 1, { details = true }
+      )) do
+        local details = mark[4]
+        if details.virt_text and details.virt_text[1] then
+          return details.virt_text[1][1]
+        end
+      end
+    end
+
+    local handle = canvas.open({
+      open = "split",
+      scene = scene,
+      viewport = viewport.new({
+        world_left_mm = 0,
+        world_top_mm = 0,
+        mm_per_column = 100,
+        mm_per_row = 200,
+        rotation_quarters = 1,
+      }),
+      fit_on_open = false,
+      header_lines = 1,
+      show_compass = true,
+      glyph_mode = "unicode",
+    })
+    assert_equal("N→", compass_text(handle))
+
+    handle.opts.glyph_mode = "ascii"
+    assert(canvas.redraw(handle, scene, viewport.new({
+      world_left_mm = 0,
+      world_top_mm = 0,
+      mm_per_column = 100,
+      mm_per_row = 200,
+      rotation_quarters = 3,
+    })))
+    assert_equal("N<", compass_text(handle))
+    assert_true(canvas.close(handle))
+  end)
+
   it("renders an actionable empty state with a drawable initial cursor and footer", function()
     local config = require("roomplan.config")
     local canvas = require("roomplan.render.canvas")
@@ -461,7 +664,7 @@ describe("scene extraction and rendering", function()
     local handle = canvas.open(session)
     local lines = vim.api.nvim_buf_get_lines(handle.buf, 0, -1, false)
     assert_true(table.concat(lines, "\n"):find("outside the viewport", 1, true) ~= nil)
-    assert_true(lines[2]:find("1 rooms, 0 doors, 0 items", 1, true) ~= nil)
+    assert_true(lines[1]:find("room: Far room", 1, true) ~= nil)
     assert_true(lines[#lines]:find("ROOM", 1, true) ~= nil)
     assert_true(lines[#lines]:find("[A] Align", 1, true) ~= nil)
 

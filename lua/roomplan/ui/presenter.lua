@@ -38,6 +38,18 @@ function M.format_mm(value)
   return exact
 end
 
+---Format dimensions for the workspace's compact details view. The persisted
+---model remains millimetre-based; this is display-only and deliberately avoids
+---showing the same value twice in different units.
+function M.compact_mm(value)
+  if type(value) ~= "number" then return tostring(value or "-") end
+  if math.abs(value) >= 1000 then
+    local metres = string.format("%.3f", value / 1000):gsub("0+$", ""):gsub("%.$", "")
+    return metres .. " m"
+  end
+  return string.format("%d mm", value)
+end
+
 local function short_mm(value)
   if type(value) ~= "number" then return "?" end
   if value % 1000 == 0 then return string.format("%gm", value / 1000) end
@@ -111,7 +123,8 @@ function M.objects(value, opts)
       id = door.id,
       name = door.name or door.id,
       room_name = rooms[door.room_id] and rooms[door.room_id].name or door.room_id,
-      label = string.format("D %s -> %s  %s", door.side or "?", destination_name, short_mm(door.width_mm)),
+      label = string.format("%s → %s", door.side or "Door", destination_name),
+      detail = short_mm(door.width_mm),
       object = door,
     })
   end
@@ -122,7 +135,8 @@ function M.objects(value, opts)
       id = furniture.id,
       name = furniture.name or furniture.id,
       room_name = rooms[furniture.room_id] and rooms[furniture.room_id].name or furniture.room_id,
-      label = string.format("%s  %s x %s", furniture.name or furniture.id or "Furniture", short_mm(size[1]), short_mm(size[2])),
+      label = furniture.name or furniture.id or "Furniture",
+      detail = string.format("%s × %s", short_mm(size[1]), short_mm(size[2])),
       object = furniture,
     })
   end
@@ -144,7 +158,8 @@ function M.objects(value, opts)
       kind = "room",
       id = room.id,
       name = room.name or room.id,
-      label = string.format("%s  %s x %s", room.name or room.id or "Room", short_mm(size[1]), short_mm(size[2])),
+      label = room.name or room.id or "Room",
+      detail = string.format("%s × %s", short_mm(size[1]), short_mm(size[2])),
       object = room,
       depth = 0,
       expandable = #(children[room.id] or {}) > 0,
@@ -173,8 +188,8 @@ function M.objects(value, opts)
       kind = "template",
       id = template.id,
       name = template.name or template.id,
-      label = string.format("Template: %s  %s x %s x %s",
-        template.name or template.id or "Custom", short_mm(size[1]), short_mm(size[2]), short_mm(size[3])),
+      label = template.name or template.id or "Custom",
+      detail = string.format("%s × %s × %s", short_mm(size[1]), short_mm(size[2]), short_mm(size[3])),
       object = template,
       depth = 0,
       selected = selected(selection, "template", template.id),
@@ -199,6 +214,12 @@ function M.objects(value, opts)
   return {
     title = model.metadata and model.metadata.name or "Untitled plan",
     summary = summary,
+    counts = {
+      rooms = #(model.rooms or {}),
+      doors = #(model.doors or {}),
+      furniture = #(model.furniture or {}),
+      templates = #(model.custom_templates or {}),
+    },
     room_count = #(model.rooms or {}),
     rows = rows,
     filter = opts.filter or "",
@@ -247,7 +268,7 @@ local function field(label, value, raw)
 end
 
 local function metric(label, value)
-  return field(label, M.format_mm(value), value)
+  return field(label, M.compact_mm(value), value)
 end
 
 local function object_diagnostics(diagnostics, selection)
@@ -272,16 +293,15 @@ function M.properties(value, opts)
 
   if not object then
     groups = {
-      { title = "Plan", fields = {
-        field("Name", model.metadata and model.metadata.name or "Untitled plan"),
+      { id = "summary", title = "Summary", default_expanded = true, fields = {
         field("Rooms", #(model.rooms or {})), field("Doors", #(model.doors or {})),
         field("Furniture", #(model.furniture or {})), field("Units", model.units or "mm"),
       } },
-      { title = "Grid", fields = {
+      { id = "grid", title = "Grid", fields = {
         metric("Grid step", model.settings and model.settings.grid_mm),
         metric("Fine step", model.settings and model.settings.fine_step_mm),
       } },
-      { title = "Source", fields = {
+      { id = "source", title = "Source", fields = {
         field("Adapter", source and source.adapter or "detached"),
         field("Path", source and (source.path or (source.bufnr and ("buffer #" .. source.bufnr))) or "detached"),
         field("State", status ~= "" and status or "unknown"),
@@ -289,62 +309,52 @@ function M.properties(value, opts)
     }
     return {
       title = model.metadata and model.metadata.name or "Untitled plan",
-      subtitle = "Plan properties",
+      subtitle = "plan",
       kind = "plan",
       groups = groups,
       diagnostics = diagnostics,
-      actions = { "edit", "add_room", "fit", "validate", "save" },
     }
   end
 
-  groups[#groups + 1] = { title = "Identity", fields = {
-    field("Name", object.name or object.id), field("Kind", selection.kind),
-  } }
   if selection.kind == "room" then
     local origin, size = object.origin_mm or {}, object.size_mm or {}
-    groups[#groups + 1] = { title = "Position", fields = { metric("X", origin[1]), metric("Y", origin[2]) } }
-    groups[#groups + 1] = { title = "Size", fields = {
+    groups[#groups + 1] = { id = "geometry", title = "Geometry", fields = {
+      metric("X", origin[1]), metric("Y", origin[2]),
       metric("Width", size[1]), metric("Depth", size[2]),
       field("Area", size[1] and size[2] and string.format("%.2f m²", size[1] * size[2] / 1000000) or "-"),
     } }
   elseif selection.kind == "furniture" then
     local center, size = object.center_mm or {}, object.size_mm or {}
-    groups[#groups + 1] = { title = "Placement", fields = {
+    groups[#groups + 1] = { id = "geometry", title = "Geometry", fields = {
       field("Room", object.room_id), metric("Centre X", center[1]), metric("Centre Y", center[2]),
       field("Rotation", tostring(object.rotation_deg or 0) .. "°"),
-    } }
-    groups[#groups + 1] = { title = "Size", fields = {
       metric("Width", size[1]), metric("Depth", size[2]), metric("Height", size[3]),
     } }
   elseif selection.kind == "door" then
     local destination = type(object.connects_to_room_id) == "string" and object.connects_to_room_id or "outside"
-    groups[#groups + 1] = { title = "Placement", fields = {
-      field("Room", object.room_id), field("Wall", object.side), metric("Offset", object.offset_mm), metric("Width", object.width_mm),
+    groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
+      field("Room", object.room_id), field("Wall", object.side),
+      metric("Offset", object.offset_mm), metric("Width", object.width_mm),
     } }
-    groups[#groups + 1] = { title = "Connection", fields = {
+    groups[#groups + 1] = { id = "connection", title = "Connection", fields = {
       field("Destination", destination), field("Hinge", object.hinge),
       field("Opens into", object.opens_into), field("Angle", tostring(object.open_angle_deg or 90) .. "°"),
     } }
   elseif selection.kind == "template" then
     local size = object.default_size_mm or {}
-    groups[#groups + 1] = { title = "Defaults", fields = {
+    groups[#groups + 1] = { id = "defaults", title = "Defaults", fields = {
       field("Category", object.category), metric("Width", size[1]), metric("Depth", size[2]), metric("Height", size[3]),
     } }
   end
-  groups[#groups + 1] = { title = "Advanced", fields = { field("Stable ID", object.id) } }
+  groups[#groups + 1] = { id = "advanced", title = "Advanced", fields = { field("Stable ID", object.id) } }
 
-  local actions = { "edit", "delete" }
-  if selection.kind == "room" then actions = { "edit", "move", "align", "duplicate", "delete" }
-  elseif selection.kind == "furniture" then actions = { "edit", "move", "rotate", "duplicate", "delete" }
-  elseif selection.kind == "door" then actions = { "edit", "move", "duplicate", "delete" } end
   return {
     title = object.name or object.id,
-    subtitle = selection.kind .. " · " .. tostring(object.id),
+    subtitle = selection.kind,
     kind = selection.kind,
     id = object.id,
     groups = groups,
     diagnostics = object_diagnostics(diagnostics, selection),
-    actions = actions,
   }
 end
 
@@ -359,18 +369,28 @@ end
 function M.context(value, ui_state)
   local model = model_of(value)
   local selection = selection_of(value)
+  local focus = ui_state and ui_state.focused_pane or "canvas"
+  if selection == nil and focus == "properties" then selection = { kind = "plan" } end
+  local zoom = ui_state and ui_state.zoom or nil
+  local viewport = type(value) == "table" and value.viewport or nil
+  local canvas_options = type(value) == "table" and value.canvas and value.canvas.handle
+    and value.canvas.handle.opts or nil
+  if viewport and viewport.mm_per_column and canvas_options and canvas_options.mm_per_column then
+    zoom = canvas_options.mm_per_column / viewport.mm_per_column
+  end
   return {
     model = model,
     selection = selection,
     selected_object = find(model, selection),
     diagnostics = diagnostics_of(value),
     mode = M.mode(value, ui_state),
-    focus = ui_state and ui_state.focused_pane or "canvas",
+    focus = focus,
     dirty = type(value) == "table" and type(value.model_dirty) == "function" and value:model_dirty() or false,
     conflicted = type(value) == "table" and value.source_conflicted == true or false,
     snap_enabled = type(value) ~= "table" or value.snap_enabled ~= false,
     cursor_world = ui_state and ui_state.cursor_world or nil,
-    zoom = ui_state and ui_state.zoom or nil,
+    zoom = zoom,
+    view_rotation = viewport and (tonumber(viewport.rotation_quarters) or 0) % 4 or 0,
   }
 end
 

@@ -1,0 +1,12 @@
+{
+  "format": "roomplan.nvim",
+  "schema_version": 2,
+  "units": "mm",
+  "metadata": { "name": "From the future", "notes": "" },
+  "settings": {},
+  "rooms": [],
+  "doors": [],
+  "furniture": [],
+  "custom_templates": [],
+  "extensions": {}
+}

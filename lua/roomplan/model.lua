@@ -3,7 +3,6 @@
 
 local json = require("roomplan.codec.json")
 local schema = require("roomplan.schema")
-local ids = require("roomplan.ids")
 
 local M = {}
 
@@ -11,7 +10,6 @@ local COLLECTION_FOR_KIND = {
   room = "rooms",
   door = "doors",
   furniture = "furniture",
-  custom_template = "custom_templates",
   template = "custom_templates",
 }
 
@@ -145,14 +143,6 @@ function M.new_custom_template(fields)
   return result
 end
 
-function M.collection_name(kind)
-  return COLLECTION_FOR_KIND[kind]
-end
-
-function M.index(model)
-  return ids.index(model)
-end
-
 function M.find(model, kind, id)
   local collection_name = COLLECTION_FOR_KIND[kind]
   if not collection_name or type(model) ~= "table" then
@@ -170,45 +160,6 @@ function M.find(model, kind, id)
     position = position + 1
   end
   return nil
-end
-
--- Append/replace/remove helpers return fresh complete models. Focused action
--- modules still own policy and final structural/layout validation.
-function M.append(model, kind, entity)
-  local collection_name = COLLECTION_FOR_KIND[kind]
-  if not collection_name or type(model[collection_name]) ~= "table" then
-    return nil, { code = "MODEL_KIND", message = "unknown model entity kind", kind = kind }
-  end
-  local result = json.deep_copy(model)
-  result[collection_name][#result[collection_name] + 1] = json.deep_copy(entity)
-  return result
-end
-
-function M.replace(model, kind, id, entity)
-  local _, position, collection_name = M.find(model, kind, id)
-  if not position then
-    return nil, { code = "MODEL_NOT_FOUND", message = "entity was not found", kind = kind, id = id }
-  end
-  if entity.id ~= id then
-    return nil, { code = "MODEL_ID_IMMUTABLE", message = "replacement cannot change an entity ID", kind = kind, id = id }
-  end
-  local result = json.deep_copy(model)
-  result[collection_name][position] = json.deep_copy(entity)
-  return result
-end
-
-function M.remove(model, kind, id)
-  local _, position, collection_name = M.find(model, kind, id)
-  if not position then
-    return nil, { code = "MODEL_NOT_FOUND", message = "entity was not found", kind = kind, id = id }
-  end
-  local result = json.deep_copy(model)
-  table.remove(result[collection_name], position)
-  return result
-end
-
-function M.normalize(document)
-  return schema.load(document)
 end
 
 function M.decode(text, options)

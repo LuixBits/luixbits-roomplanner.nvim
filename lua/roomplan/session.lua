@@ -210,7 +210,6 @@ function Session:commit(snapshot, result)
   local node, info = self.history:push(snapshot, result)
   if not node then return nil, info end
   self.validation_revision_id = nil
-  self.render_revision_id = nil
   if result and result.touched and result.touched[1] then
     self.selection = result.touched[1]
   end
@@ -224,7 +223,6 @@ function Session:undo()
   local snapshot, node = self.history:undo()
   if not snapshot then return nil, node end
   self.validation_revision_id = nil
-  self.render_revision_id = nil
   if node.touched and node.touched[1] then self.selection = node.touched[1] end
   self:update_guard()
   require("roomplan.controller").refresh(self)
@@ -235,7 +233,6 @@ function Session:redo()
   local snapshot, node = self.history:redo()
   if not snapshot then return nil, node end
   self.validation_revision_id = nil
-  self.render_revision_id = nil
   if node.touched and node.touched[1] then self.selection = node.touched[1] end
   self:update_guard()
   require("roomplan.controller").refresh(self)
@@ -286,9 +283,6 @@ function Session:destroy(opts)
   require("roomplan.ui.flow").cancel(self, "session closed")
   if self.workspace then pcall(function() require("roomplan.ui.workspace").close(self) end) end
   pcall(function() require("roomplan.render.canvas").close(self) end)
-  for _, ui in ipairs({ self.inspector, self.object_list, self.validation_list }) do
-    if ui and valid_buffer(ui.bufnr) then pcall(vim.api.nvim_buf_delete, ui.bufnr, { force = true }) end
-  end
   if valid_buffer(self.guard_bufnr) then
     pcall(vim.api.nvim_set_option_value, "modified", false, { buf = self.guard_bufnr })
     pcall(vim.api.nvim_buf_delete, self.guard_bufnr, { force = true })
@@ -325,9 +319,7 @@ function M.new(source, model, opts)
     mode = "NAV",
     snap_enabled = config.get().snapping.enabled,
     canvas = { bufnr = nil, winid = nil },
-    inspector = { bufnr = nil, winid = nil },
     workflow = { generation = 0, kind = nil },
-    redraw_scheduled = false,
     source_conflicted = false,
     retained_model_at_risk = false,
     pending_disk_write = opts.pending_disk_write or false,

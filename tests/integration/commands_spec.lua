@@ -1,4 +1,9 @@
 describe("commands", function()
+  it("retains the public aspect compatibility alias", function()
+    local roomplan = require("roomplan")
+    assert_equal(roomplan.set_aspect, roomplan.aspect)
+  end)
+
   it("registers idempotently without global maps", function()
     local before = vim.api.nvim_get_keymap("n")
     require("roomplan.commands").register()
@@ -6,6 +11,8 @@ describe("commands", function()
     assert_equal(vim.fn.exists(":RoomPlanOpen"), 2)
     assert_equal(vim.fn.exists(":RoomPlanSaveAs"), 2)
     assert_equal(vim.fn.exists(":RoomPlanAspect"), 2)
+    assert_equal(vim.fn.exists(":RoomPlanRotateView"), 2)
+    assert_equal("function", type(require("roomplan").rotate_view))
     assert_equal(vim.api.nvim_get_keymap("n"), before)
   end)
 

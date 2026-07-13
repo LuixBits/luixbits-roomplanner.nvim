@@ -29,7 +29,10 @@ function M.set_aspect(ratio, opts, callback)
   opts = vim.tbl_extend("force", opts or {}, { ratio = ratio })
   return call("set_aspect", opts, callback)
 end
+-- Compatibility alias retained for configurations written before set_aspect
+-- became the canonical public name.
 M.aspect = M.set_aspect
+function M.rotate_view(direction) return call("rotate_view", direction or "clockwise") end
 function M.hide(opts) return call("hide", opts or {}) end
 function M.close(opts, callback) return call("close", opts or {}, callback) end
 function M.validate(opts) return call("validate", opts or {}) end

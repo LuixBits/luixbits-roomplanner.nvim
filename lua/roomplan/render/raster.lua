@@ -277,7 +277,7 @@ end
 local function draw_wall(context, primitive)
   local x0, y0 = project(context.viewport, primitive.x1, primitive.y1)
   local x1, y1 = project(context.viewport, primitive.x2, primitive.y2)
-  if primitive.orientation == "horizontal" or math.abs(y1 - y0) < 1e-9 then
+  if math.abs(y1 - y0) < 1e-9 then
     local row = round(y0) + 1
     if row < 1 or row > context.height then
       return
@@ -606,30 +606,24 @@ local function draw_grid(context, primitive)
   if not finite(spacing) or spacing <= 0 then
     return
   end
-  local columns = {}
-  local rows = {}
-  for column = 1, context.width do
-    local world_x = context.viewport.world_left_mm + (column - 1) * context.viewport.mm_per_column
-    local nearest = round(world_x / spacing) * spacing
-    if math.abs(world_x - nearest) <= context.viewport.mm_per_column / 2 then
-      columns[#columns + 1] = column
-    end
-  end
+  local origin_x, origin_y = viewport_module.screen_to_world(context.viewport, 0, 0)
+  local column_x, column_y = viewport_module.screen_to_world(context.viewport, 1, 0)
+  local row_x, row_y = viewport_module.screen_to_world(context.viewport, 0, 1)
+  local tolerance_x = math.max(math.abs(column_x - origin_x), math.abs(row_x - origin_x)) / 2
+  local tolerance_y = math.max(math.abs(column_y - origin_y), math.abs(row_y - origin_y)) / 2
   for row = 1, context.height do
-    local world_y = context.viewport.world_top_mm - (row - 1) * context.viewport.mm_per_row
-    local nearest = round(world_y / spacing) * spacing
-    if math.abs(world_y - nearest) <= context.viewport.mm_per_row / 2 then
-      rows[#rows + 1] = row
-    end
-  end
-  for row_index = 1, #rows do
-    for column_index = 1, #columns do
-      add_visual(context, rows[row_index], columns[column_index], {
-        char = context.glyphs.grid,
-        layer = primitive.layer,
-        role = "grid",
-        order = primitive.order,
-      })
+    for column = 1, context.width do
+      local world_x, world_y = viewport_module.screen_to_world(context.viewport, column - 1, row - 1)
+      local nearest_x = round(world_x / spacing) * spacing
+      local nearest_y = round(world_y / spacing) * spacing
+      if math.abs(world_x - nearest_x) <= tolerance_x and math.abs(world_y - nearest_y) <= tolerance_y then
+        add_visual(context, row, column, {
+          char = context.glyphs.grid,
+          layer = primitive.layer,
+          role = "grid",
+          order = primitive.order,
+        })
+      end
     end
   end
 end

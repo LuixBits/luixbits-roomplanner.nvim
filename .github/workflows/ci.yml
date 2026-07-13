@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 20
     continue-on-error: ${{ matrix.experimental }}
     env:
-      NVIM_LOG_FILE: ${{ runner.temp }}/roomplan-nvim.log
+      NVIM_LOG_FILE: ${{ github.workspace }}/roomplan-nvim.log
     strategy:
       fail-fast: false
       matrix:
@@ -95,6 +95,21 @@ jobs:
           nvim --headless -u "$PWD/scripts/minimal_init.lua" -i NONE -n \
             -c "checkhealth roomplan" \
             -c "qa!"
+
+  nix:
+    name: Nix package and static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4.2.2
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@v31
+
+      - name: Build package and run checks
+        run: nix flake check --print-build-logs
 
   platform-smoke:
     name: Neovim 0.12.4 on ${{ matrix.os }}
