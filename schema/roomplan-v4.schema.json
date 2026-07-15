@@ -1,0 +1,387 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://roomplan.nvim/schema/v4/roomplan.schema.json",
+  "title": "roomplan.nvim plan schema v4",
+  "description": "Canonical compound-footprint RoomPlan document with wall-mounted windows plus wall and floor outlets. Rect-union topology, global ID uniqueness, and wall-part references are additionally enforced by the Lua normalizer.",
+  "type": "object",
+  "required": [
+    "format",
+    "schema_version",
+    "units",
+    "rooms",
+    "doors",
+    "windows",
+    "outlets",
+    "furniture",
+    "custom_templates"
+  ],
+  "properties": {
+    "format": { "const": "roomplan.nvim" },
+    "schema_version": { "const": 4 },
+    "units": { "const": "mm" },
+    "metadata": { "$ref": "#/$defs/metadata", "default": { "name": "Untitled plan", "notes": "" } },
+    "settings": {
+      "$ref": "#/$defs/settings",
+      "default": {
+        "grid_mm": 100,
+        "fine_step_mm": 10,
+        "normal_step_mm": 100,
+        "coarse_step_mm": 500,
+        "default_door_width_mm": 900
+      }
+    },
+    "rooms": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/room" }
+    },
+    "doors": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/door" }
+    },
+    "windows": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/window" }
+    },
+    "outlets": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/outlet" }
+    },
+    "furniture": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/furniture" }
+    },
+    "custom_templates": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/$defs/custom_template" }
+    },
+    "extensions": { "type": "object", "default": {} }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "entity_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9._:-]{0,127}$"
+    },
+    "room_id": {
+      "allOf": [
+        { "$ref": "#/$defs/entity_id" },
+        { "pattern": "^room-.+$" }
+      ]
+    },
+    "door_id": {
+      "allOf": [
+        { "$ref": "#/$defs/entity_id" },
+        { "pattern": "^door-.+$" }
+      ]
+    },
+    "window_id": {
+      "allOf": [
+        { "$ref": "#/$defs/entity_id" },
+        { "pattern": "^window-.+$" }
+      ]
+    },
+    "outlet_id": {
+      "allOf": [
+        { "$ref": "#/$defs/entity_id" },
+        { "pattern": "^outlet-.+$" }
+      ]
+    },
+    "furniture_id": {
+      "allOf": [
+        { "$ref": "#/$defs/entity_id" },
+        { "pattern": "^furniture-.+$" }
+      ]
+    },
+    "custom_template_id": {
+      "allOf": [
+        { "$ref": "#/$defs/entity_id" },
+        { "pattern": "^custom:.+$" }
+      ]
+    },
+    "template_reference": {
+      "allOf": [
+        { "$ref": "#/$defs/entity_id" },
+        { "pattern": "^(builtin:|custom:).+$" }
+      ]
+    },
+    "part_id": {
+      "type": "string",
+      "minLength": 6,
+      "maxLength": 128,
+      "pattern": "^part-[A-Za-z0-9][A-Za-z0-9._-]*$"
+    },
+    "display_string": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "pattern": "^[^\\u0000-\\u001F]+$"
+    },
+    "coordinate": {
+      "type": "integer",
+      "minimum": -1125899906842623,
+      "maximum": 1125899906842623
+    },
+    "doubled_coordinate": {
+      "type": "integer",
+      "minimum": -2251799813685246,
+      "maximum": 2251799813685246
+    },
+    "positive_local_mm": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1000000000
+    },
+    "nonnegative_local_mm": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 1000000000
+    },
+    "point_mm": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/coordinate" },
+        { "$ref": "#/$defs/coordinate" }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "point2_mm": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/doubled_coordinate" },
+        { "$ref": "#/$defs/doubled_coordinate" }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "size2_mm": {
+      "type": "array",
+      "prefixItems": [
+        { "$ref": "#/$defs/positive_local_mm" },
+        { "$ref": "#/$defs/positive_local_mm" }
+      ],
+      "items": false,
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "metadata": {
+      "type": "object",
+      "properties": {
+        "name": { "$ref": "#/$defs/display_string", "default": "Untitled plan" },
+        "notes": {
+          "type": "string",
+          "maxLength": 1048576,
+          "pattern": "^[^\\u0000-\\u0008\\u000B\\u000C\\u000E-\\u001F]*$",
+          "default": ""
+        }
+      },
+      "additionalProperties": true
+    },
+    "settings": {
+      "type": "object",
+      "properties": {
+        "grid_mm": { "$ref": "#/$defs/positive_local_mm", "default": 100 },
+        "fine_step_mm": { "$ref": "#/$defs/positive_local_mm", "default": 10 },
+        "normal_step_mm": { "$ref": "#/$defs/positive_local_mm", "default": 100 },
+        "coarse_step_mm": { "$ref": "#/$defs/positive_local_mm", "default": 500 },
+        "default_door_width_mm": { "$ref": "#/$defs/positive_local_mm", "default": 900 }
+      },
+      "additionalProperties": true
+    },
+    "footprint_part": {
+      "type": "object",
+      "required": ["id", "origin_mm", "size_mm"],
+      "properties": {
+        "id": { "$ref": "#/$defs/part_id" },
+        "origin_mm": { "$ref": "#/$defs/point_mm" },
+        "size_mm": { "$ref": "#/$defs/size2_mm" }
+      },
+      "additionalProperties": true
+    },
+    "footprint": {
+      "type": "object",
+      "required": ["kind", "parts"],
+      "properties": {
+        "kind": { "const": "rect_union" },
+        "parts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/footprint_part" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "room": {
+      "type": "object",
+      "required": ["id", "name", "origin_mm", "footprint"],
+      "properties": {
+        "id": { "$ref": "#/$defs/room_id" },
+        "name": { "$ref": "#/$defs/display_string" },
+        "origin_mm": { "$ref": "#/$defs/point_mm" },
+        "footprint": { "$ref": "#/$defs/footprint" },
+        "size_mm": false
+      },
+      "additionalProperties": true
+    },
+    "door": {
+      "type": "object",
+      "required": [
+        "id",
+        "kind",
+        "room_id",
+        "connects_to_room_id",
+        "part_id",
+        "side",
+        "offset_mm",
+        "width_mm",
+        "hinge",
+        "opens_into",
+        "open_angle_deg"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/door_id" },
+        "kind": { "const": "hinged" },
+        "room_id": { "$ref": "#/$defs/room_id" },
+        "connects_to_room_id": {
+          "anyOf": [
+            { "$ref": "#/$defs/room_id" },
+            { "type": "null" }
+          ]
+        },
+        "part_id": { "$ref": "#/$defs/part_id" },
+        "side": { "enum": ["north", "east", "south", "west"] },
+        "offset_mm": { "$ref": "#/$defs/nonnegative_local_mm" },
+        "width_mm": { "$ref": "#/$defs/positive_local_mm" },
+        "hinge": { "enum": ["start", "end"] },
+        "opens_into": { "enum": ["owner", "connected", "outside"] },
+        "open_angle_deg": { "type": "integer", "minimum": 1, "maximum": 180 }
+      },
+      "additionalProperties": true
+    },
+    "window": {
+      "type": "object",
+      "required": [
+        "id",
+        "room_id",
+        "connects_to_room_id",
+        "part_id",
+        "side",
+        "offset_mm",
+        "width_mm"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/window_id" },
+        "room_id": { "$ref": "#/$defs/room_id" },
+        "connects_to_room_id": {
+          "anyOf": [
+            { "$ref": "#/$defs/room_id" },
+            { "type": "null" }
+          ]
+        },
+        "part_id": { "$ref": "#/$defs/part_id" },
+        "side": { "enum": ["north", "east", "south", "west"] },
+        "offset_mm": { "$ref": "#/$defs/nonnegative_local_mm" },
+        "width_mm": { "$ref": "#/$defs/positive_local_mm" }
+      },
+      "additionalProperties": true
+    },
+    "outlet": {
+      "type": "object",
+      "required": ["id", "room_id", "placement", "outlet_type", "slots"],
+      "properties": {
+        "id": { "$ref": "#/$defs/outlet_id" },
+        "room_id": { "$ref": "#/$defs/room_id" },
+        "placement": { "enum": ["wall", "floor"] },
+        "part_id": { "$ref": "#/$defs/part_id" },
+        "side": { "enum": ["north", "east", "south", "west"] },
+        "offset_mm": { "$ref": "#/$defs/nonnegative_local_mm" },
+        "position_mm": { "$ref": "#/$defs/point_mm" },
+        "outlet_type": { "enum": ["power", "usb", "ethernet", "coax", "phone", "other"] },
+        "slots": { "type": "integer", "minimum": 1, "maximum": 32 }
+      },
+      "oneOf": [
+        {
+          "required": ["part_id", "side", "offset_mm"],
+          "properties": {
+            "placement": { "const": "wall" },
+            "position_mm": false
+          }
+        },
+        {
+          "required": ["position_mm"],
+          "properties": {
+            "placement": { "const": "floor" },
+            "part_id": false,
+            "side": false,
+            "offset_mm": false
+          }
+        }
+      ],
+      "additionalProperties": true
+    },
+    "furniture": {
+      "type": "object",
+      "required": [
+        "id",
+        "room_id",
+        "template_id",
+        "name",
+        "category",
+        "position_mm",
+        "anchor2_mm",
+        "footprint",
+        "height_mm",
+        "rotation_deg"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/furniture_id" },
+        "room_id": { "$ref": "#/$defs/room_id" },
+        "template_id": { "$ref": "#/$defs/template_reference" },
+        "name": { "$ref": "#/$defs/display_string" },
+        "category": { "$ref": "#/$defs/display_string" },
+        "position_mm": { "$ref": "#/$defs/point_mm" },
+        "anchor2_mm": { "$ref": "#/$defs/point2_mm" },
+        "footprint": { "$ref": "#/$defs/footprint" },
+        "height_mm": { "$ref": "#/$defs/positive_local_mm" },
+        "rotation_deg": { "enum": [0, 90, 180, 270] },
+        "center_mm": false,
+        "size_mm": false
+      },
+      "additionalProperties": true
+    },
+    "custom_template": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "category",
+        "default_footprint",
+        "default_anchor2_mm",
+        "default_height_mm"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/custom_template_id" },
+        "name": { "$ref": "#/$defs/display_string" },
+        "category": { "$ref": "#/$defs/display_string" },
+        "default_footprint": { "$ref": "#/$defs/footprint" },
+        "default_anchor2_mm": { "$ref": "#/$defs/point2_mm" },
+        "default_height_mm": { "$ref": "#/$defs/positive_local_mm" },
+        "shape": false,
+        "default_size_mm": false
+      },
+      "additionalProperties": true
+    }
+  }
+}
+

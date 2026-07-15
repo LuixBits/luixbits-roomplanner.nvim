@@ -1,20 +1,22 @@
 # Windows and outlets
 
-Schema v3 adds two wall-attached object types: windows are linear openings and
-outlets are point markers. Both belong to one room footprint part and one of
-its north, east, south, or west sides.
+Schema v4 models windows as linear wall openings and outlets as wall- or
+floor-mounted point markers. Every object belongs to a room. A wall feature
+also belongs to one footprint part and one of its north, east, south, or west
+sides; a floor outlet stores a room-local point instead.
 
 ## Add and interact
 
 - Press `W` or run `:RoomPlanAddWindow` to add a window.
 - Press `O` or run `:RoomPlanAddOutlet` to add an outlet.
-- The Add palette also offers them: press `a`, then `w` for Window or `o` for
+- The Add menu also offers them: press `a`, then `w` for Window or `o` for
   Outlet.
 
 Windows and outlets appear beneath their owner room in Objects. Select either
-type and use `e` to edit, `m` plus a direction to move it along its assigned
-wall, `y` to duplicate it, or `d` to delete it. These are ordinary semantic
-actions with validation and undo/redo.
+type and use `e` to edit, `m` plus a direction to move it, `y` to duplicate it,
+or `d` to delete it. Windows and wall outlets move along their assigned wall;
+floor outlets move in room-local X/Y. These are ordinary semantic actions with
+validation and undo/redo.
 
 ## Wall coordinates
 
@@ -27,12 +29,21 @@ The chosen interval or point must lie on the room union's exterior. An internal
 seam between footprint parts is not an attachable wall. Screen rotation never
 changes the stored part, side, or offset.
 
+## Floor coordinates
+
+A floor outlet stores `position_mm` relative to its owner room. It must be
+strictly inside the room union, not on a wall or internal seam. The form can
+start it at the room centre, at the canvas cursor, or at an exact local point.
+Because its position is room-local, it travels with the room.
+
 ## Canvas shapes
 
 At normal scale a Unicode window uses `═` or `║` along its aperture; a window
 that projects to one cell uses `W`. ASCII uses `=`/`|` and the same `W` marker.
-An outlet is `○` in Unicode and `O` in ASCII. Semantic Window and Outlet
-highlights keep these shapes distinct from structural walls.
+A floor outlet is `○` in Unicode and `O` in ASCII. A wall outlet is a
+half-circle whose filled side points into its room; it rotates with the view.
+ASCII uses the equivalent inward-pointing `^`, `>`, `v`, or `<`. Semantic
+Window and Outlet highlights keep these shapes distinct from structural walls.
 
 ## Windows
 
@@ -60,22 +71,36 @@ have no door leaf or swing.
 
 ## Outlets
 
-An outlet is a point on a wall and never cuts the wall. The supported
+An outlet is a point marker and never cuts a wall. The supported
 `outlet_type` values are `power`, `usb`, `ethernet`, `coax`, `phone`, and
 `other`; `slots` is an integer from 1 through 32.
 
-The offset must be strictly inside the selected exterior edge. Endpoints are
-rejected because a corner or compound-part boundary has no unambiguous owning
-wall.
+For wall placement, the offset must be strictly inside the selected exterior
+edge. Endpoints are rejected because a corner or compound-part boundary has no
+unambiguous owning wall.
 
 ```json
 {
   "id": "outlet-office-east-data",
+  "placement": "wall",
   "room_id": "room-office",
   "part_id": "part-main",
   "side": "east",
   "offset_mm": 1200,
   "outlet_type": "ethernet",
+  "slots": 2
+}
+```
+
+Floor placement uses mutually exclusive room-local coordinates:
+
+```json
+{
+  "id": "outlet-office-floor-power",
+  "placement": "floor",
+  "room_id": "room-office",
+  "position_mm": [1800, 1200],
+  "outlet_type": "power",
   "slots": 2
 }
 ```

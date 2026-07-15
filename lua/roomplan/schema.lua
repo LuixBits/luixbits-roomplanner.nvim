@@ -9,25 +9,29 @@ local common = require("roomplan.schema.common")
 local v1 = require("roomplan.schema.v1")
 local v2 = require("roomplan.schema.v2")
 local v3 = require("roomplan.schema.v3")
+local v4 = require("roomplan.schema.v4")
 local v1_to_v2 = require("roomplan.schema.migrations.v1_to_v2")
 local v2_to_v3 = require("roomplan.schema.migrations.v2_to_v3")
+local v3_to_v4 = require("roomplan.schema.migrations.v3_to_v4")
 
 local M = {}
 
 M.FORMAT = common.FORMAT
-M.CURRENT_VERSION = 3
-M.LATEST_VERSION = 3
+M.CURRENT_VERSION = 4
+M.LATEST_VERSION = 4
 M.defaults = common.defaults
 M.limits = common.limits
 M.migrations = {
   [1] = v1_to_v2.migrate,
   [2] = v2_to_v3.migrate,
+  [3] = v3_to_v4.migrate,
 }
 
 local normalizers = {
   [v1.VERSION] = v1,
   [v2.VERSION] = v2,
   [v3.VERSION] = v3,
+  [v4.VERSION] = v4,
 }
 
 M.validate_text = common.validate_text
@@ -199,7 +203,7 @@ function M.encode(model, options)
   end
   local encode_options = {}
   for key, value in pairs(options or {}) do encode_options[key] = value end
-  if encode_options.key_order == nil then encode_options.key_order = v3.KEY_ORDER end
+  if encode_options.key_order == nil then encode_options.key_order = v4.KEY_ORDER end
   local encoded, encode_error = json.encode(normalized, encode_options)
   if not encoded then
     return nil, encode_error

@@ -8,9 +8,10 @@ coordinates, positive dimensions, supported rotations/enums, and required
 fields. Structurally invalid JSON does not become an editable model, and
 structural model errors can never be force-saved.
 
-For schema-v3 wall features this includes the required owner/part/side fields,
-positive window widths, supported outlet types, and outlet `slots` from 1
-through 32.
+For schema-v4 features this includes positive window widths, supported outlet
+types, outlet `slots` from 1 through 32, and mutually exclusive wall or floor
+outlet fields. Wall features require owner/part/side fields; floor outlets
+require a room-local point.
 
 Layout validation runs on a safely loaded model and reports:
 
@@ -19,8 +20,9 @@ Layout validation runs on a safely loaded model and reports:
 - room and furniture overlap, and furniture outside its owner room;
 - door/window apertures outside exterior walls, invalid/missing connections,
   obstructed openings, and overlapping door/window apertures;
-- outlets outside their exterior wall, on an internal seam, or at an ambiguous
-  edge endpoint;
+- wall outlets outside their exterior wall, on an internal seam, or at an
+  ambiguous edge endpoint; floor outlets outside or on the boundary of their
+  owner room;
 - door swing intersections with furniture, walls, and other doors.
 
 Broken layout invariants are errors. An unavailable imported template and door

@@ -6,6 +6,7 @@ local fields = require("roomplan.ui.form.fields")
 local mappings = require("roomplan.ui.mappings")
 local form_state = require("roomplan.ui.form.state")
 local renderer = require("roomplan.ui.form.render")
+local side_preview = require("roomplan.ui.form.side_preview")
 local util = require("roomplan.util")
 
 local M = {}
@@ -120,13 +121,18 @@ end
 function M.render(handle)
   if not M.is_current(handle) or not valid_buffer(handle.bufnr) then return nil end
   local width = valid_window(handle.winid) and vim.api.nvim_win_get_width(handle.winid) or handle.width
-  local output = renderer.build(handle.state, { width = width, keys = form_keys() })
+  local output = renderer.build(handle.state, {
+    width = width,
+    keys = form_keys(),
+    include_preview = handle.spec.preview_layout ~= "side",
+  })
   handle.output = output
   set_lines(handle, output)
   apply_highlights(handle, output)
   if valid_window(handle.winid) and output.meta.active_row then
     pcall(vim.api.nvim_win_set_cursor, handle.winid, { output.meta.active_row, 0 })
   end
+  side_preview.sync(handle)
   publish_workspace(handle)
   return output
 end
@@ -181,6 +187,7 @@ local function finish(handle, reason, opts)
   end
   detach_buffer(handle)
   if handle.augroup then pcall(vim.api.nvim_del_augroup_by_id, handle.augroup) end
+  side_preview.close(handle)
   if not opts.skip_window and valid_window(handle.winid) then pcall(vim.api.nvim_win_close, handle.winid, true) end
   if not opts.skip_buffer and valid_buffer(handle.bufnr) then pcall(vim.api.nvim_buf_delete, handle.bufnr, { force = true }) end
   handle.internal_closing = false
@@ -281,7 +288,6 @@ function M.edit(handle)
   local field = key and form_state.field(handle.state, key) or nil
   if not field then return nil, util.err("FORM_FIELD_MISSING", "no editable form field is active") end
   if field.type == "toggle" then return M.cycle(handle, 1) end
-
   handle.edit_token = handle.edit_token + 1
   local token = handle.edit_token
   local generation = handle.workflow_generation
@@ -462,7 +468,10 @@ function M.open(session, spec, callbacks)
   define_highlights()
   set_buffer_options(bufnr)
   pcall(vim.api.nvim_buf_set_name, bufnr, "roomplan://form/" .. tostring(spec.id or next_id) .. "/" .. next_id)
-  local initial_output = renderer.build(state, { width = callbacks.width or 72 })
+  local initial_output = renderer.build(state, {
+    width = callbacks.width or 72,
+    include_preview = spec.preview_layout ~= "side",
+  })
   local width = callbacks.width or math.max(48, math.min(76, vim.o.columns - 6))
   local height = callbacks.height or math.max(8, math.min(initial_output.meta.height, vim.o.lines - 6))
   handle.width, handle.height = width, height
@@ -498,6 +507,12 @@ function M.open(session, spec, callbacks)
       if not handle.internal_closing and not handle.closed then
         M.cancel(handle, "window closed", { skip_window = true })
       end
+    end,
+  })
+  vim.api.nvim_create_autocmd("VimResized", {
+    group = handle.augroup,
+    callback = function()
+      if M.is_current(handle) then M.render(handle) end
     end,
   })
   M.render(handle)

@@ -11,6 +11,8 @@ local M = {}
 local ROLE_RANK = {
   error = 100,
   warning = 90,
+  snap_overlap = 88,
+  snap = 85,
   selected = 80,
   outlet = 60,
   window = 55,
@@ -563,8 +565,19 @@ local function draw_outlet_marker(context, primitive)
   local x, y = project(context.viewport, primitive.x, primitive.y)
   local row, column = round(y) + 1, round(x) + 1
   if in_bounds(context, row, column) then
+    local character = context.glyphs.outlet_marker
+    if primitive.placement ~= "floor" and primitive.side then
+      local directions = {
+        north = { 0, 1 }, east = { 1, 0 }, south = { 0, -1 }, west = { -1, 0 },
+      }
+      local direction = directions[primitive.side]
+      local dx, dy = viewport_module.world_delta_to_view(context.viewport, direction[1], direction[2])
+      local visible_side = math.abs(dx) > math.abs(dy) and (dx > 0 and "east" or "west")
+        or (dy > 0 and "north" or "south")
+      character = context.glyphs["outlet_wall_" .. visible_side] or character
+    end
     add_visual(context, row, column, {
-      char = context.glyphs.outlet_marker,
+      char = character,
       layer = primitive.layer,
       role = primitive.role or "outlet",
       ref = primitive.ref,
@@ -648,6 +661,49 @@ local function draw_annotation(context, primitive)
     order = primitive.order,
     critical = true,
   })
+end
+
+local function draw_snap_guide(context, primitive)
+  local x0, y0 = project(context.viewport, primitive.x1, primitive.y1)
+  local x1, y1 = project(context.viewport, primitive.x2, primitive.y2)
+  local horizontal = math.abs(x1 - x0) >= math.abs(y1 - y0)
+  local character
+  if context.glyphs.mode == "unicode" then
+    character = horizontal and "┄" or "┊"
+  else
+    character = horizontal and "." or ":"
+  end
+  if context.width_fn(character) ~= 1 then character = context.glyphs.grid end
+  line_cells(context, x0, y0, x1, y1, function(row, column)
+    add_visual(context, row, column, {
+      char = character,
+      layer = primitive.layer,
+      role = "snap",
+      order = primitive.order,
+    })
+  end)
+end
+
+local function draw_snap_overlap(context, primitive)
+  local x0, y0 = project(context.viewport, primitive.x1, primitive.y1)
+  local x1, y1 = project(context.viewport, primitive.x2, primitive.y2)
+  local horizontal = math.abs(x1 - x0) >= math.abs(y1 - y0)
+  local character
+  if context.glyphs.mode == "unicode" then
+    character = horizontal and "━" or "┃"
+  else
+    character = horizontal and "=" or "#"
+  end
+  if context.width_fn(character) ~= 1 then character = horizontal and "=" or "#" end
+  line_cells(context, x0, y0, x1, y1, function(row, column)
+    add_visual(context, row, column, {
+      char = character,
+      layer = primitive.layer,
+      role = "snap_overlap",
+      order = primitive.order,
+      critical = true,
+    })
+  end)
 end
 
 local function draw_grid(context, primitive)
@@ -1037,6 +1093,10 @@ function M.rasterize(scene, viewport, opts)
         draw_door_hinge(context, primitive)
       elseif primitive.kind == "annotation" then
         draw_annotation(context, primitive)
+      elseif primitive.kind == "snap_guide" then
+        draw_snap_guide(context, primitive)
+      elseif primitive.kind == "snap_overlap" then
+        draw_snap_overlap(context, primitive)
       elseif primitive.kind == "label" or primitive.kind == "dimension" then
         labels_to_draw[#labels_to_draw + 1] = { primitive = primitive, scene_index = i }
       end

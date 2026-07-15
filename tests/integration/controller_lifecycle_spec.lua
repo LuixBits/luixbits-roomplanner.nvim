@@ -146,6 +146,131 @@ describe("controller lifecycle", function()
     cleanup()
   end)
 
+  it("keeps the ordinary room editor compact and undoable", function()
+    cleanup()
+    local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-footprint", name = "Footprint",
+        origin_mm = { 0, 0 }, size_mm = { 3000, 2000 },
+      }),
+    }))
+    session.selection = { kind = "room", id = "room-footprint" }
+    local form = require("roomplan.ui.form")
+    local handle = h.truthy(controller.edit_selected(session))
+    h.eq("ROOM EDIT", handle.spec.mode)
+    h.eq(nil, handle.state.field_index.part_origin_x_mm)
+    h.eq(nil, handle.state.field_index.add_part)
+    h.truthy(handle.state.field_index.width_mm)
+    h.truthy(form.set_value(handle, "name", "Renamed", { raw = false }))
+    h.truthy(form.set_value(handle, "width_mm", 3500, { raw = false }))
+    h.truthy(form.apply(handle))
+    h.eq("Renamed", session:model().rooms[1].name)
+    h.eq(3500, session:model().rooms[1].footprint.parts[1].size_mm[1])
+    h.eq(1, #session:model().rooms[1].footprint.parts)
+    h.truthy(controller.undo(session))
+    h.eq("Footprint", session:model().rooms[1].name)
+    h.eq(3000, session:model().rooms[1].footprint.parts[1].size_mm[1])
+    h.eq(1, #session:model().rooms[1].footprint.parts)
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
+  it("opens room resizing directly and saves it as one undo step", function()
+    cleanup()
+    local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-shape", name = "Shape", origin_mm = { 0, 0 }, size_mm = { 3000, 2000 },
+      }),
+    }))
+    session.selection = { kind = "room", id = "room-shape" }
+    h.truthy(controller.rotate_selected(session))
+    h.eq("RESIZE", session.mode)
+    h.truthy(session.room_shape_edit)
+
+    local revision = session:revision_id()
+    h.truthy(controller.direction(session, 1, 0, "normal"))
+    h.eq(3000, session:model().rooms[1].footprint.parts[1].size_mm[1])
+    h.eq(3100, session:current_model().rooms[1].footprint.parts[1].size_mm[1])
+    h.eq(revision, session:revision_id())
+
+    h.truthy(controller.add_room_shape_part(session))
+    h.eq(2, #session:current_model().rooms[1].footprint.parts)
+    h.truthy(controller.remove_room_shape_part(session))
+    h.eq(1, #session:current_model().rooms[1].footprint.parts)
+    h.truthy(controller.add_room_shape_part(session))
+    h.eq(2, #session:current_model().rooms[1].footprint.parts)
+
+    h.truthy(controller.save(session))
+    h.eq("NAV", session.mode)
+    h.eq(nil, session.room_shape_edit)
+    h.eq(2, #session:model().rooms[1].footprint.parts)
+    h.truthy(session:revision_id() ~= revision)
+    h.eq(false, session:model_dirty())
+    h.truthy(controller.undo(session))
+    h.eq(1, #session:model().rooms[1].footprint.parts)
+    h.eq(3000, session:model().rooms[1].footprint.parts[1].size_mm[1])
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
+  it("moves a room and its furniture through the ordinary move mode", function()
+    cleanup()
+    local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-moving", name = "Moving", origin_mm = { 0, 0 }, size_mm = { 3000, 2000 },
+      }),
+    }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_furniture",
+      furniture = model.new_furniture({
+        id = "furniture-moving", room_id = "room-moving", template_id = "builtin:chair",
+        name = "Chair", category = "seating", position_mm = { 1000, 1000 }, size_mm = { 500, 500, 800 },
+      }),
+    }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-fixed", name = "Fixed", origin_mm = { 3100, 0 }, size_mm = { 2000, 2000 },
+      }),
+    }))
+    session.selection = { kind = "room", id = "room-moving" }
+    local before_shape = h.truthy(require("roomplan.geometry.footprint").from_furniture(
+      session:model().rooms[1], session:model().furniture[1]
+    ))
+    local before = h.truthy(require("roomplan.geometry.footprint").bounds(before_shape))
+
+    h.truthy(controller.set_mode(session, "MOVE"))
+    h.truthy(controller.direction(session, 1, 0, "normal"))
+    h.eq(100, session:model().rooms[1].origin_mm[1])
+    h.eq("right 100 mm", session.move_feedback)
+    local x_guide
+    for _, guide in ipairs(session.snap_guides) do
+      if guide.axis == "x" then x_guide = guide end
+    end
+    h.eq(3100, h.truthy(x_guide).value_mm)
+    h.eq(0, x_guide.overlap_start_mm)
+    h.eq(2000, x_guide.overlap_finish_mm)
+
+    h.truthy(controller.direction(session, -1, 0, "fine"))
+    h.eq(90, session:model().rooms[1].origin_mm[1])
+    h.eq("left 10 mm", session.move_feedback)
+    h.eq({ 1000, 1000 }, session:model().furniture[1].position_mm)
+    local after_shape = h.truthy(require("roomplan.geometry.footprint").from_furniture(
+      session:model().rooms[1], session:model().furniture[1]
+    ))
+    local after = h.truthy(require("roomplan.geometry.footprint").bounds(after_shape))
+    h.eq(before.left + 90, after.left)
+    h.eq(before.right + 90, after.right)
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
   it("keeps window and outlet selections stable through movement, history, duplication, and deletion", function()
     cleanup()
     local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
@@ -166,8 +291,11 @@ describe("controller lifecycle", function()
     }))
     h.eq({ kind = "window", id = "window-north" }, session.selection)
     h.eq("MOVE", h.truthy(controller.set_mode(session, "MOVE")))
+    local visible_step = require("roomplan.render.viewport").visible_move_step(
+      session.viewport, 1, 0, session:model().settings.normal_step_mm
+    )
     h.truthy(controller.direction(session, 1, 0, "normal"))
-    h.eq(800, session:model().windows[1].offset_mm)
+    h.eq(700 + visible_step, session:model().windows[1].offset_mm)
     h.eq({ kind = "window", id = "window-north" }, session.selection)
     h.eq("NAV", h.truthy(controller.set_mode(session, "NAV")))
 

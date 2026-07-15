@@ -104,11 +104,14 @@ function M.build(state, opts)
   end
 
   local previews, preview_error = preview_lines(state)
-  if #previews > 0 or preview_error then
+  if opts.include_preview ~= false and (#previews > 0 or preview_error) then
     push("")
     meta.preview_title_row = push(state.spec.preview_title or "Preview")
     for _, line in ipairs(previews) do meta.preview_rows[push("  " .. line)] = true end
     if preview_error then meta.error_rows[push("  ! " .. preview_error)] = true end
+  elseif preview_error then
+    push("")
+    meta.error_rows[push("! " .. preview_error)] = true
   end
 
   if state.form_error then

@@ -229,6 +229,7 @@ function M.classify_outlet(outlet, rooms_by_id, _, order)
     id = type(outlet) == "table" and outlet.id or nil,
     ref = ref_for("outlet", type(outlet) == "table" and outlet.id or "", order, "marker"),
     owner_edge_valid = false,
+    placement = type(outlet) == "table" and (outlet.placement or "wall") or nil,
     reason = nil,
   }
 
@@ -239,6 +240,24 @@ function M.classify_outlet(outlet, rooms_by_id, _, order)
   local owner = rooms_by_id[outlet.room_id]
   if not owner then
     result.reason = "owner room is missing"
+    return result
+  end
+  if result.placement == "floor" then
+    local marker = wall_attachment.floor_marker(owner, outlet)
+    if not marker then
+      result.reason = "floor position is unavailable"
+      return result
+    end
+    result.owner_room_id = owner.id
+    result.p = { marker.p[1], marker.p[2] }
+    if not marker.within_room then
+      result.reason = "floor outlet lies outside its owner room"
+      return result
+    end
+    result.owner_edge_valid = true
+    return result
+  elseif result.placement ~= "wall" then
+    result.reason = "unsupported outlet placement"
     return result
   end
   if not SIDES[outlet.side] then

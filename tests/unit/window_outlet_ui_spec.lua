@@ -33,6 +33,14 @@ local function plan_with_features()
     outlet_type = "power",
     slots = 2,
   })
+  plan.outlets[2] = model.new_outlet({
+    id = "outlet-floor",
+    room_id = "room-main",
+    placement = "floor",
+    position_mm = { 2000, 1400 },
+    outlet_type = "usb",
+    slots = 1,
+  })
   return plan
 end
 
@@ -50,25 +58,25 @@ describe("window and outlet presentation", function()
     local high = scene_builder.build(plan, {}, { detail_level = "high" })
     h.eq(1, #primitives(high, "window_aperture"))
     h.eq("window", primitives(high, "window_aperture")[1].ref.type)
-    h.eq(1, #primitives(high, "outlet_marker"))
+    h.eq(2, #primitives(high, "outlet_marker"))
     h.eq("outlet", primitives(high, "outlet_marker")[1].ref.type)
 
-    local outlet_labels, window_dimensions = 0, 0
+    local outlet_labels, window_dimensions = {}, 0
     for _, primitive in ipairs(high.primitives) do
       if primitive.kind == "label" and primitive.ref and primitive.ref.type == "outlet" then
-        outlet_labels = outlet_labels + 1
-        h.eq("Power · 2 slots", primitive.text)
+        outlet_labels[primitive.text] = true
       elseif primitive.kind == "dimension" and primitive.ref and primitive.ref.type == "window" then
         window_dimensions = window_dimensions + 1
         h.eq("1.2m", primitive.text)
       end
     end
-    h.eq(1, outlet_labels)
+    h.truthy(outlet_labels["Power · 2 slots"])
+    h.truthy(outlet_labels["USB · 1 slot"])
     h.eq(1, window_dimensions)
 
     local none = scene_builder.build(plan, {}, { detail_level = "none" })
     h.eq(1, #primitives(none, "window_aperture"))
-    h.eq(1, #primitives(none, "outlet_marker"))
+    h.eq(2, #primitives(none, "outlet_marker"))
     for _, primitive in ipairs(none.primitives) do
       h.falsy(primitive.ref and (primitive.ref.type == "window" or primitive.ref.type == "outlet")
         and (primitive.kind == "label" or primitive.kind == "dimension"))
@@ -91,15 +99,17 @@ describe("window and outlet presentation", function()
     })
     h.eq("=", output.cells[1][7].char)
     h.eq("window", output.hit_map[1][7][1].type)
-    h.eq("O", output.cells[11][21].char)
+    h.eq("<", output.cells[11][21].char)
     h.eq("outlet", output.hit_map[11][21][1].type)
+    h.eq("O", output.cells[9][11].char)
+    h.eq("outlet", output.hit_map[9][11][1].type)
   end)
 
   it("lists and describes both feature kinds in the workspace", function()
     local plan = plan_with_features()
     local objects = presenter.objects(plan)
     h.eq(1, objects.counts.windows)
-    h.eq(1, objects.counts.outlets)
+    h.eq(2, objects.counts.outlets)
     h.matches("1 windows", objects.summary)
     h.eq("window", objects.rows[3].kind)
     h.eq("outlet", objects.rows[4].kind)

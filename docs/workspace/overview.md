@@ -10,8 +10,8 @@ The workspace has four areas:
 - **Navigator** uses one side slot for either Objects or Issues.
 - **Details** shows compact, accordion-style information about the selection.
 - **Action bar** shows only the most useful actions for the current pane and
-  mode. Press `?` for the complete grouped action palette, including disabled
-  actions and their reasons.
+  mode. Press `?` for the complete grouped action window, including disabled
+  actions and their reasons, then `/` to search it.
 
 Selection is shared by every area. Selecting an Objects or Issues row updates
 the canvas and Details; selecting on the canvas updates both side panes.

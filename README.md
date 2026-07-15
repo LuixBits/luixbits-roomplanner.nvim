@@ -8,7 +8,7 @@ rounding can never corrupt the saved plan.
 
 > RoomPlan is a space-planning tool, not CAD/BIM software or a building-code
 > checker. The current schema models one floor with rectangular-union room and
-> furniture footprints, doors, windows, wall outlets, and 90-degree furniture
+> furniture footprints, doors, windows, wall/floor outlets, and 90-degree furniture
 > rotations.
 
 ## Highlights
@@ -20,8 +20,9 @@ rounding can never corrupt the saved plan.
 - Structured forms for rooms, furniture, doors, windows, outlets, alignment,
   plan settings, and project furniture templates.
 - Compound footprints for L-, T-, and U-shaped rooms and furniture, with
-  seam-free walls and one logical selection per object; the room form can
-  directly create configurable L shapes.
+  seam-free walls and one logical selection per object. The room form creates
+  configurable L shapes; direct canvas resizing can add, resize, and remove
+  rectangular room sections.
 - View-only 90-degree rotation and runtime terminal-cell aspect calibration;
   neither operation changes saved geometry.
 - Strict, deterministic JSON with preserved extension fields, plus marked Neorg
@@ -70,12 +71,14 @@ Initialize a standalone source without overwriting an existing file:
 :RoomPlanInit ~/plans/flat.roomplan.json
 ```
 
-Then press `a` to add a room, move with `h/j/k/l`, use `e` for exact edits,
-and save with `s`. Press `t` to cycle canvas detail, `1` to focus or toggle the
+Then press `a` to add a room, `m` to move the selected room and its furniture,
+`r` to resize its sections, or `e` for exact properties. Save with `s`. Press
+`t` to cycle canvas detail, `1` to focus or toggle the
 Navigator, and `3` to do the same for Details. `?` opens every currently
-available action, and `q` returns to the canvas before hiding the workspace.
-Add a window directly with `W` or an outlet with `O`; from the Add palette use
-`a` followed by lowercase `w` or `o`.
+available action; press `/` there to search it. `,` and `.` zoom out and in.
+`q` returns to the canvas before hiding the workspace. Add a window directly
+with `W` or an outlet with `O`; the outlet form chooses wall or floor placement.
+From the Add menu use `a` followed by lowercase `w` or `o`.
 
 Open the plan again with:
 
@@ -157,5 +160,7 @@ implementation-plan files.
 
 ## License
 
-MIT. See [LICENSE](LICENSE). Third-party material, if introduced, must also be
-recorded in [NOTICE](NOTICE).
+Licensed under the GNU General Public License v3.0 only (`GPL-3.0-only`). See
+[LICENSE](LICENSE). You may use, study, modify, and redistribute RoomPlan, but
+distributed versions must preserve the same freedoms and provide their source.
+Third-party material, if introduced, must also be recorded in [NOTICE](NOTICE).

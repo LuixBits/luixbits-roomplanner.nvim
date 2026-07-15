@@ -26,6 +26,12 @@ Press `a`. In the form:
 RoomPlan accepts `5000`, `5000mm`, `500cm`, and `5m` as the same exact
 measurement. The first room is selected and fitted automatically.
 
+To turn it into a custom compound room later, select it and press `r`. Add or
+resize rectangular sections directly on the canvas, then apply and save the
+entire preview with `s`. Press `m` instead when you want to move the whole room
+and its furniture. The [Rooms chapter](../planning/rooms.md) lists every
+resize-mode key.
+
 ## 3. Add and align a second room
 
 Press `a`, choose Room, and create a `3m × 3m` room named `Bedroom`. Select the
@@ -55,8 +61,9 @@ leave MOVE mode.
 
 ## 6. Add a window and outlet
 
-Press `W` to place a window on an exterior wall, then press `O` to place a
-typed outlet on a wall. The `a` Add palette offers the same choices with
+Press `W` to place a window on an exterior wall, then press `O` and choose a
+wall or floor outlet. Wall outlets use inward-facing half circles; floor
+outlets use full circles. The `a` Add menu offers the same choices with
 lowercase `w` and `o`. See
 [Windows and outlets](../planning/windows-and-outlets.md) for connections,
 offsets, types, and current vertical-data limits.

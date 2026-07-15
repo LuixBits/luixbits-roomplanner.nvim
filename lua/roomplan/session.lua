@@ -41,7 +41,7 @@ function Session:model()
 end
 
 function Session:current_model()
-  return self:model()
+  return self.preview_model or self:model()
 end
 
 function Session:revision_id()
@@ -274,6 +274,12 @@ function Session:reset(snapshot, revision, locator, opts)
   self.validation = {}
   self.validation_revision_id = nil
   self.selection = nil
+  self.mode = "NAV"
+  self.room_shape_edit = nil
+  self.preview_model = nil
+  self.snap_guides = {}
+  self.snap_exclusions = {}
+  self.move_feedback = nil
   self.reserved_ids = require("roomplan.ids").used_set(snapshot, self.reserved_ids)
   self:update_guard()
 end
@@ -325,6 +331,9 @@ function M.new(source, model, opts)
     canvas_detail_level = config.get().canvas.detail_level,
     mode = "NAV",
     snap_enabled = config.get().snapping.enabled,
+    snap_guides = {},
+    snap_exclusions = {},
+    move_feedback = nil,
     canvas = { bufnr = nil, winid = nil },
     workflow = { generation = 0, kind = nil },
     source_conflicted = false,

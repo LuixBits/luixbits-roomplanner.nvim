@@ -8,6 +8,7 @@ local modules = {
   "roomplan.controller.persistence",
   "roomplan.controller.view",
   "roomplan.controller.edit",
+  "roomplan.controller.shape",
 }
 
 for _, name in ipairs(modules) do

@@ -25,8 +25,57 @@ Its overall dimensions, leg dimensions, and missing corner can be edited in the
 ordinary room form. RoomPlan keeps the preset's stable part IDs while applying
 the complete geometry change atomically. The form shows the number of attached
 wall features and furniture; an edit that would invalidate one is rejected
-without changing the plan. Unknown or free-form compound shapes remain geometry-read-only
-until the general part editor can preserve every authored detail safely.
+without changing the plan. Other compound shapes expose each rectangular
+section's width and depth while preserving its position, stable ID, and unknown
+extension data.
+
+Select a room and press `e` for this compact form. On a wide editor, a live
+shape preview opens in a separate panel to its right. On a narrow editor the
+preview is omitted so the fields and command footer remain visible. The editor
+does not expose internal part coordinates or approximate angled walls with tiny
+rectangles.
+
+### Direct canvas resizing
+
+Select a room and press `r`. Its first section is highlighted on the canvas and
+the workspace enters `RESIZE`. This is a direct normal-canvas action; it does
+not require opening the `e` form first.
+
+| Key | Shape action |
+| --- | --- |
+| `Enter` | Select the section under the cursor |
+| `Tab` / `Shift-Tab` | Select the next / previous section |
+| `h j k l` | Resize it by the normal plan step |
+| `H J K L` | Resize it by the coarse plan step |
+| `Ctrl-h/j/k/l` | Resize it by the fine plan step |
+| `a` | Add a same-sized section beside the selection, preferring the cursor-facing side |
+| `d` | Remove the selected section |
+| `gs` / `g!` | Toggle snapping / bypass it for the next change |
+| `s` | Apply the complete shape as one undo step and save the plan |
+| `Esc` | Cancel the complete shape edit |
+
+The first horizontal direction chooses the section's west (`h`) or east (`l`)
+edge; the first vertical direction chooses south (`j`) or north (`k`). Further
+keys on that axis move the chosen edge inward or outward, so the opposite key
+shrinks it. The chosen edge is shown in the header and stays active until you
+select another section. If the first attempted movement would break topology,
+RoomPlan still selects that edge without applying the invalid geometry.
+
+Every preview must remain a connected, hole-free, non-overlapping rectangular
+union. Invalid resizes are rejected immediately. A section referenced
+by a door, window, or outlet cannot be removed until that wall feature is moved
+or deleted. The edit remains transient until `s`; cancelling does not
+change history or saved data. The result is still one logical room, not a group
+of separately selectable rectangles.
+
+The canvas header and action bar show **RESIZE**, the selected section number,
+and the active edge. With snapping enabled, the changed edge snaps first
+to neighbouring section edges or another room's exterior walls, then to the
+plan grid when no structural edge is close enough. A light alignment guide,
+text such as `X → Kitchen west wall`, and a heavy highlighted segment on
+the actual edge overlap identify the target. Guides are transient and disappear
+after selection or mode changes. Moving away releases the snap immediately;
+fine steps are not pulled back to the same target.
 
 When a room is selected, Details reports its compact bounding width and depth,
 exact union area and perimeter, and part count.
@@ -39,6 +88,13 @@ right, north, south, horizontal centre, or vertical centre; place on any side
 with a gap; or snap any pair of corners. If a centre alignment falls between
 millimetres, the proposal is deterministically rounded to the integer-mm
 lattice and reports that fact.
+
+Moving uses the same light guide, target status, and highlighted overlap as
+resizing. The guide has a short support tail beyond the aligned walls, so
+north/south connections remain as obvious as east/west connections. Moving
+changes the room's world origin. Furniture keeps its room-local
+coordinates, so it travels with the room exactly as it does during ordinary
+room movement; there is no separate section-move mode inside `RESIZE`.
 
 Rooms may touch along an edge, which is how shared walls are formed. Positive
 area overlap is an error. `Allow invalid draft` permits a deliberate overlap

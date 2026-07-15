@@ -7,7 +7,7 @@ is needed only for non-default configuration.
 
 | Command | Purpose |
 | --- | --- |
-| `:RoomPlan` | Open the context-aware action palette, choose a session, or start from the current source |
+| `:RoomPlan` | Open the context-aware action window, choose a session, or start from the current source |
 | `:RoomPlanOpen [path]` | Open/focus a `.roomplan.json` or Norg plan; no path uses the current buffer |
 | `:RoomPlanInit [path]` | Safely initialize an empty standalone source or Norg block |
 | `:RoomPlanHide` | Hide workspace windows while retaining the live session |

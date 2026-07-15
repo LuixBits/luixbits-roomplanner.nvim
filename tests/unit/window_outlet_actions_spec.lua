@@ -142,6 +142,36 @@ describe("window and outlet atomic actions", function()
     h.eq({ { kind = "outlet", id = "outlet-copy" } }, delete_result.touched)
   end)
 
+  it("moves, duplicates, and converts floor outlets atomically", function()
+    local value = base_model()
+    value = apply(value, {
+      type = "add_outlet",
+      outlet = {
+        id = "outlet-floor", room_id = "room-main", placement = "floor",
+        position_mm = { 1000, 1200 }, outlet_type = "power", slots = 2,
+      },
+    })
+    h.eq(nil, value.outlets[1].side)
+    h.eq({ 1000, 1200 }, value.outlets[1].position_mm)
+
+    value = apply(value, {
+      type = "edit_outlet", id = "outlet-floor", patch = { position_mm = { 1300, 1500 } },
+    })
+    h.eq({ 1300, 1500 }, value.outlets[1].position_mm)
+
+    value = apply(value, { type = "duplicate_outlet", id = "outlet-floor", new_id = "outlet-floor-copy" })
+    h.eq({ 1400, 1600 }, value.outlets[2].position_mm)
+
+    value = apply(value, {
+      type = "edit_outlet", id = "outlet-floor", patch = {
+        placement = "wall", part_id = "part-main", side = "south", offset_mm = 1000,
+      },
+    })
+    h.eq("wall", value.outlets[1].placement)
+    h.eq(nil, value.outlets[1].position_mm)
+    h.eq("south", value.outlets[1].side)
+  end)
+
   it("cascade-deletes owner and connected features while retaining unrelated ones", function()
     local value = h.truthy(model.new({ name = "Cascade" }))
     value.rooms[1] = room("room-main", 0, 0, 4000, 3000)

@@ -7,8 +7,9 @@ active colorscheme without depending on a UI framework.
 
 Set `canvas.unicode` to `"auto"` (default), `"unicode"`, or `"ascii"`.
 Unicode provides box-drawing walls, furniture, hinge, and swing glyphs plus
-double-line windows and circular outlet markers. ASCII uses portable
-single-cell characters, including `=`/`W` for windows and `O` for outlets.
+double-line windows, inward-facing half-circle wall outlets, and full-circle
+floor outlets. ASCII uses portable single-cell characters, including `=`/`W`
+for windows, directional wall-outlet markers, and `O` for floor outlets.
 RoomPlan validates the entire set with Neovim's display-width calculation; if
 any configured glyph does not occupy exactly one cell, it falls back atomically
 to ASCII rather than mixing misaligned characters.
@@ -41,20 +42,24 @@ The main canvas groups are:
 
 `RoomPlanWall`, `RoomPlanDoor`, `RoomPlanWindow`, `RoomPlanOutlet`,
 `RoomPlanFurniture`, `RoomPlanRoomLabel`, `RoomPlanFurnitureLabel`,
-`RoomPlanSelected`, `RoomPlanError`, `RoomPlanWarning`, `RoomPlanGrid`,
-`RoomPlanStatus`, `RoomPlanMuted`, and `RoomPlanCompass`.
+`RoomPlanSelected`, `RoomPlanSnap`, `RoomPlanSnapOverlap`, `RoomPlanError`,
+`RoomPlanWarning`, `RoomPlanGrid`, `RoomPlanStatus`, `RoomPlanMuted`, and
+`RoomPlanCompass`.
 
 Workspace groups use the `RoomPlanWorkspace*` prefix for titles, active and
 inactive borders, cursor rows, selection, keys, values, object kinds, and
 diagnostic severities. Defaults link to standard groups such as `Title`,
-`Special`, `Identifier`, `Visual`, and `DiagnosticError`, so light and dark
-colorschemes both provide sensible results.
+`Special`, `Identifier`, `Visual`, `IncSearch`, and `DiagnosticError`. RoomPlan
+does not define a separate fixed palette: links follow the active colorscheme
+and are restored after `ColorScheme`. User overrides remain optional.
 
 Override groups after your colorscheme loads:
 
 ```lua
-vim.api.nvim_set_hl(0, "RoomPlanWall", { fg = "#7aa2f7" })
-vim.api.nvim_set_hl(0, "RoomPlanFurniture", { fg = "#9ece6a" })
+vim.api.nvim_set_hl(0, "RoomPlanWall", { link = "Function" })
+vim.api.nvim_set_hl(0, "RoomPlanFurniture", { link = "Identifier" })
+vim.api.nvim_set_hl(0, "RoomPlanSnap", { link = "DiagnosticInfo" })
+vim.api.nvim_set_hl(0, "RoomPlanSnapOverlap", { link = "IncSearch" })
 vim.api.nvim_set_hl(0, "RoomPlanWorkspaceActiveBorder", { link = "FloatBorder" })
 ```
 

@@ -1,4 +1,5 @@
 local adjacency = require("roomplan.geometry.adjacency")
+local footprint = require("roomplan.geometry.footprint")
 local interval = require("roomplan.geometry.interval")
 
 local M = {}
@@ -135,6 +136,29 @@ function M.marker(room, attachment)
     part_id = attachment.part_id,
     within_edge = within_edge,
     on_exterior = within_edge and is_exterior_point(room, edge, scalar_mm, attachment.part_id),
+  }
+end
+
+---Resolve a room-local floor outlet point. Boundary points are excluded so a
+---floor marker never ambiguously occupies the wall-marker representation.
+function M.floor_marker(room, attachment)
+  local position = attachment and attachment.position_mm
+  if type(position) ~= "table" or type(position[1]) ~= "number" or type(position[2]) ~= "number" then
+    return nil, { code = "OUTLET_FLOOR_POSITION", message = "floor outlet position is unavailable" }
+  end
+  local shape, shape_err = footprint.local_from_room(room)
+  if not shape then return nil, shape_err end
+  local within, hits_or_err = footprint.contains_point2(
+    shape, 2 * position[1], 2 * position[2], { include_boundary = false }
+  )
+  if within == nil then return nil, hits_or_err end
+  return {
+    id = attachment.id,
+    room_id = attachment.room_id,
+    placement = "floor",
+    position_mm = { position[1], position[2] },
+    p = point(room.origin_mm[1] + position[1], room.origin_mm[2] + position[2]),
+    within_room = within,
   }
 end
 

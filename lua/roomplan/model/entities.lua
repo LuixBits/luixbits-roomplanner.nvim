@@ -129,14 +129,29 @@ function M.window(fields)
   return result
 end
 
-function M.outlet(fields)
+function M.outlet(fields, version)
   fields = fields or {}
   local result = copy_fields(fields)
   result.id = fields.id
   result.room_id = fields.room_id
-  result.part_id = fields.part_id or "part-main"
-  result.side = fields.side
-  result.offset_mm = fields.offset_mm or 0
+  if (version or 3) >= 4 then
+    result.placement = fields.placement or "wall"
+    if result.placement == "floor" then
+      result.position_mm = tuple(fields.position_mm, { 0, 0 }, 2)
+      result.part_id, result.side, result.offset_mm = nil, nil, nil
+    else
+      result.part_id = fields.part_id or "part-main"
+      result.side = fields.side
+      result.offset_mm = fields.offset_mm or 0
+      result.position_mm = nil
+    end
+  else
+    result.part_id = fields.part_id or "part-main"
+    result.side = fields.side
+    result.offset_mm = fields.offset_mm or 0
+    result.placement = nil
+    result.position_mm = nil
+  end
   result.outlet_type = fields.outlet_type or outlet_types.default
   result.slots = fields.slots or 2
   return result

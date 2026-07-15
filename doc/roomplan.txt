@@ -24,9 +24,9 @@ RoomPlan stores exact millimetre geometry in structured JSON or a marked
 Neorg block and renders an interactive terminal view. Display rounding,
 zooming, aspect calibration, and view rotation never alter saved geometry.
 
-Schema v3 supports one floor, connected rectangular-union room and furniture
-footprints, shared-wall doors/windows, typed wall outlets, and furniture
-rotations in 90-degree steps. Existing schema-v1/v2 plans migrate in memory
+Schema v4 supports one floor, connected rectangular-union room and furniture
+footprints, shared-wall doors/windows, typed wall/floor outlets, and furniture
+rotations in 90-degree steps. Existing schema-v1/v2/v3 plans migrate in memory
 and are rewritten only by an explicit save. RoomPlan is a space planner, not
 CAD/BIM software or a building-code checker.
 
@@ -74,11 +74,19 @@ Create a standalone plan without overwriting an existing file: >vim
 Press `a` to add the first room. In the form, move with `j`/`k`, edit with
 <CR>, choose a Rectangle or L-shaped footprint, and apply with <C-s>. An L
 accepts exact overall/leg dimensions and any missing corner. Back on the
-canvas, use `h`/`j`/`k`/`l`, press `e` to edit the rectangle or canonical L
-dimensions, `t` to cycle canvas detail, and `s` to save.
+canvas, use `h`/`j`/`k`/`l`, press `e` to edit properties, canonical L
+dimensions, or custom section sizes. Press `m` to move the whole room together
+with its furniture. Press `r` to resize on the canvas: <CR>/<Tab> select a
+section, direction keys resize it, `a`/`d` add/remove, `s` applies and saves,
+and <Esc> cancels. The first horizontal/vertical direction chooses the matching
+west/east or south/north edge; the opposite direction then shrinks that same
+edge. Nearby section or room edges snap with a light alignment guide
+and a strong highlight on the overlapping edge. `gs` toggles snapping and `g!`
+bypasses one change. Moving away from a snap releases it immediately, including
+with fine steps. Use `t` to cycle canvas detail.
 
-With a room present, `W` adds a window and `O` adds an outlet. The `a` Add
-palette offers the same objects with lowercase `w` and `o`.
+With a room present, `W` adds a window and `O` adds a wall or floor outlet. The
+`a` Add menu offers the same objects with lowercase `w` and `o`.
 
 Open the plan later with: >vim
   :RoomPlanOpen ~/plans/flat.roomplan.json
@@ -92,7 +100,7 @@ explicitly.
 4. COMMANDS                                               *roomplan-commands*
 
                                                         *:RoomPlan*
-:RoomPlan                 Open the complete contextual action palette.
+:RoomPlan                 Open the complete contextual action window.
 
                                                         *:RoomPlanOpen*
 :RoomPlanOpen [source]    Open a standalone JSON or a plan in a Norg source.
@@ -224,27 +232,28 @@ Workspace:
   <CR>           select a Navigator/Issue row; toggle Details section
   /              filter Navigator or Issues
   h / l          collapse / expand a room or Details section
-  ?              complete action palette or contextual help
+  ?              complete action window or contextual help
+  /              search the action window opened by ?
   q              return to canvas, close a drawer, or hide workspace
   <Esc>          cancel the current interaction, then return to canvas
 
 Canvas and editing:
 
-  h j k l        move cursor/object, or pan in PAN mode
-  H J K L        coarse movement
-  <C-h/j/k/l>    fine movement
+  h j k l        move cursor/object, choose a resize edge, or pan
+  H J K L        coarse movement/resizing
+  <C-h/j/k/l>    exact fine movement/resizing
   <CR>           select object under cursor
   m / p          MOVE / PAN mode
-  a              Add palette (r/d/w/o/f choose object type)
+  a              Add menu (r/d/w/o/f choose object type)
   D / W / O / F  add door / window / outlet / furniture
   A              align room
   e              exact edit
   d / y          delete / duplicate selection
-  r              rotate furniture
+  r              resize a room / rotate furniture
   v / Alt-j / Alt-k
                   validate / next issue / previous issue
   u / <C-r>      undo / redo
-  z+ / z- / f    zoom in / zoom out / fit
+  . / , / f      zoom in / zoom out / fit
   t              cycle high / middle / none canvas detail
   zh zj zk zl    pan without entering PAN mode
   Alt-l / Alt-h / g0
@@ -340,23 +349,25 @@ user configuration can override them normally. See docs/display/appearance.md.
 ==============================================================================
 8. WINDOWS AND OUTLETS                              *roomplan-wall-features*
 
-Schema v3 adds windows as wall apertures and outlets as wall points. Press W
-or O, run :RoomPlanAddWindow or :RoomPlanAddOutlet, or press `a` then lowercase
-`w`/`o`. Select either object and use `e`, `m`, `y`, or `d` to edit, move along
-its assigned wall, duplicate, or delete it.
+Schema v4 adds windows as wall apertures and outlets as wall or floor points.
+Press W or O, run :RoomPlanAddWindow or :RoomPlanAddOutlet, or press `a` then
+lowercase `w`/`o`. Select either object and use `e`, `m`, `y`, or `d` to edit,
+move, duplicate, or delete it.
 
-Both types reference an owner room, footprint part, side, and integer-mm
+Wall features reference an owner room, footprint part, side, and integer-mm
 offset. North/south offsets start at the west end; east/west offsets start at
-the south end. Internal part seams are not attachable walls.
+the south end. Internal part seams are not attachable walls. Floor outlets
+instead store a strictly interior room-local point and move with their room.
 
 A window also stores width and connects either to outside (JSON null) or to a
 room whose opposite wall covers the whole aperture. A valid window cuts its
 owner wall; only a verified connection cuts the matching connected wall.
 Invalid aperture geometry never cuts a wall. Windows have no swing.
 
-An outlet never cuts its wall. Types are power, usb, ethernet, coax, phone,
-and other; slots must be 1 through 32. Its point must be strictly inside the
-exterior edge because corners and part endpoints are ambiguous.
+An outlet never cuts a wall. Types are power, usb, ethernet, coax, phone, and
+other; slots must be 1 through 32. Wall outlets use inward-facing half circles
+and must be strictly inside an exterior edge because corners are ambiguous.
+Floor outlets use full circles and must be strictly inside their owner room.
 
 The top-down model does not yet store window sill/head/opening height or outlet
 mounting height. See docs/planning/windows-and-outlets.md.
@@ -441,11 +452,11 @@ Structural schema failures cannot be saved. Layout-invalid drafts may be
 reviewed in Issues, repaired, or explicitly saved with !. That escape hatch is
 not a claim that the layout is safe or physically constructible.
 
-The current schema is schema/roomplan-v3.schema.json; v1 and v2 remain readable
+The current schema is schema/roomplan-v4.schema.json; v1, v2, and v3 remain readable
 through sequential migrations. Geometry uses integer millimetres and exact
 doubled-millimetre arithmetic where centred odd-sized objects create half-
 millimetre edges. Loading or normalizing an older plan never rewrites its
-source, and autosave pauses until the first explicit schema-v3 save.
+source, and autosave pauses until the first explicit schema-v4 save.
 
 ==============================================================================
 12. LUA API                                                   *roomplan-api*
@@ -498,7 +509,8 @@ changing the installed package/generation.
 
 If the canvas looks stretched, run :RoomPlanAspect; this never requires a Nix
 or system rebuild. If a plan is not visible, press `f`. If an action is not in
-the compact footer, press `?` to see the complete contextual palette.
+the compact footer, press `?` to see the complete contextual action window and
+`/` to search it.
 
 For detailed diagnosis see docs/reference/troubleshooting.md.
 

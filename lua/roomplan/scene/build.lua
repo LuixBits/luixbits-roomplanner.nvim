@@ -19,6 +19,8 @@ M.layers = {
   outlet = 62,
   label = 70,
   diagnostic = 80,
+  guide = 85,
+  snap_overlap = 88,
   selection = 90,
 }
 
@@ -450,6 +452,9 @@ function M.build(model, validation, opts)
       bbox_rect(scene.bounds, bounds.left, bounds.bottom, bounds.right, bounds.top)
       local rectangles = room.footprint ~= nil and shape_rectangles(shape) or { bounds }
       for part_index, rectangle in ipairs(rectangles) do
+        local shape_selected = opts.shape_edit
+          and opts.shape_edit.room_id == room.id
+          and opts.shape_edit.selected_part_id == rectangle.part_id
         add_primitive(scene, {
           kind = "room_interior",
           layer = M.layers.room_interior,
@@ -460,6 +465,7 @@ function M.build(model, validation, opts)
           part_id = rectangle.part_id,
           part_index = room.footprint ~= nil and part_index or nil,
           ref = ref,
+          role = shape_selected and "selected" or nil,
         }, roles)
       end
       if show_labels then
@@ -682,6 +688,8 @@ function M.build(model, validation, opts)
         x = marker.p[1],
         y = marker.p[2],
         orientation = marker.orientation,
+        placement = marker.placement,
+        side = marker.side,
         ref = ref,
       }, roles)
       if show_labels then
@@ -694,6 +702,46 @@ function M.build(model, validation, opts)
         object_id = marker.id,
         message = marker.reason or "Outlet marker cannot be rendered safely",
       }
+    end
+  end
+
+  local snap_guides = opts.snap_guides or (opts.shape_edit and opts.shape_edit.snap_guides) or {}
+  if not scene.bounds.empty then
+    for index, guide in ipairs(snap_guides) do
+      local primitive = {
+        kind = "snap_guide",
+        layer = M.layers.guide,
+        role = "snap",
+        order = index,
+        target_label = guide.target_label,
+      }
+      if guide.axis == "x" then
+        local padding = math.max(1, (scene.bounds.top - scene.bounds.bottom) * 0.08)
+        primitive.x1, primitive.y1 = guide.value_mm, scene.bounds.bottom - padding
+        primitive.x2, primitive.y2 = guide.value_mm, scene.bounds.top + padding
+      elseif guide.axis == "y" then
+        local padding = math.max(1, (scene.bounds.right - scene.bounds.left) * 0.08)
+        primitive.x1, primitive.y1 = scene.bounds.left - padding, guide.value_mm
+        primitive.x2, primitive.y2 = scene.bounds.right + padding, guide.value_mm
+      end
+      if primitive.x1 then add_primitive(scene, primitive, roles) end
+      if guide.overlap_start_mm and guide.overlap_finish_mm then
+        local overlap = {
+          kind = "snap_overlap",
+          layer = M.layers.snap_overlap,
+          role = "snap_overlap",
+          order = index,
+          target_label = guide.target_label,
+        }
+        if guide.axis == "x" then
+          overlap.x1, overlap.y1 = guide.value_mm, guide.overlap_start_mm
+          overlap.x2, overlap.y2 = guide.value_mm, guide.overlap_finish_mm
+        else
+          overlap.x1, overlap.y1 = guide.overlap_start_mm, guide.value_mm
+          overlap.x2, overlap.y2 = guide.overlap_finish_mm, guide.value_mm
+        end
+        add_primitive(scene, overlap, roles)
+      end
     end
   end
 
