@@ -3,6 +3,18 @@
 RoomPlan uses semantic highlights and one-cell glyph sets, so it follows the
 active colorscheme without depending on a UI framework.
 
+## Plan colors
+
+Room and furniture forms include a Color choice. Press `Enter` on that field
+to use the configured `vim.ui.select` provider, or use `h` / `l` to cycle the
+built-in palette. `Theme default` inherits the active colorscheme.
+
+Selected palette colors are saved as canonical `#RRGGBB` values and appear as
+foreground accents on room labels and furniture outlines and labels. Selection,
+error, and warning highlights always take priority, so plan colors cannot hide
+diagnostics. The palette is intentionally small and dependency-free; arbitrary
+hex input and recently used colors remain future UX work.
+
 ## Glyph modes
 
 Set `canvas.unicode` to `"auto"` (default), `"unicode"`, or `"ascii"`.

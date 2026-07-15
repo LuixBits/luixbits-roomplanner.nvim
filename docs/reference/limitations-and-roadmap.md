@@ -31,11 +31,33 @@ support them coherently.
 
 ## Direction of future work
 
-Likely extensions should arrive end-to-end: schema and migration, pure model
-and geometry, validation, scene/raster representation, structured forms,
-fixtures, and recovery documentation. Candidates include additional opening
-types, non-rectangular geometry, multiple floors, richer annotations, and a
-stable tagged LuaRock release.
+Likely extensions should arrive end-to-end: schema and migration when needed,
+pure model and geometry, validation, scene/raster representation, structured
+forms, fixtures, and recovery documentation.
+
+The current implementation sequence is deliberately incremental:
+
+1. palette-based room and furniture colors, with validation colors retaining
+   visual priority (implemented);
+2. wall and floor outlets with fast repeated placement;
+3. a transient companion cat that uses canvas navigation and diagnostics but
+   is never saved in the plan or undo history;
+4. wall-anchored windows;
+5. an approximate sunlight preview based on plan north, location, date, time,
+   and windows.
+
+Related UX candidates are layer toggles, recent furniture and colors,
+duplicate-and-place-again actions, live placement previews, diagnostic object
+focus, and clearance overlays. Longer-term candidates already on the roadmap
+remain additional opening types, non-rectangular geometry, multiple floors,
+richer annotations, and a stable tagged LuaRock release.
+
+Sunlight work should begin with direction, elevation, and exposed walls. Indoor
+ray previews depend on windows and remain explicitly approximate in a 2D plan.
+The companion is view-only, pauses with the workspace, avoids spatial errors,
+patrols outside warning regions, and may be sent away temporarily. Electrical
+objects should start as a narrow outlet model rather than a speculative generic
+fixture framework.
 
 No candidate is a compatibility promise. The source of truth for shipped work
 is the current documentation and tests; planned work belongs in the project

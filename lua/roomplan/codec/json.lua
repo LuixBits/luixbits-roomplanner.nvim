@@ -657,9 +657,9 @@ local ORDER_BY_PATH = {
   ["$"] = { "format", "schema_version", "units", "metadata", "settings", "rooms", "doors", "furniture", "custom_templates", "extensions" },
   ["$.metadata"] = { "name", "notes" },
   ["$.settings"] = { "grid_mm", "fine_step_mm", "normal_step_mm", "coarse_step_mm", "default_door_width_mm" },
-  ["$.rooms[]"] = { "id", "name", "origin_mm", "size_mm" },
+  ["$.rooms[]"] = { "id", "name", "origin_mm", "size_mm", "color" },
   ["$.doors[]"] = { "id", "kind", "room_id", "connects_to_room_id", "side", "offset_mm", "width_mm", "hinge", "opens_into", "open_angle_deg" },
-  ["$.furniture[]"] = { "id", "room_id", "template_id", "name", "category", "center_mm", "size_mm", "rotation_deg" },
+  ["$.furniture[]"] = { "id", "room_id", "template_id", "name", "category", "center_mm", "size_mm", "rotation_deg", "color" },
   ["$.custom_templates[]"] = { "id", "name", "category", "shape", "default_size_mm" },
 }
 

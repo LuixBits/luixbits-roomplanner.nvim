@@ -116,27 +116,31 @@ describe("structured forms", function()
     local forms = require("roomplan.ui.forms")
 
     local room_spec = forms.room.add(session, {
-      name = "Office", width_mm = 2500, depth_mm = 2000, placement = "origin", force = true,
+      name = "Office", color = "#98C379", width_mm = 2500, depth_mm = 2000, placement = "origin", force = true,
     })
     h.eq("ROOM CREATE", room_spec.mode)
+    h.eq("roomplan_color", room_spec.fields[2].kind)
     local room_state, room_valid = form_state.validate_all(form_state.new(room_spec, room_spec.context))
     h.truthy(room_valid, vim.inspect(room_state.errors))
     local room_action = h.truthy(room_spec.build(room_state.draft, room_spec.context))
     h.eq("add_room", room_action.type)
     h.eq("room-office", room_action.room.id)
+    h.eq("#98C379", room_action.room.color)
     h.eq({ 2500, 2000 }, room_action.room.size_mm)
     h.eq(true, room_action.force)
 
     local furniture_spec = forms.furniture.add(session, {
-      room_id = "room-living", template_id = "builtin:sofa", placement = "centre",
+      room_id = "room-living", template_id = "builtin:sofa", placement = "centre", color = "#C678DD",
     })
     h.eq("FURNITURE CREATE", furniture_spec.mode)
+    h.eq("roomplan_color", furniture_spec.fields[4].kind)
     local furniture_state, furniture_valid = form_state.validate_all(form_state.new(furniture_spec, furniture_spec.context))
     h.truthy(furniture_valid, vim.inspect(furniture_state.errors))
     local furniture_action = h.truthy(furniture_spec.build(furniture_state.draft, furniture_spec.context))
     h.eq("add_furniture", furniture_action.type)
     h.eq({ 2500, 2000 }, furniture_action.furniture.center_mm)
     h.eq("builtin:sofa", furniture_action.furniture.template_id)
+    h.eq("#C678DD", furniture_action.furniture.color)
 
     local door_spec = forms.door.add(session, {
       room_id = "room-living", side = "east", width_mm = 900,
@@ -186,9 +190,11 @@ describe("structured forms", function()
     h.truthy(room_valid, vim.inspect(room_state.errors))
     room_state = form_state.reduce(room_state, { type = "set_raw", key = "name", value = "Living room" })
     room_state = form_state.reduce(room_state, { type = "set_raw", key = "width_mm", value = "5.2m" })
+    room_state = form_state.reduce(room_state, { type = "set_value", key = "color", value = "#56B6C2" })
     local room_action = h.truthy(room_spec.build(room_state.draft, room_spec.context))
     h.eq("edit_room", room_action.type)
     h.eq("Living room", room_action.patch.name)
+    h.eq("#56B6C2", room_action.patch.color)
     h.eq({ 5200, 4000 }, room_action.patch.size_mm)
 
     local furniture_spec = forms.furniture.edit(session, plan.furniture[1])
@@ -196,11 +202,13 @@ describe("structured forms", function()
     local furniture_state, furniture_valid = form_state.validate_all(form_state.new(furniture_spec, furniture_spec.context))
     h.truthy(furniture_valid, vim.inspect(furniture_state.errors))
     furniture_state = form_state.reduce(furniture_state, { type = "set_value", key = "template_id", value = "builtin:desk" })
+    furniture_state = form_state.reduce(furniture_state, { type = "set_value", key = "color", value = "#E06C75" })
     -- Changing template metadata must retain explicit dimensions while editing.
     h.eq(2100, furniture_state.draft.width_mm)
     local furniture_action = h.truthy(furniture_spec.build(furniture_state.draft, furniture_spec.context))
     h.eq("edit_furniture", furniture_action.type)
     h.eq("builtin:desk", furniture_action.patch.template_id)
+    h.eq("#E06C75", furniture_action.patch.color)
     h.eq({ 2100, 900, 850 }, furniture_action.patch.size_mm)
 
     local door_spec = forms.door.edit(session, plan.doors[1])
@@ -257,10 +265,11 @@ describe("structured forms", function()
     h.eq("Open RoomPlan form actions", help_mapping.desc)
 
     local original_input = vim.ui.input
-    local pending
-    vim.ui.input = function(_, callback) pending = callback end
+    local pending, input_options
+    vim.ui.input = function(opts, callback) input_options, pending = opts, callback end
     h.truthy(form.activate(handle, "name"))
     h.truthy(form.edit(handle))
+    h.eq("window", input_options.scope)
     h.truthy(form.move(handle, 1))
     pending("Anchored name")
     vim.ui.input = original_input
@@ -270,12 +279,13 @@ describe("structured forms", function()
     h.eq("name", handle.state.active_key)
 
     local original_select = vim.ui.select
-    local pending_select, pending_choices
-    vim.ui.select = function(items, _, callback)
-      pending_choices, pending_select = items, callback
+    local pending_select, pending_choices, select_options
+    vim.ui.select = function(items, opts, callback)
+      pending_choices, select_options, pending_select = items, opts, callback
     end
     h.truthy(form.activate(handle, "choice"))
     h.truthy(form.edit(handle))
+    h.eq("roomplan_form_choice", select_options.kind)
     h.truthy(form.move(handle, 1))
     pending_select(pending_choices[2])
     vim.ui.select = original_select

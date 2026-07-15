@@ -293,6 +293,7 @@ function M.edit(handle)
     local choices = fields.choices(field, handle.state.context, handle.state.draft, handle.state)
     vim.ui.select(choices, {
       prompt = field.prompt or (field.label or key) .. ":",
+      kind = field.kind or "roomplan_form_choice",
       format_item = function(item)
         local suffix = item.description and (" — " .. item.description) or ""
         return item.label .. suffix
@@ -311,6 +312,7 @@ function M.edit(handle)
   vim.ui.input({
     prompt = field.prompt or (field.label or key) .. ": ",
     default = fields.input_default(field, value, handle.state.context, handle.state.draft, handle.state),
+    scope = "window",
   }, function(raw)
     if not anchored() or raw == nil then return end
     local current = guarded(handle)
