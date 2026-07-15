@@ -149,4 +149,39 @@ describe("window and outlet forms", function()
     h.falsy(seam_valid)
     h.matches("internal footprint seam", seam_state.errors.side)
   end)
+
+  it("creates, validates, and edits room-local floor outlets", function()
+    local session, plan = fixture()
+    local outlets = require("roomplan.ui.forms.outlet")
+    local spec = outlets.add(session, {
+      room_id = "room-living",
+      placement = "floor",
+      floor_positioning = "cursor",
+      cursor_mm = { 1500, 1500 },
+      outlet_type = "power",
+      slots = 1,
+    })
+    local checked, valid = form_state.validate_all(form_state.new(spec, spec.context))
+    h.truthy(valid, vim.inspect(checked.errors))
+    local action = h.truthy(spec.build(checked.draft, spec.context))
+    h.eq("floor", action.outlet.placement)
+    h.eq({ 1500, 1500 }, action.outlet.position_mm)
+    h.eq(nil, action.outlet.side)
+
+    plan.outlets[1] = action.outlet
+    local edit = outlets.edit(session, plan.outlets[1])
+    local edit_state, edit_valid = form_state.validate_all(form_state.new(edit, edit.context))
+    h.truthy(edit_valid, vim.inspect(edit_state.errors))
+    local edit_action = h.truthy(edit.build(edit_state.draft, edit.context))
+    h.eq("floor", edit_action.patch.placement)
+    h.eq({ 1500, 1500 }, edit_action.patch.position_mm)
+
+    local outside = outlets.add(session, {
+      room_id = "room-living", placement = "floor", floor_positioning = "exact",
+      local_x_mm = 7000, local_y_mm = 1000,
+    })
+    local outside_state, outside_valid = form_state.validate_all(form_state.new(outside, outside.context))
+    h.falsy(outside_valid)
+    h.matches("inside", outside_state.errors.local_x_mm)
+  end)
 end)

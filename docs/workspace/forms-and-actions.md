@@ -29,12 +29,14 @@ refuses to apply rather than overwriting newer state.
 
 The one-line action bar changes with focus, selection, and mode. It hides
 irrelevant or unmapped actions to remain compact. `?` opens the full grouped
-palette and explains why actions such as Align or Rotate are unavailable.
+action window and explains why actions such as Align or Rotate are unavailable.
+Press `/` in that window to search labels, descriptions, groups, IDs, and keys;
+submit an empty search to restore the complete list.
 `:RoomPlan` opens the same context-aware action surface for the active session.
 
 Common actions are `a` (Add), `e` (Edit), `m` (Move), `A` (Align), `r`
-(rotate furniture), `y` (Duplicate), and `d` (Delete). `D`, `W`, `O`, and `F`
-open Door, Window, Outlet, and Furniture directly; the `a` palette uses
+(resize a room or rotate furniture), `y` (Duplicate), and `d` (Delete). `D`, `W`, `O`, and `F`
+open Door, Window, Outlet, and Furniture directly; the `a` Add menu uses
 lowercase `d`, `w`, `o`, and `f`. Deleting a room summarizes and confirms its
 cascading doors, windows, outlets, and furniture when deletion confirmation is
 enabled.

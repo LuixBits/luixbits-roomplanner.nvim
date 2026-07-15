@@ -803,21 +803,34 @@ local function layout_diagnostics(model, options)
     local outlet = model.outlets[i]
     local owner = indexes.rooms[outlet.room_id]
     if owner then
-      local marker, marker_error = wall_attachment.marker(owner, outlet)
-      if not marker then
-        append(result, diagnostic("OUTLET_EDGE_INVALID", "error", "outlet", outlet.id,
-          outlet.id .. " references an unavailable owner-room edge",
-          { object_ref("room", owner.id) }, { cause = marker_error }))
-      elseif not marker.within_edge then
-        append(result, diagnostic("OUTLET_OUTSIDE_EDGE", "error", "outlet", outlet.id,
-          outlet.id .. " must lie strictly inside its owning wall edge, away from corners",
-          { object_ref("room", owner.id) },
-          { edge_start_mm = marker.edge_start_mm, edge_finish_mm = marker.edge_finish_mm,
-            marker_mm = marker.scalar_mm }))
-      elseif not marker.on_exterior then
-        append(result, diagnostic("OUTLET_NOT_EXTERIOR", "error", "outlet", outlet.id,
-          outlet.id .. " lies on an internal footprint seam",
-          { object_ref("room", owner.id) }, { part_id = outlet.part_id, side = outlet.side }))
+      if outlet.placement == "floor" then
+        local marker, marker_error = wall_attachment.floor_marker(owner, outlet)
+        if not marker then
+          append(result, diagnostic("OUTLET_FLOOR_INVALID", "error", "outlet", outlet.id,
+            outlet.id .. " has an unavailable floor position",
+            { object_ref("room", owner.id) }, { cause = marker_error }))
+        elseif not marker.within_room then
+          append(result, diagnostic("OUTLET_OUTSIDE_ROOM", "error", "outlet", outlet.id,
+            outlet.id .. " must lie strictly inside its owner room",
+            { object_ref("room", owner.id) }, { position_mm = outlet.position_mm }))
+        end
+      else
+        local marker, marker_error = wall_attachment.marker(owner, outlet)
+        if not marker then
+          append(result, diagnostic("OUTLET_EDGE_INVALID", "error", "outlet", outlet.id,
+            outlet.id .. " references an unavailable owner-room edge",
+            { object_ref("room", owner.id) }, { cause = marker_error }))
+        elseif not marker.within_edge then
+          append(result, diagnostic("OUTLET_OUTSIDE_EDGE", "error", "outlet", outlet.id,
+            outlet.id .. " must lie strictly inside its owning wall edge, away from corners",
+            { object_ref("room", owner.id) },
+            { edge_start_mm = marker.edge_start_mm, edge_finish_mm = marker.edge_finish_mm,
+              marker_mm = marker.scalar_mm }))
+        elseif not marker.on_exterior then
+          append(result, diagnostic("OUTLET_NOT_EXTERIOR", "error", "outlet", outlet.id,
+            outlet.id .. " lies on an internal footprint seam",
+            { object_ref("room", owner.id) }, { part_id = outlet.part_id, side = outlet.side }))
+        end
       end
     end
   end

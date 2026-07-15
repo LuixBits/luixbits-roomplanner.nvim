@@ -4,6 +4,27 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Added schema v4 wall/floor outlet placement with a sequential v3-to-v4
+  migration. Wall outlets render as half circles pointing into their room;
+  floor outlets use full circles and validated room-local positions. The `?`
+  action window is searchable with `/`, while the compact Add menu remains
+  direct. Zoom now uses adjacent unshifted `,` and `.` keys.
+- Kept room size editing in the ordinary `e` form without exposing internal
+  part coordinates. A responsive side preview stays out of narrow layouts,
+  while `r` starts direct canvas resizing that can select, add, resize, and
+  remove valid room sections before committing the whole shape as one undo
+  step. Ordinary `m` movement continues to move the room and its furniture
+  together and now shows the same snap feedback. Persistent section status,
+  named alignment guides, and a strongly highlighted overlap show exactly
+  where edges snap; moving away releases the target without trapping fine
+  steps. A section now resizes from the west/east or south/north edge chosen by
+  the first direction key instead of always anchoring its origin. Normal and
+  coarse movement use configured-step multiples large enough to cross one
+  visible cell, preventing partial border/label movement at distant zoom;
+  fine movement remains exact and the current distance is shown in MOVE status.
+  Snap guides now extend just beyond their target wall so north/south support
+  lines remain visible as clearly as east/west ones. `s` applies an active
+  resize and saves the plan.
 - Activated schema v3 with first-class wall windows and typed 1–32-slot
   outlets, sequential v1/v2 migration, wall-aware forms/actions/validation,
   canvas representation, direct `W`/`O` keys, and Add-palette `w`/`o` choices.
@@ -18,8 +39,8 @@ All notable changes to `roomplan.nvim` will be documented here.
 - Activated schema v2 with connected rectangular-union footprints for compound
   rooms, furniture, and project templates; added exact seam-free geometry,
   part-aware doors, migration fixtures, and safe compound rendering/actions.
-- Schema-v1/v2 JSON and Norg plans now migrate in memory without changing
-  source bytes; the first schema-v3 rewrite requires an explicit save and
+- Schema-v1/v2/v3 JSON and Norg plans now migrate in memory without changing
+  source bytes; the first schema-v4 rewrite requires an explicit save and
   remains protected from autosave and reconciliation shortcuts.
 - Initial strict schema-v1 model, JSON codec, metric parser, semantic actions,
   bounded history, geometry, snapping, door swing calculations, and validation.

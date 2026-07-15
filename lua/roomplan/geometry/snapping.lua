@@ -30,8 +30,12 @@ local function priority_map(value)
   return value
 end
 
-function M.feature(axis, value2, kind, id, name)
-  return { axis = axis, value2 = value2, kind = kind or "grid", id = id or "", name = name or "" }
+function M.feature(axis, value2, kind, id, name, span)
+  local result = { axis = axis, value2 = value2, kind = kind or "grid", id = id or "", name = name or "" }
+  if type(span) == "table" then
+    result.start2, result.finish2 = span.start2 or span[1], span.finish2 or span[2]
+  end
+  return result
 end
 
 local function normalized_feature(feature)
@@ -41,7 +45,16 @@ local function normalized_feature(feature)
     kind = feature.kind or "grid",
     id = feature.id or "",
     name = feature.name or "",
+    start2 = feature.start2,
+    finish2 = feature.finish2,
   }
+end
+
+local function spans_overlap(left, right)
+  if left.start2 == nil or left.finish2 == nil or right.start2 == nil or right.finish2 == nil then
+    return true
+  end
+  return math.max(left.start2, right.start2) < math.min(left.finish2, right.finish2)
 end
 
 local function candidate_less(a, b)
@@ -66,7 +79,9 @@ function M.choose_axis(moving_features, target_features, tolerance_mm, options)
     local moving = normalized_feature(moving_features[i])
     for j = 1, #(target_features or {}) do
       local target = normalized_feature(target_features[j])
-      if not options.axis or (moving.axis == options.axis and target.axis == options.axis) then
+      if (not options.axis or (moving.axis == options.axis and target.axis == options.axis))
+        and (not options.require_overlap or spans_overlap(moving, target))
+      then
         local delta2 = target.value2 - moving.value2
         if math.abs(delta2) <= tolerance_mm * 2 then
           candidates[#candidates + 1] = {
@@ -85,6 +100,112 @@ function M.choose_axis(moving_features, target_features, tolerance_mm, options)
   return candidates[1], candidates
 end
 
+local function axis_tolerance(tolerance, axis)
+  if type(tolerance) ~= "table" then return tolerance or 0 end
+  return axis == "x" and (tolerance.x or tolerance[1] or 0)
+    or (tolerance.y or tolerance[2] or 0)
+end
+
+local function active_exclusions(exclusions, moving_x, moving_y, tolerance)
+  local features = { x = moving_x or {}, y = moving_y or {} }
+  local result = {}
+  for _, exclusion in ipairs(exclusions or {}) do
+    local maximum = axis_tolerance(tolerance, exclusion.axis) * 2
+    for _, raw in ipairs(features[exclusion.axis] or {}) do
+      local moving = normalized_feature(raw)
+      if moving.id == exclusion.moving_id and moving.name == exclusion.moving_name
+        and math.abs(moving.value2 - exclusion.value2) <= maximum
+      then
+        result[#result + 1] = exclusion
+        break
+      end
+    end
+  end
+  return result
+end
+
+local function released_axis(exclusions, axis)
+  for _, exclusion in ipairs(exclusions or {}) do
+    if exclusion.axis == axis then return true end
+  end
+  return false
+end
+
+---Keep an axis released while its previously snapped edge remains inside the
+---snap tolerance. This lets fine-step movement escape without snapping back
+---to the old target or sideways to a nearby grid line.
+function M.release_targets(exclusions, guides, axes)
+  local result = {}
+  for _, exclusion in ipairs(exclusions or {}) do result[#result + 1] = exclusion end
+  for _, guide in ipairs(guides or {}) do
+    if not axes or axes[guide.axis] then
+      local next_exclusion = {
+        axis = guide.axis,
+        value2 = guide.value2 or (guide.value_mm and 2 * guide.value_mm),
+        moving_id = guide.moving_id,
+        moving_name = guide.moving_label,
+      }
+      local replaced = false
+      for index, exclusion in ipairs(result) do
+        if exclusion.axis == next_exclusion.axis
+          and exclusion.moving_id == next_exclusion.moving_id
+          and exclusion.moving_name == next_exclusion.moving_name
+        then
+          result[index] = next_exclusion
+          replaced = true
+          break
+        end
+      end
+      if not replaced then result[#result + 1] = next_exclusion end
+    end
+  end
+  return result
+end
+
+function M.guide(candidate)
+  if not candidate then return nil end
+  local result = {
+    axis = candidate.target.axis,
+    value2 = candidate.target.value2,
+    value_mm = candidate.target.value2 / 2,
+    target_kind = candidate.target.kind,
+    target_id = candidate.target.id,
+    target_label = candidate.target.name,
+    moving_id = candidate.moving.id,
+    moving_label = candidate.moving.name,
+    delta_mm = candidate.delta_mm,
+  }
+  if candidate.moving.start2 ~= nil and candidate.target.start2 ~= nil then
+    local start2 = math.max(candidate.moving.start2, candidate.target.start2)
+    local finish2 = math.min(candidate.moving.finish2, candidate.target.finish2)
+    if start2 < finish2 then
+      result.overlap_start_mm = start2 / 2
+      result.overlap_finish_mm = finish2 / 2
+    end
+  end
+  return result
+end
+
+function M.guides(resolved)
+  local result = {}
+  -- Do not iterate `{ resolved.x, resolved.y }` with ipairs: a Y-only snap
+  -- leaves index 1 nil, which ends the iteration before the Y guide.
+  for _, axis in ipairs({ "x", "y" }) do
+    local candidate = resolved and resolved[axis]
+    local value = M.guide(candidate)
+    if value then result[#result + 1] = value end
+  end
+  return result
+end
+
+function M.summary(guides)
+  local labels = {}
+  for _, guide in ipairs(guides or {}) do
+    labels[#labels + 1] = string.format("%s → %s", guide.axis:upper(), guide.target_label)
+  end
+  return #labels > 0 and table.concat(labels, " · ") or nil
+end
+
 -- Resolve independent X/Y corrections. Features use exact doubled-mm values,
 -- allowing odd-width furniture edges and centres without floating drift.
 function M.resolve(parameters)
@@ -99,14 +220,21 @@ function M.resolve(parameters)
   local tolerance_x = type(tolerance) == "table" and (tolerance.x or tolerance[1]) or tolerance
   local tolerance_y = type(tolerance) == "table" and (tolerance.y or tolerance[2]) or tolerance
   local scale = parameters.mm_per_screen_unit or {}
-  local xbest = M.choose_axis(parameters.moving_x, parameters.target_x, tolerance_x, {
-    axis = "x", priority = parameters.priority,
-    mm_per_screen_unit = type(scale) == "table" and (scale.x or scale[1] or 1) or scale,
-  })
-  local ybest = M.choose_axis(parameters.moving_y, parameters.target_y, tolerance_y, {
-    axis = "y", priority = parameters.priority,
-    mm_per_screen_unit = type(scale) == "table" and (scale.y or scale[2] or 1) or scale,
-  })
+  local exclusions = active_exclusions(
+    parameters.exclude_targets, parameters.moving_x, parameters.moving_y, tolerance
+  )
+  local xbest = not released_axis(exclusions, "x") and M.choose_axis(
+    parameters.moving_x, parameters.target_x, tolerance_x, {
+      axis = "x", priority = parameters.priority,
+      mm_per_screen_unit = type(scale) == "table" and (scale.x or scale[1] or 1) or scale,
+      require_overlap = parameters.require_overlap,
+    }) or nil
+  local ybest = not released_axis(exclusions, "y") and M.choose_axis(
+    parameters.moving_y, parameters.target_y, tolerance_y, {
+      axis = "y", priority = parameters.priority,
+      mm_per_screen_unit = type(scale) == "table" and (scale.y or scale[2] or 1) or scale,
+      require_overlap = parameters.require_overlap,
+    }) or nil
   local dx2 = xbest and xbest.delta2 or 0
   local dy2 = ybest and ybest.delta2 or 0
   local dx, rx = number.from_doubled(dx2)
@@ -119,6 +247,7 @@ function M.resolve(parameters)
     x = xbest,
     y = ybest,
     candidates = { x = xbest, y = ybest },
+    snap_exclusions = exclusions,
   }
 end
 
@@ -134,16 +263,17 @@ local function room_features(room)
   local bounds, bounds_error = footprint.bounds2(shape)
   if not bounds then return nil, bounds_error end
   local id = room.id or ""
+  local label = tostring(room.name or id)
   return {
     x = {
-      M.feature("x", bounds.left2, "room_edge", id, "west"),
-      M.feature("x", bounds.right2, "room_edge", id, "east"),
-      M.feature("x", bounds.center_x2, "room_center", id, "center-x"),
+      M.feature("x", bounds.left2, "room_edge", id, label .. " west wall", { bounds.bottom2, bounds.top2 }),
+      M.feature("x", bounds.right2, "room_edge", id, label .. " east wall", { bounds.bottom2, bounds.top2 }),
+      M.feature("x", bounds.center_x2, "room_center", id, label .. " horizontal centre"),
     },
     y = {
-      M.feature("y", bounds.bottom2, "room_edge", id, "south"),
-      M.feature("y", bounds.top2, "room_edge", id, "north"),
-      M.feature("y", bounds.center_y2, "room_center", id, "center-y"),
+      M.feature("y", bounds.bottom2, "room_edge", id, label .. " south wall", { bounds.left2, bounds.right2 }),
+      M.feature("y", bounds.top2, "room_edge", id, label .. " north wall", { bounds.left2, bounds.right2 }),
+      M.feature("y", bounds.center_y2, "room_center", id, label .. " vertical centre"),
     },
   }
 end
@@ -186,6 +316,7 @@ function M.snap_room(proposed_room, other_rooms, options)
     moving_x = moving.x, moving_y = moving.y, target_x = tx, target_y = ty,
     tolerance_mm = options.tolerance_mm, mm_per_screen_unit = options.mm_per_screen_unit,
     priority = options.priority, bypass = options.bypass,
+    exclude_targets = options.exclude_targets,
   })
   result.origin_mm = {
     proposed_room.origin_mm[1] + result.delta_mm[1],
@@ -201,16 +332,17 @@ local function furniture_features(room, furniture)
   local bounds, bounds_error = footprint.bounds2(shape)
   if not bounds then return nil, bounds_error end
   local id = furniture.id or ""
+  local label = tostring(furniture.name or id)
   return {
     x = {
-      M.feature("x", bounds.left2, "furniture_edge", id, "west"),
-      M.feature("x", bounds.right2, "furniture_edge", id, "east"),
-      M.feature("x", bounds.center_x2, "furniture_center", id, "center-x"),
+      M.feature("x", bounds.left2, "furniture_edge", id, label .. " west edge", { bounds.bottom2, bounds.top2 }),
+      M.feature("x", bounds.right2, "furniture_edge", id, label .. " east edge", { bounds.bottom2, bounds.top2 }),
+      M.feature("x", bounds.center_x2, "furniture_center", id, label .. " horizontal centre"),
     },
     y = {
-      M.feature("y", bounds.bottom2, "furniture_edge", id, "south"),
-      M.feature("y", bounds.top2, "furniture_edge", id, "north"),
-      M.feature("y", bounds.center_y2, "furniture_center", id, "center-y"),
+      M.feature("y", bounds.bottom2, "furniture_edge", id, label .. " south edge", { bounds.left2, bounds.right2 }),
+      M.feature("y", bounds.top2, "furniture_edge", id, label .. " north edge", { bounds.left2, bounds.right2 }),
+      M.feature("y", bounds.center_y2, "furniture_center", id, label .. " vertical centre"),
     },
   }
 end
@@ -270,6 +402,7 @@ function M.snap_furniture(room, proposed, furniture_with_rooms, door_apertures, 
     moving_x = moving.x, moving_y = moving.y, target_x = tx, target_y = ty,
     tolerance_mm = options.tolerance_mm, mm_per_screen_unit = options.mm_per_screen_unit,
     priority = options.priority, bypass = options.bypass,
+    exclude_targets = options.exclude_targets,
   })
   result[position_field] = {
     position[1] + result.delta_mm[1],

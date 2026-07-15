@@ -256,8 +256,8 @@ describe("workspace UI", function()
     local room_actions = registry.contextual(room)
     assert_equal("edit", room_actions[1].id)
     assert_equal(true, registry.get("align", room).enabled)
-    assert_equal(false, registry.get("rotate", room).enabled)
-    assert_equal("Select furniture first", registry.get("rotate", room).reason)
+    assert_equal(true, registry.get("rotate", room).enabled)
+    assert_equal("Resize room", registry.get("rotate", room).label)
 
     local form = vim.tbl_extend("force", room, { mode = "ROOM_CREATE", form = { kind = "room" } })
     local form_actions = registry.contextual(form)
@@ -299,6 +299,30 @@ describe("workspace UI", function()
     assert_true(palette.choose(handle, handle.row_map[4]))
     assert_true(vim.wait(200, function() return chosen == "room" end, 10))
     assert_equal(false, vim.api.nvim_buf_is_valid(handle.bufnr))
+  end)
+
+  it("filters only explicitly searchable action windows", function()
+    local palette = require("roomplan.ui.palette")
+    local handle = assert(palette.open({
+      title = "RoomPlan actions",
+      searchable = true,
+      items = {
+        { key = "r", label = "Room", description = "Create geometry" },
+        { key = "d", label = "Door", description = "Add an opening" },
+      },
+    }))
+    assert_true(palette.filter(handle, "opening"))
+    local filtered = table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
+    assert_true(filtered:find("Door", 1, true) ~= nil)
+    assert_true(filtered:find("Create geometry", 1, true) == nil)
+    assert_true(palette.filter(handle, ""))
+    local restored = table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
+    assert_true(restored:find("Room", 1, true) ~= nil)
+    palette.close(handle, "test complete")
+
+    local compact = assert(palette.open({ items = { { label = "Room" } } }))
+    assert_equal(false, palette.filter(compact, "room"))
+    palette.close(compact, "test complete")
   end)
 
   it("renders stable pane rows and a width-bounded persistent action bar", function()

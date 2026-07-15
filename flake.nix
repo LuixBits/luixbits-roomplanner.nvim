@@ -32,7 +32,7 @@
           meta = {
             description = "Terminal-native flat planning for Neovim";
             homepage = "https://github.com/LuixBits/luixbits-roomplanner.nvim";
-            license = pkgs.lib.licenses.mit;
+            license = pkgs.lib.licenses.gpl3Only;
           };
         };
     in

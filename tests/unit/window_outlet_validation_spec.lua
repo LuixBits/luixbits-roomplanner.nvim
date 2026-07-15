@@ -160,6 +160,29 @@ describe("window and outlet validation", function()
     assert_true(codes(validate.run(compound)).OUTLET_NOT_EXTERIOR)
   end)
 
+  it("accepts interior floor outlets and rejects room boundaries and outside points", function()
+    local valid = plan_with_owner()
+    add(valid, "outlets", model.new_outlet({
+      id = "outlet-floor", room_id = "room-owner", placement = "floor",
+      position_mm = { 2000, 1500 }, outlet_type = "power", slots = 2,
+    }))
+    assert_equal(0, #validate.run(valid))
+
+    local boundary = plan_with_owner()
+    add(boundary, "outlets", model.new_outlet({
+      id = "outlet-boundary", room_id = "room-owner", placement = "floor",
+      position_mm = { 0, 1500 }, outlet_type = "power", slots = 2,
+    }))
+    assert_true(codes(validate.run(boundary)).OUTLET_OUTSIDE_ROOM)
+
+    local outside = plan_with_owner()
+    add(outside, "outlets", model.new_outlet({
+      id = "outlet-outside", room_id = "room-owner", placement = "floor",
+      position_mm = { 5000, 1500 }, outlet_type = "power", slots = 2,
+    }))
+    assert_true(codes(validate.run(outside)).OUTLET_OUTSIDE_ROOM)
+  end)
+
   it("keeps door overlap compatibility and detects every window opening overlap", function()
     local doors = plan_with_owner()
     add(doors, "doors", model.new_door({

@@ -164,10 +164,16 @@ function M.outlet(outlet, marker, ref, order)
     slots, slots == 1 and "" or "s")
   local x, y = marker.p[1], marker.p[2]
   local candidates
-  if marker.orientation == "horizontal" then
+  if marker.placement == "floor" then
+    candidates = { { x, y + 250 }, { x + 250, y }, { x, y - 250 }, { x - 250, y }, { x, y } }
+  elseif marker.side == "north" then
     candidates = { { x, y - 250 }, { x, y + 250 }, { x, y } }
-  else
+  elseif marker.side == "south" then
+    candidates = { { x, y + 250 }, { x, y - 250 }, { x, y } }
+  elseif marker.side == "east" then
     candidates = { { x - 250, y }, { x + 250, y }, { x, y } }
+  else
+    candidates = { { x + 250, y }, { x - 250, y }, { x, y } }
   end
   return label(text, x, y, {
     ref = ref,

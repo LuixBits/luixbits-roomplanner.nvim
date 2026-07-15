@@ -3,6 +3,7 @@ local config = require("roomplan.config")
 local model_helpers = require("roomplan.model")
 local room_footprints = require("roomplan.model.room_footprints")
 local common = require("roomplan.ui.forms.common")
+local room_sections = require("roomplan.ui.forms.room_sections")
 
 local M = {}
 
@@ -24,9 +25,7 @@ local function dependency_summary(context, room_id)
   local plan = common.model(context) or {}
   local door_count, furniture_count = 0, 0
   for _, door in ipairs(plan.doors or {}) do
-    if door.room_id == room_id or door.connects_to_room_id == room_id then
-      door_count = door_count + 1
-    end
+    if door.room_id == room_id or door.connects_to_room_id == room_id then door_count = door_count + 1 end
   end
   for _, furniture in ipairs(plan.furniture or {}) do
     if furniture.room_id == room_id then furniture_count = furniture_count + 1 end
@@ -265,13 +264,20 @@ function M.edit(session, room, opts)
   local preset = editable_preset(room, version)
   local can_edit_geometry = preset ~= nil
   local shape_label = preset and (preset.shape == "l_shape" and "L-shaped" or "Rectangle") or "Compound"
+  local section_initial = not preset and room_sections.initial(room) or {}
+  local function resolve_footprint(draft)
+    if can_edit_geometry then return room_footprints.build(draft) end
+    return room_sections.footprint(draft)
+  end
   local spec = {
     id = "edit-room",
     title = "Edit room",
     mode = "ROOM EDIT",
-    description = can_edit_geometry and "Room geometry and properties are applied as one undoable edit."
-      or "This form preserves compound geometry while editing the room name and origin.",
+    description = can_edit_geometry and "Edit the room as one undoable change."
+      or "Resize rectangular sections while their positions remain fixed.",
     apply_label = "Apply room changes",
+    preview_layout = "side",
+    preview_title = "Room preview",
     context = context,
     initial = {
       name = room.name,
@@ -283,6 +289,10 @@ function M.edit(session, room, opts)
       leg_width_mm = preset and preset.leg_width_mm or nil,
       leg_depth_mm = preset and preset.leg_depth_mm or nil,
       missing_corner = preset and preset.missing_corner or nil,
+      footprint = section_initial.footprint,
+      section_id = section_initial.section_id,
+      section_width_mm = section_initial.section_width_mm,
+      section_depth_mm = section_initial.section_depth_mm,
       force = opts.force == true,
     },
     fields = {
@@ -295,6 +305,9 @@ function M.edit(session, room, opts)
       if can_edit_geometry and version >= 2 then
         local _, err = room_footprints.build(draft)
         if err then return { [err.field or "_form"] = err.message or err.code } end
+      elseif not can_edit_geometry then
+        local err = room_sections.validate(draft)
+        if err then return { _form = err } end
       end
       return {}
     end,
@@ -311,44 +324,15 @@ function M.edit(session, room, opts)
       spec.fields[#spec.fields + 1] = missing_corner_field()
     end
   else
-    spec.fields[#spec.fields + 1] = {
-      key = "footprint", label = "Footprint", type = "readonly",
-      value = function() return string.format("%d parts (preserved)", #(room.footprint.parts or {})) end,
-    }
+    for _, field in ipairs(room_sections.fields(runtime, room)) do spec.fields[#spec.fields + 1] = field end
+    spec.on_change = room_sections.on_change
   end
   spec.fields[#spec.fields + 1] = {
     key = "attached", label = "Attached", type = "readonly",
     value = function(ctx) return dependency_summary(ctx, room.id) end,
   }
   spec.fields[#spec.fields + 1] = { key = "force", label = "Allow invalid draft", type = "toggle", default = false }
-  spec.fields[#spec.fields + 1] = {
-    key = "summary", label = "Result", type = "readonly",
-    value = function(_, draft)
-      if can_edit_geometry then
-        local geometry = draft.shape == "l_shape"
-            and string.format("L-shaped %d x %d mm; legs %d x %d mm",
-              draft.width_mm, draft.depth_mm, draft.leg_width_mm, draft.leg_depth_mm)
-          or string.format("%d x %d mm", draft.width_mm, draft.depth_mm)
-        return string.format("%s at (%d, %d), %s", draft.name, draft.origin_x_mm,
-          draft.origin_y_mm, geometry)
-      end
-      return string.format("%s at (%d, %d), compound footprint preserved", draft.name,
-        draft.origin_x_mm, draft.origin_y_mm)
-    end,
-  }
-  spec.preview = function(draft)
-    local geometry
-    if can_edit_geometry and draft.shape == "l_shape" then
-      geometry = string.format("L-shaped %d x %d mm; legs %d x %d mm; missing %s",
-        draft.width_mm, draft.depth_mm, draft.leg_width_mm, draft.leg_depth_mm, draft.missing_corner)
-    elseif can_edit_geometry then
-      geometry = string.format("rectangle %d x %d mm", draft.width_mm, draft.depth_mm)
-    else
-      geometry = string.format("%d-part footprint preserved", #(room.footprint.parts or {}))
-    end
-    return { lines = { string.format("Origin %s; %s",
-      common.point_text({ draft.origin_x_mm, draft.origin_y_mm }), geometry) } }
-  end
+  spec.preview = require("roomplan.ui.forms.room_preview").edit(resolve_footprint)
   function spec.build(draft, ctx)
     ctx = ctx or context
     if not common.find(ctx, "room", ctx.room_id) then
@@ -366,6 +350,8 @@ function M.edit(session, room, opts)
       else
         patch.size_mm = { draft.width_mm, draft.depth_mm }
       end
+    else
+      patch.footprint = room_sections.footprint(draft)
     end
     return {
       type = "edit_room",
@@ -376,7 +362,6 @@ function M.edit(session, room, opts)
   end
   return spec
 end
-
 M.new = M.add
 M.proposal = proposal
 

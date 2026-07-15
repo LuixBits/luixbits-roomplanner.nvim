@@ -632,6 +632,12 @@ function handlers.edit_outlet(model, action)
   if not outlet then return nil, failure("NOT_FOUND", "outlet was not found", { id = action.id }) end
   local _, err = copy_patch(outlet, action.patch, outlet.id)
   if err then return nil, err end
+  local placement = outlet.placement or "wall"
+  if placement == "floor" then
+    outlet.part_id, outlet.side, outlet.offset_mm = nil, nil, nil
+  else
+    outlet.position_mm = nil
+  end
   return { label = "Edit outlet " .. outlet.id, touched = { touched("outlet", outlet.id) } }
 end
 
@@ -645,8 +651,13 @@ function handlers.duplicate_outlet(model, action)
   end
   local clone = deep_copy(source)
   clone.id = action.new_id
-  clone.offset_mm = action.offset_mm
-    or (source.offset_mm + (model.settings and model.settings.normal_step_mm or 100))
+  local step = model.settings and model.settings.normal_step_mm or 100
+  if (source.placement or "wall") == "floor" then
+    clone.position_mm = action.position_mm and action_json_value(action.position_mm, "array")
+      or action_json_value({ source.position_mm[1] + step, source.position_mm[2] + step }, "array")
+  else
+    clone.offset_mm = action.offset_mm or (source.offset_mm + step)
+  end
   outlets[#outlets + 1] = clone
   return {
     label = "Duplicate outlet " .. source.id,

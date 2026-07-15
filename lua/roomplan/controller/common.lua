@@ -48,6 +48,27 @@ function M.ensure_viewport(session)
   return session.viewport
 end
 
+function M.snapping_options(session)
+  if not session.snap_enabled or session.bypass_snap_once then return false end
+  local options = util.deepcopy(config.get().snapping)
+  local viewport_module = require("roomplan.render.viewport")
+  local world_x_scale, world_y_scale = viewport_module.world_axis_scales(M.ensure_viewport(session))
+  local cap = options.max_distance_mm
+  options.tolerance_mm = {
+    x = math.min(cap, options.tolerance_cells * world_x_scale),
+    y = math.min(cap, options.tolerance_cells * world_y_scale),
+  }
+  options.mm_per_screen_unit = { x = world_x_scale, y = world_y_scale }
+  options.grid_mm = session:model().settings.grid_mm
+  options.exclude_targets = util.deepcopy(session.snap_exclusions or {})
+  return options
+end
+
+function M.clear_snap_feedback(session)
+  session.snap_guides = {}
+  session.snap_exclusions = {}
+end
+
 function M.open_canvas(controller, session)
   local ok, canvas = pcall(require, "roomplan.render.canvas")
   if not ok then

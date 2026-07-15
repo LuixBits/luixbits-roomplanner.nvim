@@ -51,6 +51,30 @@ describe("action registry", function()
     )
   end)
 
+  it("publishes direct room resize controls as one focused mode", function()
+    local ctx = context("canvas", { kind = "room", id = "room-1" })
+    ctx.mode = "RESIZE"
+    ctx.shape_section_index = 2
+    ctx.shape_section_count = 3
+    ctx.shape_edge = "west"
+    ctx.shape_snap = "X → Kitchen west wall"
+    assert_equal({
+      "shape_apply", "select", "shape_next", "add", "delete", "toggle_snap", "leave_mode", "help",
+    }, ids(registry.primary(ctx)))
+    assert_equal("Resize room", registry.get("rotate", context("canvas", { kind = "room", id = "room-1" })).label)
+    assert_equal("s", registry.get("shape_apply", ctx).key_label)
+    assert_true(registry.mode_label(ctx):find("RESIZE · section 2/3", 1, true) ~= nil)
+    assert_true(registry.mode_label(ctx):find("edge west", 1, true) ~= nil)
+    assert_true(registry.mode_label(ctx):find("Kitchen west wall", 1, true) ~= nil)
+  end)
+
+  it("includes the last visible movement in MOVE status", function()
+    local ctx = context("canvas", { kind = "room", id = "room-1" })
+    ctx.mode = "MOVE"
+    ctx.move_feedback = "up 200 mm"
+    assert_true(registry.mode_label(ctx):find("up 200 mm", 1, true) ~= nil)
+  end)
+
   it("returns a complete grouped action set with disabled reasons", function()
     local ctx = context("objects", { kind = "room", id = "room-1" })
     ctx.can_redo = false
@@ -76,6 +100,8 @@ describe("action registry", function()
       assert_true(present[id].primary == false)
     end
     assert_equal("zoom", present.zoom_in.handler)
+    assert_equal(".", present.zoom_in.key)
+    assert_equal(",", present.zoom_out.key)
     assert_equal("t", present.cycle_detail_level.key)
     assert_equal("set_detail_level", present.cycle_detail_level.handler)
     assert_equal("cycle", present.cycle_detail_level.args[1])

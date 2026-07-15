@@ -297,6 +297,24 @@ describe("structured forms", function()
     h.eq("test cancel", cancelled)
   end)
 
+  it("shows side previews only when they fit", function()
+    local session, plan = plan_session()
+    local spec = require("roomplan.ui.forms").room.edit(session, plan.rooms[1])
+    local original_columns = vim.o.columns
+    vim.o.columns = 140
+    local handle = h.truthy(form.open(session, spec, { width = 48 }))
+    h.truthy(handle.preview_winid and vim.api.nvim_win_is_valid(handle.preview_winid))
+    h.falsy(line_contains(handle.output.lines, "Room preview"))
+    h.truthy(line_contains(handle.output.lines, "Ctrl-s] Apply room changes"))
+
+    vim.o.columns = 80
+    form.render(handle)
+    h.eq(nil, handle.preview_winid)
+    h.truthy(line_contains(handle.output.lines, "Ctrl-s] Apply room changes"))
+    h.truthy(form.cancel(handle, "preview test"))
+    vim.o.columns = original_columns
+  end)
+
   it("rejects late scalar callbacks and Apply after the model revision changes", function()
     local session = plan_session()
     local spec = {

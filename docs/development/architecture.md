@@ -37,11 +37,19 @@ rectangles/intervals, adjacency, doors, sectors, alignment, and snapping. The
 footprint layer is the shared authority for both migrated one-part rectangles
 and current compound unions. It owns stable part identity, connected-union
 topology, exact-range-checked measurements, seam-free boundaries, containment,
-intersection, transforms, anchors, and hit provenance. Actions and forms
-preserve compound footprints; rectangle-only resizing is available only for a
-canonical one-part shape. Geometry uses integer or doubled-integer predicates
-where possible. `validate` first defends structural invariants, then evaluates
-layout relationships and returns deterministic diagnostics.
+intersection, transforms, anchors, and hit provenance. Room forms preserve
+compound footprints and can resize their rectangular sections without exposing
+internal offsets; other compound object forms remain preservation-only.
+Geometry uses integer or doubled-integer predicates where possible. `validate`
+first defends structural invariants, then evaluates layout relationships and
+returns deterministic diagnostics.
+
+`room_shape` owns pure transient section selection and topology-safe add,
+remove, and resize operations; `room_shape/snapping.lua` derives its
+axis-local structural/grid candidates and display-only guides. `controller/shape.lua`
+publishes the draft through `Session:current_model()` for rendering, while
+persistence and history continue to see the durable model. Applying emits one
+ordinary `edit_room` action; cancelling emits none.
 
 ## Persistence
 
@@ -67,6 +75,7 @@ Implementation lives in cohesive modules:
 - `controller/view.lua` owns workspace visibility, selection, viewport,
   aspect, and view interaction;
 - `controller/edit.lua` dispatches semantic changes and structured editing;
+- `controller/shape.lua` coordinates direct transient room resizing;
 - `controller/common.lua` and `source_context.lua` contain narrowly shared
   resolution and source-context helpers.
 
@@ -84,7 +93,8 @@ keys, availability, and handlers; the footer and full palette consume it.
 `scene/build` translates validated model concepts into semantic primitives.
 Compound room walls are derived from the union exterior, internal part seams
 are removed, and valid part-aware door/window apertures are applied before
-coincident room walls are grouped. Outlets remain non-cutting wall points. Room
+coincident room walls are grouped. Wall and floor outlets remain non-cutting
+points. Room
 and furniture parts retain one logical object reference for selection and
 diagnostics. The viewport maps world millimetres to logical cells;
 rasterization remains bounded by visible cells and stores hit provenance

@@ -56,6 +56,10 @@ local UNICODE = {
   window_vertical = "║",
   window_marker = "W",
   outlet_marker = "○",
+  outlet_wall_north = "◒",
+  outlet_wall_east = "◖",
+  outlet_wall_south = "◓",
+  outlet_wall_west = "◗",
   grid = "·",
   error = "!",
   warning = "?",
@@ -100,6 +104,10 @@ local ASCII = {
   window_vertical = "|",
   window_marker = "W",
   outlet_marker = "O",
+  outlet_wall_north = "v",
+  outlet_wall_east = "<",
+  outlet_wall_south = "^",
+  outlet_wall_west = ">",
   grid = ".",
   error = "!",
   warning = "?",
@@ -211,6 +219,14 @@ function M.resolve(mode, custom, width_fn)
   local validated, err = M.validate(candidate, width_fn)
   if validated then
     validated.mode = custom and "custom" or candidate.mode
+    -- A custom set predates these optional directional glyphs. Keep such sets
+    -- portable by filling only the new fields from ASCII; built-in Unicode
+    -- still receives the half-circle variants above.
+    local extras = custom and ASCII or (candidate.mode == "ascii" and ASCII or UNICODE)
+    for _, key in ipairs({ "outlet_wall_north", "outlet_wall_east", "outlet_wall_south", "outlet_wall_west" }) do
+      local value = validated[key] or extras[key]
+      validated[key] = (width_fn or fallback_width)(value) == 1 and value or validated.outlet_marker
+    end
     return validated, nil
   end
 

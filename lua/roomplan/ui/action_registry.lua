@@ -39,8 +39,8 @@ local definitions = {
     key = "t", mapping = "cycle_detail_level", label = "Cycle canvas detail",
     handler = "set_detail_level", args = { "cycle" }, priority = 40,
   },
-  zoom_in = { key = "z+", mapping = "zoom_in", label = "Zoom in", handler = "zoom", args = { "in" }, priority = 35 },
-  zoom_out = { key = "z-", mapping = "zoom_out", label = "Zoom out", handler = "zoom", args = { "out" }, priority = 35 },
+  zoom_in = { key = ".", mapping = "zoom_in", label = "Zoom in", handler = "zoom", args = { "in" }, priority = 35 },
+  zoom_out = { key = ",", mapping = "zoom_out", label = "Zoom out", handler = "zoom", args = { "out" }, priority = 35 },
   rotate_view_clockwise = {
     key = "<A-l>", mapping = "rotate_view_clockwise", label = "Rotate view clockwise",
     handler = "rotate_view", args = { "clockwise" }, priority = 25,
@@ -77,6 +77,18 @@ local definitions = {
   apply = { key = "<C-s>", mapping = "form_apply", label = "Apply", form = "apply", priority = 100 },
   reset = { key = "R", mapping = "form_reset", label = "Reset", form = "reset", priority = 15 },
   cancel = { key = "<Esc>", mapping = "form_cancel", label = "Cancel", form = "cancel", priority = 95 },
+  shape_apply = {
+    key = "s", mapping = "save", label = "Save resize",
+    handler = "save", priority = 100,
+  },
+  shape_previous = {
+    key = "<S-Tab>", mapping = "shape_previous", label = "Previous section",
+    handler = "cycle_room_shape_part", args = { -1 }, priority = 35,
+  },
+  shape_next = {
+    key = "<Tab>", mapping = "shape_next", label = "Next section",
+    handler = "cycle_room_shape_part", args = { 1 }, priority = 80,
+  },
   leave_mode = { key = "<Esc>", mapping = "escape", label = "Finish mode", handler = "escape", priority = 100 },
   activate_focused = {
     key = "<CR>", mapping = "workspace_activate_focused", label = "Open",
@@ -112,7 +124,7 @@ local group_members = {
   session = { "reload", "close" },
   workspace = { "help", "hide", "objects", "canvas", "properties", "issues" },
   form = { "previous_field", "next_field", "edit_field", "apply", "reset", "cancel" },
-  mode = { "leave_mode" },
+  mode = { "shape_apply", "shape_previous", "shape_next", "leave_mode" },
   pane = {
     "activate_focused", "collapse_focused", "expand_focused", "filter_focused",
     "toggle_details_section",
@@ -194,7 +206,9 @@ local function availability(id, ctx)
     if kind ~= "room" then return false, "Select a room first" end
     if room_count(ctx) < 2 then return false, "Add another room first" end
   elseif id == "rotate" then
-    if kind ~= "furniture" then return false, "Select furniture first" end
+    if kind ~= "furniture" and kind ~= "room" then
+      return false, "Select a room or furniture first"
+    end
   elseif id == "save" and ctx.conflicted then
     return false, "Resolve the source conflict first"
   elseif id == "undo" and ctx.can_undo == false then
@@ -244,6 +258,15 @@ function M.get(id, ctx)
     local detail = require("roomplan.canvas_detail")
     local current = detail.normalize(ctx.detail_level) or detail.default
     result.label = string.format("Canvas detail: %s → %s", current, detail.next(current))
+  elseif ctx.mode == "RESIZE" then
+    if id == "select" then result.label = "Select section"
+    elseif id == "rotate" then result.label = "Resize section"
+    elseif id == "add" then result.label = "Add section"
+    elseif id == "delete" then result.label = "Remove section" end
+  elseif id == "rotate" and ctx.selection and ctx.selection.kind == "room" then
+    result.label = "Resize room"
+  elseif id == "leave_mode" and ctx.mode == "RESIZE" then
+    result.label = "Cancel resize"
   end
   return result
 end
@@ -258,6 +281,12 @@ local function ids_for(ctx)
   end
   if ctx.mode == "MOVE" then return { "leave_mode", "undo", "redo", "save", "help" } end
   if ctx.mode == "PAN" then return { "leave_mode", "fit", "help" } end
+  if ctx.mode == "RESIZE" then
+    return {
+      "shape_apply", "select", "shape_next", "shape_previous", "add", "delete",
+      "toggle_snap", "bypass_snap", "leave_mode", "help",
+    }
+  end
 
   local kind = selected_kind(ctx)
   if room_count(ctx) == 0 then
@@ -271,7 +300,10 @@ local function ids_for(ctx)
   elseif kind == "plan" then
     return { "edit", "add", "fit", "validate", "save", "undo", "redo", "help", "hide" }
   elseif kind == "room" then
-    return { "edit", "move", "align", "add", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
+    return {
+      "edit", "move", "rotate", "align", "add", "fit", "duplicate",
+      "delete", "validate", "save", "undo", "redo", "help",
+    }
   elseif kind == "furniture" then
     return { "edit", "move", "rotate", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
   elseif kind == "door" then
@@ -311,6 +343,11 @@ local function primary_ids_for(ctx)
   end
   if ctx.mode == "MOVE" then return { "leave_mode", "undo", "redo", "help" } end
   if ctx.mode == "PAN" then return { "leave_mode", "fit", "help" } end
+  if ctx.mode == "RESIZE" then
+    return {
+      "shape_apply", "select", "shape_next", "add", "delete", "toggle_snap", "leave_mode", "help",
+    }
+  end
 
   local focus = focused_pane(ctx)
   if focus == "objects" then
@@ -328,7 +365,7 @@ local function primary_ids_for(ctx)
   elseif kind == "plan" then
     return { "edit", "add", "fit", "help" }
   elseif kind == "room" then
-    return { "edit", "move", "align", "add", "help" }
+    return { "edit", "move", "rotate", "align", "add", "help" }
   elseif kind == "furniture" then
     return { "edit", "move", "rotate", "delete", "help" }
   elseif kind == "door" then
@@ -405,6 +442,7 @@ local function full_ids_for(ctx)
   end
   append(pane_ids[focused_pane(ctx)])
   append(ids_for(ctx))
+  if ctx.mode == "RESIZE" then return result end
   if ctx.mode == nil or ctx.mode == "NAV" then
     append(create_full_ids(ctx))
     append(selection_full_ids)
@@ -485,8 +523,18 @@ end
 function M.mode_label(ctx)
   local mode = tostring(ctx and ctx.mode or "NAV"):gsub("_", " ")
   if mode == "NAV" then return "NAV" end
-  if mode == "MOVE" then return "MOVE · h/j/k/l move · H/J/K/L coarse · Ctrl-h/j/k/l fine" end
+  if mode == "MOVE" then
+    return "MOVE · h/j/k/l move · H/J/K/L coarse · Ctrl-h/j/k/l fine"
+      .. (ctx.move_feedback and (" · " .. ctx.move_feedback) or "")
+      .. (ctx.snap_summary and (" · SNAP " .. ctx.snap_summary) or "")
+  end
   if mode == "PAN" then return "PAN · h/j/k/l pan" end
+  if mode == "RESIZE" then
+    return string.format("RESIZE · section %d/%d · edge %s · snap %s",
+      ctx.shape_section_index or 0, ctx.shape_section_count or 0,
+      ctx.shape_edge or "choose with h/j/k/l",
+      ctx.shape_snap or (ctx.snap_enabled == false and "off" or "ready"))
+  end
   return mode
 end
 

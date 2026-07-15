@@ -296,6 +296,8 @@ describe("scene extraction and rendering", function()
       assert_close(north[rotation][2], north_row)
       local world_dx, world_dy = viewport.view_delta_to_world(cardinal_view, 3, 2)
       assert_equal(world_deltas[rotation], { world_dx, world_dy })
+      local view_dx, view_dy = viewport.world_delta_to_view(cardinal_view, world_dx, world_dy)
+      assert_equal({ 3, 2 }, { view_dx, view_dy })
 
       local view = viewport.new({
         world_left_mm = -370,
@@ -381,6 +383,9 @@ describe("scene extraction and rendering", function()
     assert_close(220, panned.world_top_mm)
     local scale_x, scale_y = viewport.world_axis_scales(east_at_right)
     assert_equal({ 200, 100 }, { scale_x, scale_y })
+    assert_equal(200, viewport.visible_move_step(east_at_right, 1, 0, 100))
+    assert_equal(100, viewport.visible_move_step(east_at_right, 0, 1, 100))
+    assert_equal(250, viewport.visible_move_step(east_at_right, 1, 0, 250))
   end)
 
   it("maps every structural direction mask in Unicode and ASCII", function()
@@ -641,6 +646,21 @@ describe("scene extraction and rendering", function()
     assert_equal("o", resolved.door_hinge)
   end)
 
+  it("keeps existing custom glyph sets valid without directional wall outlets", function()
+    local custom = glyphs.builtin("ascii")
+    custom.outlet_wall_north = nil
+    custom.outlet_wall_east = nil
+    custom.outlet_wall_south = nil
+    custom.outlet_wall_west = nil
+    custom.outlet_marker = "x"
+    local resolved, warning = glyphs.resolve("auto", custom, vim.fn.strdisplaywidth)
+    assert_equal("custom", resolved.mode)
+    assert_equal(nil, warning)
+    assert_equal("x", resolved.outlet_marker)
+    assert_equal("v", resolved.outlet_wall_north)
+    assert_equal("<", resolved.outlet_wall_east)
+  end)
+
   it("recognizes validator object refs and kind-based selection roles", function()
     local model = {
       rooms = {
@@ -662,6 +682,31 @@ describe("scene extraction and rendering", function()
       if primitive.kind == "room_interior" then interior = primitive; break end
     end
     assert_equal("error", assert(interior).role)
+  end)
+
+  it("draws transient snap guides and emphasizes their overlapping edge", function()
+    local output = raster.rasterize({
+      primitives = {
+        { kind = "wall", layer = 50, x1 = 100, y1 = 0, x2 = 100, y2 = 400 },
+        { kind = "snap_guide", layer = 85, role = "snap", x1 = 100, y1 = 0, x2 = 100, y2 = 400 },
+        { kind = "snap_overlap", layer = 88, role = "snap_overlap", x1 = 100, y1 = 100, x2 = 100, y2 = 300 },
+        { kind = "snap_guide", layer = 85, role = "snap", x1 = 0, y1 = 200, x2 = 200, y2 = 200 },
+        { kind = "snap_overlap", layer = 88, role = "snap_overlap", x1 = 0, y1 = 200, x2 = 100, y2 = 200 },
+      },
+      warnings = {},
+    }, fixed_view(0, 400, 100, 100), {
+      width = 3,
+      height = 5,
+      glyph_mode = "ascii",
+    })
+    assert_true(table.concat(output.lines, "\n"):find(":", 1, true) ~= nil)
+    assert_equal("snap", output.roles[1][2])
+    assert_equal("snap_overlap", output.roles[2][2])
+    assert_equal("#", output.cells[2][2].char)
+    assert_equal("snap_overlap", output.roles[3][1])
+    assert_equal("=", output.cells[3][1].char)
+    assert_equal("snap", output.roles[3][3])
+    assert_equal(".", output.cells[3][3].char)
   end)
 
   it("opens, redraws, maps byte columns, and wipes a scratch canvas", function()

@@ -8,7 +8,9 @@ local entities = require("roomplan.schema.v3.entities")
 local M = {}
 local VERSION = 3
 
-function M.normalize(document)
+function M.normalize_with(document, schema_version, entity_normalizers)
+  schema_version = schema_version or VERSION
+  entity_normalizers = entity_normalizers or entities
   local context = common.new_context()
   local result = common.object(context, document, "$")
   if not result then return common.result_or_error(context) end
@@ -29,14 +31,14 @@ function M.normalize(document)
       context,
       "SCHEMA_VERSION_MISSING",
       "$.schema_version",
-      "schema_version is required; unversioned documents are not guessed as v3"
+      "schema_version is required; unversioned documents are not guessed as v" .. schema_version
     )
   end
   local version = result.schema_version ~= nil
       and common.integer(context, result.schema_version, "$.schema_version", 1, 1000000, 1000000)
     or nil
-  if version ~= VERSION then
-    if version and version > VERSION then
+  if version ~= schema_version then
+    if version and version > schema_version then
       common.add_error(
         context,
         "SCHEMA_FUTURE_VERSION",
@@ -57,7 +59,8 @@ function M.normalize(document)
   result.schema_version = version
 
   if result.units ~= "mm" then
-    common.add_error(context, "SCHEMA_UNITS", "$.units", "must be exactly 'mm' in schema v3", result.units)
+    common.add_error(context, "SCHEMA_UNITS", "$.units",
+      "must be exactly 'mm' in schema v" .. schema_version, result.units)
   end
   result.units = "mm"
 
@@ -81,38 +84,38 @@ function M.normalize(document)
     common.required(context, result, "rooms", "$"),
     "$.rooms",
     function(entity_context, source, path)
-      return entities.normalize_room(entity_context, source, path, room_footprints)
+      return entity_normalizers.normalize_room(entity_context, source, path, room_footprints)
     end
   )
   result.doors = common.normalize_collection(
     context,
     common.required(context, result, "doors", "$"),
     "$.doors",
-    entities.normalize_door
+    entity_normalizers.normalize_door
   )
   result.windows = common.normalize_collection(
     context,
     common.required(context, result, "windows", "$"),
     "$.windows",
-    entities.normalize_window
+    entity_normalizers.normalize_window
   )
   result.outlets = common.normalize_collection(
     context,
     common.required(context, result, "outlets", "$"),
     "$.outlets",
-    entities.normalize_outlet
+    entity_normalizers.normalize_outlet
   )
   result.furniture = common.normalize_collection(
     context,
     common.required(context, result, "furniture", "$"),
     "$.furniture",
-    entities.normalize_furniture
+    entity_normalizers.normalize_furniture
   )
   result.custom_templates = common.normalize_collection(
     context,
     common.required(context, result, "custom_templates", "$"),
     "$.custom_templates",
-    entities.normalize_template
+    entity_normalizers.normalize_template
   )
 
   if result.extensions == nil then
@@ -136,13 +139,17 @@ function M.normalize(document)
         position = position + 1
       end
     end
-    entities.validate_door_parts(context, result.doors, room_footprints)
-    entities.validate_window_parts(context, result.windows, room_footprints)
-    entities.validate_outlet_parts(context, result.outlets, room_footprints)
+    entity_normalizers.validate_door_parts(context, result.doors, room_footprints)
+    entity_normalizers.validate_window_parts(context, result.windows, room_footprints)
+    entity_normalizers.validate_outlet_parts(context, result.outlets, room_footprints)
   end
 
   common.validate_json_tree(context, result, "$", {})
   return common.result_or_error(context, result)
+end
+
+function M.normalize(document)
+  return M.normalize_with(document, VERSION, entities)
 end
 
 return M

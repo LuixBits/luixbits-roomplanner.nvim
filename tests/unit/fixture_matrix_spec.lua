@@ -24,12 +24,12 @@ describe("release fixture matrix", function()
       { name = "empty.roomplan.json", migrated = true },
       { name = "acceptance.roomplan.json", migrated = true },
       { name = "compound-v2.roomplan.json", migrated = true },
-      { name = "windows-outlets-v3.roomplan.json", migrated = false },
+      { name = "windows-outlets-v3.roomplan.json", migrated = true },
     }
     for _, case in ipairs(cases) do
       local plan, info = model.decode(fixture(case.name))
       assert_true(plan ~= nil, case.name .. ": " .. vim.inspect(info))
-      assert_equal(3, plan.schema_version)
+      assert_equal(4, plan.schema_version)
       assert_equal(case.migrated, info.migrated)
       local _, summary = validate.run(plan)
       assert_true(summary.valid, case.name)
@@ -39,7 +39,7 @@ describe("release fixture matrix", function()
   it("keeps repair drafts structurally loadable while reporting layout errors", function()
     local plan, info = model.decode(fixture("invalid-layout.roomplan.json"))
     assert_true(plan ~= nil, vim.inspect(info))
-    assert_equal(3, plan.schema_version)
+    assert_equal(4, plan.schema_version)
     assert_true(info.migrated)
     local diagnostics, summary = validate.run(plan)
     local codes = diagnostic_codes(diagnostics)
@@ -62,7 +62,7 @@ describe("release fixture matrix", function()
   it("round-trips unknown fields and every tagged extension type", function()
     local plan, info = model.decode(fixture("extension-fields.roomplan.json"))
     assert_true(plan ~= nil, vim.inspect(info))
-    assert_equal(3, plan.schema_version)
+    assert_equal(4, plan.schema_version)
     assert_true(info.migrated)
     local extension = plan.extensions["example.nvim"]
     assert_true(json.is_object(extension.empty_object))
@@ -84,6 +84,6 @@ describe("release fixture matrix", function()
     assert_true(found ~= nil, vim.inspect(err))
     assert_equal("found", found.kind)
     assert_equal(false, found.block.marked)
-    assert_equal(3, found.block.document.schema_version)
+    assert_equal(4, found.block.document.schema_version)
   end)
 end)

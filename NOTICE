@@ -1,4 +1,4 @@
-roomplan.nvim is an original MIT-licensed implementation.
+roomplan.nvim is an original implementation licensed under GPL-3.0-only.
 
 The project interoperates with the Norg file format documented by the
 nvim-neorg/norg-specs project. Neorg itself is GPL-3.0 licensed; no Neorg

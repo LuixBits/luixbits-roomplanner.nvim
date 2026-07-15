@@ -3,7 +3,7 @@
 RoomPlan is a precise terminal floor-planning tool, not CAD/BIM software, a
 construction drawing system, or a building-code checker.
 
-## Current schema-v3 boundaries
+## Current schema-v4 boundaries
 
 - one floor per plan;
 - connected, hole-free unions of at most 256 axis-aligned rectangular parts
@@ -12,8 +12,8 @@ construction drawing system, or a building-code checker.
 - furniture with 0/90/180/270-degree rotation;
 - single-leaf hinged doors;
 - wall-aligned windows with width and optional adjacent-room connection;
-- point outlets with a type and 1–32 slots;
-- schema-v3 JSON writing, sequential schema-v1/v2 migration, and optional Norg
+- wall and floor point outlets with a type and 1–32 slots;
+- schema-v4 JSON writing, sequential schema-v1/v2/v3 migration, and optional Norg
   embedding;
 - transient viewport zoom, pan, rotation, pane layout, filters, and collapsed
   sections;
@@ -24,12 +24,12 @@ The compass rotates RoomPlan's view only; Neovim windows and the physical
 display cannot be rotated by a plugin. Furniture height is stored and shown,
 but the canvas remains a top-down 2D footprint.
 
-The room form creates rectangles and configurable two-part L shapes; the
-furniture form currently creates one-part rectangles. Canonical L shapes keep
-their part IDs while their overall size, legs, and missing corner are edited.
-Other compound objects loaded from schema-v3 JSON are preserved across
-supported operations, but free-form part editing awaits the compound editor.
-Rectangle-only resize actions are disabled for such objects.
+The room form creates rectangles and configurable two-part L shapes; direct
+canvas resizing can also add, resize, and remove rectangular sections while
+preserving valid union topology. The furniture form currently creates
+one-part rectangles. Compound furniture and project templates are preserved
+across supported operations, but their direct shape editor is still planned.
+Rectangle-only resize actions remain disabled for those objects.
 
 ## Deliberately not represented
 
@@ -37,7 +37,7 @@ Wall thickness, wall assemblies, window sill/head/opening heights, glazing and
 opening styles, outlet mounting heights and circuits, stairs, plumbing or full
 electrical layers, curves, arbitrary polygons, multi-leaf/sliding doors,
 manufacturer catalog semantics, clearance/code compliance, dimensions suitable
-for construction, and multi-user synchronization are outside schema v3.
+for construction, and multi-user synchronization are outside schema v4.
 Configuration does not pretend these fields work before the model, validation,
 storage, and UI can support them coherently.
 
@@ -54,9 +54,9 @@ is the current documentation and tests; planned work belongs in the project
 [`plan.md`](../../plan.md) roadmap rather than dormant runtime flags or legacy
 branches.
 
-Schema v1 and v2 remain explicitly loadable through tested sequential
-migrations. Loading does not rewrite either source; the migrated session
-requires an explicit save before schema-v3 bytes replace it. Plugin version
+Schema v1, v2, and v3 remain explicitly loadable through tested sequential
+migrations. Loading does not rewrite the source; the migrated session requires
+an explicit save before schema-v4 bytes replace it. Plugin version
 changes remain independent of schema versions.
 
 ← [Troubleshooting](troubleshooting.md) | [Documentation home](../README.md) | [Architecture](../development/architecture.md) →

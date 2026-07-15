@@ -1,6 +1,6 @@
 {
   "format": "roomplan.nvim",
-  "schema_version": 4,
+  "schema_version": 5,
   "units": "mm",
   "metadata": { "name": "From the future", "notes": "" },
   "settings": {},

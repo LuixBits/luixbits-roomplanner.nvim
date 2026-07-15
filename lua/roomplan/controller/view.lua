@@ -1,6 +1,7 @@
 -- Canvas/workspace presentation, viewport transforms, selection, and modes.
 local compat = require("roomplan.compat")
 local config = require("roomplan.config")
+local snapping = require("roomplan.geometry.snapping")
 local model = require("roomplan.model")
 local state = require("roomplan.state")
 local util = require("roomplan.util")
@@ -110,7 +111,7 @@ function M.attach(controller)
     if not resolved then return notify_error(err) end
     local width, height = canvas_size(resolved)
     local options = config.get().canvas
-    local scene = require("roomplan.scene.build").build(resolved:model(), resolved.validation, {
+    local scene = require("roomplan.scene.build").build(resolved:current_model(), resolved.validation, {
       selected = resolved.selection,
       show_grid = options.show_grid,
       detail_level = resolved.canvas_detail_level or options.detail_level,
@@ -307,6 +308,8 @@ function M.attach(controller)
     if mode ~= "NAV" and mode ~= "MOVE" and mode ~= "PAN" then
       return notify_error(util.err("MODE_INVALID", "unsupported RoomPlan mode " .. tostring(mode)))
     end
+    common.clear_snap_feedback(resolved)
+    resolved.move_feedback = nil
     resolved.mode = mode
     local workspace_ok, workspace = pcall(require, "roomplan.ui.workspace")
     if workspace_ok and resolved.workspace then
@@ -349,7 +352,16 @@ function M.attach(controller)
     local step = scale == "fine" and settings.fine_step_mm
       or scale == "coarse" and settings.coarse_step_mm
       or settings.normal_step_mm
-    dx, dy = require("roomplan.render.viewport").view_delta_to_world(ensure_viewport(resolved), dx, dy)
+    local direction_label = dx < 0 and "left" or dx > 0 and "right" or dy < 0 and "down" or "up"
+    local viewport_module = require("roomplan.render.viewport")
+    local viewport = ensure_viewport(resolved)
+    dx, dy = viewport_module.view_delta_to_world(viewport, dx, dy)
+    if scale ~= "fine" then step = viewport_module.visible_move_step(viewport, dx, dy, step) end
+    resolved.snap_exclusions = snapping.release_targets(resolved.snap_exclusions, resolved.snap_guides, {
+      x = dx ~= 0,
+      y = dy ~= 0,
+    })
+    resolved.snap_guides = {}
     local action
     if selection.kind == "room" then
       action = { type = "move_room", id = selection.id, delta_mm = { dx * step, dy * step } }
@@ -365,17 +377,37 @@ function M.attach(controller)
       if not fixture then
         return notify_error(util.err("SELECTION_STALE", "selected wall object no longer exists"))
       end
-      local delta = (fixture.side == "north" or fixture.side == "south") and dx * step or dy * step
-      action = {
-        type = selection.kind == "window" and "edit_window" or "edit_outlet",
-        id = fixture.id,
-        patch = { offset_mm = fixture.offset_mm + delta },
-      }
+      if selection.kind == "outlet" and fixture.placement == "floor" then
+        action = {
+          type = "edit_outlet",
+          id = fixture.id,
+          patch = { position_mm = {
+            fixture.position_mm[1] + dx * step,
+            fixture.position_mm[2] + dy * step,
+          } },
+        }
+      else
+        local delta = (fixture.side == "north" or fixture.side == "south") and dx * step or dy * step
+        action = {
+          type = selection.kind == "window" and "edit_window" or "edit_outlet",
+          id = fixture.id,
+          patch = { offset_mm = fixture.offset_mm + delta },
+        }
+      end
     else
       return notify_error(util.err("SELECTION_NOT_MOVABLE", "selected object cannot be moved"))
     end
     local result, action_err = controller.dispatch(resolved, action)
     if not result then return notify_error(action_err) end
+    local snap_result = result.result and result.result.metadata and result.result.metadata.snapping
+    if snap_result then
+      resolved.snap_exclusions = snap_result.snap_exclusions or {}
+      resolved.snap_guides = snapping.guides(snap_result)
+    else
+      common.clear_snap_feedback(resolved)
+    end
+    resolved.move_feedback = string.format("%s %d mm", direction_label, step)
+    controller.refresh(resolved)
     return result
   end
 
@@ -391,6 +423,8 @@ function M.attach(controller)
   function controller.select_hits(session, hits, cycle_key)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
+    common.clear_snap_feedback(resolved)
+    resolved.move_feedback = nil
     hits = hits or {}
     if #hits == 0 then resolved.selection = nil; controller.refresh(resolved); return end
     resolved.selection_cycle = resolved.selection_cycle or {}
@@ -425,6 +459,8 @@ function M.attach(controller)
   function controller.select_next(session, direction)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
+    common.clear_snap_feedback(resolved)
+    resolved.move_feedback = nil
     local scene = require("roomplan.scene.build").build(resolved:model(), resolved.validation, { selected = resolved.selection })
     local objects = scene.objects or {}
     if #objects == 0 then resolved.selection = nil; return nil end
@@ -444,6 +480,7 @@ function M.attach(controller)
   function controller.toggle_snap(session)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
+    common.clear_snap_feedback(resolved)
     resolved.snap_enabled = not resolved.snap_enabled
     compat.notify("RoomPlan snapping " .. (resolved.snap_enabled and "enabled" or "disabled"))
     controller.refresh(resolved)
@@ -461,13 +498,16 @@ function M.attach(controller)
   function controller.escape(session)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
+    resolved.move_feedback = nil
     if resolved.form then
       require("roomplan.ui.form").cancel(resolved.form, "cancelled")
     elseif resolved.workflow and resolved.workflow.kind then
       require("roomplan.ui.flow").cancel(resolved, "cancelled")
     elseif resolved.mode ~= "NAV" then
+      common.clear_snap_feedback(resolved)
       resolved.mode = "NAV"
     else
+      common.clear_snap_feedback(resolved)
       resolved.selection = nil
     end
     local workspace_ok, workspace = pcall(require, "roomplan.ui.workspace")

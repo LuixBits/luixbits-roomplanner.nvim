@@ -219,7 +219,7 @@ function M.map_common(api, session, buffer, role)
     "add", "edit", "move", "pan", "align", "rotate", "duplicate", "delete",
     "validate", "save", "fit", "cycle_detail_level", "help",
     "add_door", "add_window", "add_outlet", "add_furniture", "undo", "redo",
-    "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view", "apply", "reset",
+    "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view", "apply", "reset", "shape_apply",
     "next_issue", "previous_issue",
   }) do
     local definition = action_registry.get(id, { keymaps = require("roomplan.config").get().keymaps })
@@ -257,8 +257,14 @@ function M.apply_canvas_keymaps(api, session, opts)
     return mappings.set(buffer, lhs, rhs, desc, name)
   end
   if opts.cycle_tabs ~= false then
-    map("<Tab>", function() api.cycle_focus(session, 1) end, "Next RoomPlan workspace pane", "workspace_next_pane")
-    map("<S-Tab>", function() api.cycle_focus(session, -1) end,
+    map("<Tab>", function()
+      if session.room_shape_edit then require("roomplan.controller").cycle_room_shape_part(session, 1)
+      else api.cycle_focus(session, 1) end
+    end, "Next RoomPlan workspace pane or room section", "workspace_next_pane")
+    map("<S-Tab>", function()
+      if session.room_shape_edit then require("roomplan.controller").cycle_room_shape_part(session, -1)
+      else api.cycle_focus(session, -1) end
+    end,
       "Previous RoomPlan workspace pane", "workspace_previous_pane")
   end
   map("1", function() api.toggle(session, "objects") end, "Toggle RoomPlan navigator", "focus_objects")

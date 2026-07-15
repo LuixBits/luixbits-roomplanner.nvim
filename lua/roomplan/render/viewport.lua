@@ -48,12 +48,39 @@ function M.view_delta_to_world(viewport, dx, dy)
   return dx, dy
 end
 
+---Convert a world-axis direction to visible screen axes (right/up).
+function M.world_delta_to_view(viewport, dx, dy)
+  local rotation = M.rotation(viewport)
+  if rotation == 1 then
+    return dy, -dx
+  elseif rotation == 2 then
+    return -dx, -dy
+  elseif rotation == 3 then
+    return -dy, dx
+  end
+  return dx, dy
+end
+
 ---Return the visible cell scale for each world axis.
 function M.world_axis_scales(viewport)
   if M.rotation(viewport) % 2 == 1 then
     return viewport.mm_per_row, viewport.mm_per_column
   end
   return viewport.mm_per_column, viewport.mm_per_row
+end
+
+---Return a configured-step multiple large enough to move at least one visible
+---cell on the active world axis. Fine movement deliberately bypasses this.
+function M.visible_move_step(viewport, dx, dy, minimum_mm)
+  local scale_x, scale_y = M.world_axis_scales(viewport)
+  local cell_mm
+  if dx ~= 0 and dy ~= 0 then cell_mm = math.max(scale_x, scale_y)
+  elseif dx ~= 0 then cell_mm = scale_x
+  else cell_mm = scale_y end
+  if not finite_positive(cell_mm) then return math.max(1, math.floor(minimum_mm or 1)) end
+  local minimum = finite_positive(minimum_mm) and math.floor(minimum_mm) or 1
+  local multiples = math.max(1, math.ceil(cell_mm / minimum - 1e-9))
+  return multiples * minimum
 end
 
 function M.copy(viewport)

@@ -22,10 +22,16 @@ presses cycle overlapping hit targets. `Tab` and `Shift-Tab` cycle scene
 objects through the workspace panes.
 
 **MOVE** starts with `m` and requires a selected room, door, window, outlet, or
-furniture item. Directions move by the plan's normal step, uppercase directions
-use the coarse step, and Ctrl-directions use the fine step. Door, window, and
-outlet movement is constrained to the assigned wall. Snapping applies unless
-disabled with `gs` or bypassed once with `g!`.
+furniture item. Directions use a whole multiple of the plan's normal step large
+enough to move at least one visible cell; uppercase directions do the same with
+the coarse step. This avoids partial terminal-cell movement where only one
+border or label appears to shift. Ctrl-directions retain the exact fine step
+for precision and can be smaller than a cell. The action bar reports the actual
+distance used by the last keypress. Zoom in with `.` when normal movement
+should become more granular without changing the saved plan settings. Door,
+window, and wall-outlet movement is constrained to the assigned wall; floor
+outlets move inside their owner room. Snapping
+applies unless disabled with `gs` or bypassed once with `g!`.
 
 **PAN** starts with `p`. Directions shift the viewport without changing model
 geometry. The normal and coarse distances come from `canvas.pan_step_cells`

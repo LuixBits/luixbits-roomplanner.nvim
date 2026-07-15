@@ -2,6 +2,7 @@
 -- callbacks; this module never imports roomplan.state or dispatches mutations.
 
 local raster = require("roomplan.render.raster")
+local snapping = require("roomplan.geometry.snapping")
 local viewport_module = require("roomplan.render.viewport")
 local text = require("roomplan.render.text")
 
@@ -32,30 +33,12 @@ local HIGHLIGHTS = {
   furniture_label = "RoomPlanFurnitureLabel",
   dimension = "RoomPlanMuted",
   selected = "RoomPlanSelected",
+  snap = "RoomPlanSnap",
+  snap_overlap = "RoomPlanSnapOverlap",
   error = "RoomPlanError",
   warning = "RoomPlanWarning",
   grid = "RoomPlanGrid",
   muted = "RoomPlanMuted",
-}
-
-local DEFAULT_LINKS = {
-  RoomPlanWall = "Normal",
-  RoomPlanDoor = "Special",
-  RoomPlanWindow = "Type",
-  RoomPlanOutlet = "Constant",
-  RoomPlanFurniture = "Identifier",
-  RoomPlanRoomLabel = "Title",
-  RoomPlanFurnitureLabel = "Identifier",
-  RoomPlanSelected = "Visual",
-  RoomPlanError = "DiagnosticError",
-  RoomPlanWarning = "DiagnosticWarn",
-  RoomPlanGrid = "NonText",
-  RoomPlanStatus = "StatusLine",
-  RoomPlanActions = "StatusLine",
-  RoomPlanEmptyTitle = "Title",
-  RoomPlanChrome = "Comment",
-  RoomPlanCompass = "Special",
-  RoomPlanMuted = "Comment",
 }
 
 local function valid_buffer(buffer)
@@ -157,6 +140,21 @@ local function session_header(session, canvas_config)
   if session.workspace and session.workspace.state and session.workspace.state.interaction then
     display_mode = session.workspace.state.interaction
   end
+  local shape_notice = ""
+  if session.room_shape_edit then
+    local edit = session.room_shape_edit
+    local _, index = require("roomplan.room_shape").selected(edit)
+    local snap = require("roomplan.room_shape").snap_summary(edit)
+    local edge = require("roomplan.room_shape").edge_summary(edit)
+    display_mode = "RESIZE"
+    shape_notice = string.format(" · RESIZE · section %d/%d · edge %s",
+      index or 0, #(edit.footprint.parts or {}), edge or "choose with h/j/k/l")
+    if snap then shape_notice = shape_notice .. " · SNAP " .. snap end
+  elseif session.mode == "MOVE" then
+    local snap = snapping.summary(session.snap_guides)
+    if session.move_feedback then shape_notice = " · " .. session.move_feedback end
+    if snap then shape_notice = shape_notice .. " · SNAP " .. snap end
+  end
   local issue_parts = {}
   if errors > 0 then issue_parts[#issue_parts + 1] = errors .. "E" end
   if warnings > 0 then issue_parts[#issue_parts + 1] = warnings .. "W" end
@@ -170,7 +168,7 @@ local function session_header(session, canvas_config)
   end
   local context_status = #context_parts > 0 and (" · " .. table.concat(context_parts, " ")) or ""
   return {
-    string.format("RoomPlan · %s%s%s", subject, context_status, issues),
+    string.format("RoomPlan · %s%s%s%s", subject, shape_notice, context_status, issues),
     string.format(
       "%s · %s · %s · %d rooms · %d doors · %d windows · %d outlets · %d items · zoom %.2f · snap %s · detail %s",
       source,
@@ -203,11 +201,24 @@ local function session_footer(session)
   if session.mode == "PAN" then
     return " PAN | [h/j/k/l] Pan  [H/J/K/L] Pan far  [Esc] Navigation  [f] Fit "
   elseif session.mode == "MOVE" then
-    return " MOVE | [h/j/k/l] Move  [H/J/K/L] Coarse  [Ctrl-h/j/k/l] Fine  [Esc] Done "
+    local snap = snapping.summary(session.snap_guides)
+    return " MOVE" .. (session.move_feedback and (" · " .. session.move_feedback) or "")
+      .. (snap and (" · snap " .. snap) or "")
+      .. " | [h/j/k/l] Move  [H/J/K/L] Coarse  [Ctrl-h/j/k/l] Fine  [Esc] Done "
+  elseif session.mode == "RESIZE" and session.room_shape_edit then
+    local edit = session.room_shape_edit
+    local _, index = require("roomplan.room_shape").selected(edit)
+    local snap = require("roomplan.room_shape").snap_summary(edit)
+      or (session.snap_enabled == false and "off" or "ready")
+    local edge = require("roomplan.room_shape").edge_summary(edit) or "choose h/j/k/l"
+    return string.format(
+      " RESIZE · section %d/%d · edge %s · snap %s | [Enter/Tab] Select  [a/d] Add/Remove  [gs] Snap  [s] Save  [Esc] Cancel ",
+      index or 0, #(edit.footprint.parts or {}), edge, snap
+    )
   end
   local kind = session.selection and session.selection.kind
   if kind == "room" then
-    return " ROOM | [e] Edit  [m] Move  [f] Fit  [A] Align  [y] Duplicate  [d] Delete  [a] Add "
+    return " ROOM | [e] Edit  [m] Move  [r] Resize  [A] Align  [f] Fit  [y] Duplicate  [d] Delete  [a] Add "
   elseif kind == "furniture" then
     return " FURNITURE | [e] Edit  [m] Move  [f] Fit  [r] Rotate  [y] Duplicate  [d] Delete "
   elseif kind == "door" then
@@ -240,7 +251,9 @@ local function options_for_session(session, callbacks)
   }
   options.get_scene = function()
     return require("roomplan.scene.build").build(current_model(session), session.validation, {
-      selected = session.selection,
+      selected = session.room_shape_edit and nil or session.selection,
+      shape_edit = session.room_shape_edit,
+      snap_guides = session.room_shape_edit and session.room_shape_edit.snap_guides or session.snap_guides,
       show_grid = canvas_config.show_grid,
       detail_level = session.canvas_detail_level or canvas_config.detail_level,
     })
@@ -291,9 +304,7 @@ local function display_width(value)
 end
 
 local function define_highlights()
-  for name, link in pairs(DEFAULT_LINKS) do
-    vim.api.nvim_set_hl(0, name, { default = true, link = link })
-  end
+  require("roomplan.highlights").setup()
 end
 
 local function set_buffer_options(buffer)

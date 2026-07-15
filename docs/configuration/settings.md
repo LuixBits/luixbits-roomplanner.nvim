@@ -33,7 +33,13 @@ furniture = {
 These plan defaults apply only when initializing a new source; they do not
 rewrite opened plans. A `nil` name uses the schema's `Untitled plan`. Movement
 steps and the grid are stored per plan and can later be edited by selecting the
-plan row and pressing `e`. Furniture imports are covered in
+plan row and pressing `e`. In `MOVE`, normal and coarse keys use the smallest
+whole multiple of their configured step that spans at least one visible cell;
+this prevents one border or label moving before the rest at a distant zoom.
+Ctrl-direction fine movement always uses the exact configured fine step, even
+when that is intentionally smaller than one cell. MOVE status reports the
+actual distance chosen; `.` makes normal movement more granular by zooming in.
+Furniture imports are covered in
 [Furniture catalogues](../planning/furniture-catalogs.md).
 
 ## Safety and history limits
@@ -86,6 +92,14 @@ snapping = {
 scene. Snap tolerance begins in displayed cells, converts through the current
 viewport, then is capped in millimetres. The priority resolves equal
 candidates deterministically.
+
+During room resizing, snapping is axis-local: only the edge being resized is
+corrected. Nearby edges from the same room and exterior walls from other rooms
+take precedence over the grid. Resizing and ordinary movement both show the
+chosen target as a transient light guide, name it in the canvas status, and
+strongly highlight the overlapping edge. Moving away temporarily releases that
+axis until it leaves the tolerance, so fine steps cannot become snap-locked.
+Feedback never enters saved data.
 
 `detail_level` controls transient canvas text. `high` shows labels plus every
 exterior wall-run, furniture width/depth, and door/window-width dimension.

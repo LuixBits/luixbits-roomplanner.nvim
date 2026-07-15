@@ -109,10 +109,9 @@ options.
 
 ## Snacks and other UI providers
 
-RoomPlan owns its workspace, forms, and action palette. Scalar editors and
+RoomPlan owns its workspace, forms, and action windows. Scalar editors and
 confirmation prompts use standard `vim.ui.input` and `vim.ui.select`, so
 Snacks, dressing.nvim, or another `vim.ui` provider can enhance those prompts
 without a RoomPlan-specific adapter.
 
 [← Documentation home](../README.md) · [Next: Quick start →](quick-start.md)
-

@@ -15,21 +15,6 @@ function M.attach(controller)
   local resolve = common.resolve
   local ensure_viewport = common.ensure_viewport
 
-  local function snapping_options(session)
-    if not session.snap_enabled or session.bypass_snap_once then return false end
-    local options = vim.deepcopy(config.get().snapping)
-    local viewport_module = require("roomplan.render.viewport")
-    local viewport = session.viewport or viewport_module.new(config.get().canvas)
-    local world_x_scale, world_y_scale = viewport_module.world_axis_scales(viewport)
-    local cap = options.max_distance_mm
-    options.tolerance_mm = {
-      x = math.min(cap, options.tolerance_cells * world_x_scale),
-      y = math.min(cap, options.tolerance_cells * world_y_scale),
-    }
-    options.mm_per_screen_unit = { x = world_x_scale, y = world_y_scale }
-    return options
-  end
-
   local function spatial_object_count(plan)
     if type(plan) ~= "table" then return 0 end
     return #(plan.rooms or {}) + #(plan.doors or {}) + #(plan.windows or {})
@@ -44,7 +29,7 @@ function M.attach(controller)
     local new_model, result = require("roomplan.actions").apply(resolved:model(), action, {
       limits = config.get().limits,
       catalog = catalog,
-      snapping = snapping_options(resolved),
+      snapping = common.snapping_options(resolved),
       current_diagnostics = current_diagnostics,
     })
     resolved.bypass_snap_once = false
@@ -77,6 +62,7 @@ function M.attach(controller)
   function controller.undo(session)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
+    common.clear_snap_feedback(resolved)
     local snapshot, node = resolved:undo()
     if not snapshot then return notify_error(node) end
     controller.validate(resolved)
@@ -86,6 +72,7 @@ function M.attach(controller)
   function controller.redo(session)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
+    common.clear_snap_feedback(resolved)
     local snapshot, node = resolved:redo()
     if not snapshot then return notify_error(node) end
     controller.validate(resolved)

@@ -36,6 +36,18 @@ local function selection_of(value, opts)
   return type(value) == "table" and value.selection or nil
 end
 
+local function shape_context(value)
+  local edit = type(value) == "table" and value.room_shape_edit or nil
+  if not edit then return {} end
+  local _, index = require("roomplan.room_shape").selected(edit)
+  return {
+    shape_section_index = index or 0,
+    shape_section_count = #(edit.footprint.parts or {}),
+    shape_edge = require("roomplan.room_shape").edge_summary(edit),
+    shape_snap = require("roomplan.room_shape").snap_summary(edit),
+  }
+end
+
 local function diagnostics_of(value, opts)
   if opts and opts.diagnostics ~= nil then return opts.diagnostics end
   return type(value) == "table" and value.validation or {}
@@ -171,7 +183,7 @@ function M.objects(value, opts)
       room_name = rooms[outlet.room_id] and rooms[outlet.room_id].name or outlet.room_id,
       label = outlet_name .. " outlet",
       detail = string.format("%d slot%s · %s", outlet.slots or 0,
-        outlet.slots == 1 and "" or "s", outlet.side or "wall"),
+        outlet.slots == 1 and "" or "s", outlet.placement == "floor" and "floor" or (outlet.side or "wall")),
       object = outlet,
     })
   end
@@ -430,10 +442,19 @@ function M.properties(value, opts)
       field("Destination", destination),
     } }
   elseif selection.kind == "outlet" then
-    groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
-      field("Room", object.room_id), field("Wall", object.side), metric("Offset", object.offset_mm),
-    } }
-    if object.part_id then table.insert(groups[#groups].fields, 2, field("Part", object.part_id)) end
+    if object.placement == "floor" then
+      groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
+        field("Room", object.room_id), field("Location", "Floor"),
+        metric("Local X", object.position_mm and object.position_mm[1]),
+        metric("Local Y", object.position_mm and object.position_mm[2]),
+      } }
+    else
+      groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
+        field("Room", object.room_id), field("Location", "Wall"),
+        field("Wall", object.side), metric("Offset", object.offset_mm),
+      } }
+      if object.part_id then table.insert(groups[#groups].fields, 2, field("Part", object.part_id)) end
+    end
     groups[#groups + 1] = { id = "specification", title = "Specification", fields = {
       field("Type", outlet_types.label(object.outlet_type) or object.outlet_type), field("Slots", object.slots),
     } }
@@ -483,7 +504,7 @@ function M.context(value, ui_state)
   if viewport and viewport.mm_per_column and canvas_options and canvas_options.mm_per_column then
     zoom = canvas_options.mm_per_column / viewport.mm_per_column
   end
-  return {
+  local context = {
     model = model,
     selection = selection,
     selected_object = find(model, selection),
@@ -493,11 +514,16 @@ function M.context(value, ui_state)
     dirty = type(value) == "table" and type(value.model_dirty) == "function" and value:model_dirty() or false,
     conflicted = type(value) == "table" and value.source_conflicted == true or false,
     snap_enabled = type(value) ~= "table" or value.snap_enabled ~= false,
+    snap_summary = type(value) == "table"
+      and require("roomplan.geometry.snapping").summary(value.snap_guides) or nil,
+    move_feedback = type(value) == "table" and value.move_feedback or nil,
     detail_level = type(value) == "table" and value.canvas_detail_level or canvas_detail.default,
     cursor_world = ui_state and ui_state.cursor_world or nil,
     zoom = zoom,
     view_rotation = viewport and (tonumber(viewport.rotation_quarters) or 0) % 4 or 0,
   }
+  for key, item in pairs(shape_context(value)) do context[key] = item end
+  return context
 end
 
 return M

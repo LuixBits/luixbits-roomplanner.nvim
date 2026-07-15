@@ -21,6 +21,11 @@ local function compact_mode(ctx)
   local mode = tostring(ctx.mode or "NAV"):gsub("_", " ")
   if mode == "MOVE" then return "MOVE hjkl · HJKL coarse" end
   if mode == "PAN" then return "PAN hjkl" end
+  if mode == "RESIZE" then
+    return string.format("RESIZE ROOM · SECTION %d/%d · EDGE %s",
+      ctx.shape_section_index or 0, ctx.shape_section_count or 0,
+      tostring(ctx.shape_edge or "H/J/K/L")):upper()
+  end
   return mode
 end
 
@@ -31,7 +36,14 @@ local function status(ctx)
   else
     values[#values + 1] = ctx.dirty and "DIRTY" or "SAVED"
   end
-  if ctx.snap_enabled then values[#values + 1] = "SNAP" end
+  if ctx.mode == "MOVE" and ctx.move_feedback then values[#values + 1] = ctx.move_feedback end
+  if ctx.mode == "RESIZE" then
+    values[#values + 1] = ctx.snap_enabled and "SNAP ON" or "SNAP OFF"
+    if ctx.shape_snap then values[#values + 1] = ctx.shape_snap end
+  elseif ctx.snap_enabled then
+    values[#values + 1] = "SNAP"
+    if ctx.snap_summary then values[#values + 1] = ctx.snap_summary end
+  end
   if not ctx.form then values[#values + 1] = "DETAIL " .. tostring(ctx.detail_level or "middle"):upper() end
   if ctx.zoom then values[#values + 1] = string.format("×%.2g", ctx.zoom) end
   return table.concat(values, " · ")
