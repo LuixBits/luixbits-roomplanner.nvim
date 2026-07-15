@@ -6,6 +6,10 @@ local util = require("roomplan.util")
 
 local M = { name = "json" }
 
+local function unchanged_by_schema(info)
+  return not (info and (info.normalized or info.migrated))
+end
+
 function M.load(context)
   local text, err, origin = source.text(context)
   if not text then
@@ -19,8 +23,11 @@ function M.load(context)
   local revision, disk_err = source.with_disk(source.revision(logical_text, context), context)
   if not revision then return nil, disk_err end
   if revision.disk and revision.disk.exists and revision.disk.type == "file" then
-    local disk_model = schema.decode(source.logical_text(revision.disk.text, context))
-    revision.durable_model_matches = disk_model ~= nil and codec.deep_equal(disk_model, model)
+    local disk_model, disk_info = schema.decode(source.logical_text(revision.disk.text, context))
+    revision.durable_model_matches = disk_model ~= nil
+      and unchanged_by_schema(info)
+      and unchanged_by_schema(disk_info)
+      and codec.deep_equal(disk_model, model)
   else
     revision.durable_model_matches = false
   end

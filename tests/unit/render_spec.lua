@@ -139,6 +139,89 @@ describe("scene extraction and rendering", function()
     assert_true(scene.bounds.bottom <= -500)
   end)
 
+  it("switches cleanly between all, wall-only, and hidden canvas details", function()
+    local plan = {
+      rooms = {
+        { id = "room-a", name = "Living room", origin_mm = { 0, 0 }, size_mm = { 1000, 800 } },
+      },
+      furniture = {
+        {
+          id = "furniture-a",
+          room_id = "room-a",
+          name = "Sofa",
+          center_mm = { 500, 400 },
+          size_mm = { 200, 100, 700 },
+          rotation_deg = 0,
+        },
+      },
+      doors = {
+        {
+          id = "door-a",
+          room_id = "room-a",
+          connects_to_room_id = json.null,
+          side = "south",
+          offset_mm = 100,
+          width_mm = 300,
+          hinge = "start",
+          opens_into = "outside",
+          open_angle_deg = 90,
+        },
+      },
+    }
+
+    local function detail_counts(level)
+      local scene = scene_builder.build(plan, nil, { detail_level = level })
+      local counts = { labels = 0, room = 0, furniture = 0, door = 0 }
+      for _, primitive in ipairs(scene.primitives) do
+        if primitive.kind == "label" then
+          counts.labels = counts.labels + 1
+        elseif primitive.kind == "dimension" then
+          counts[primitive.ref.type] = counts[primitive.ref.type] + 1
+        end
+      end
+      return scene, counts
+    end
+
+    local high, high_counts = detail_counts("high")
+    local middle, middle_counts = detail_counts("middle")
+    local none, none_counts = detail_counts("none")
+    assert_equal({ labels = 2, room = 4, furniture = 2, door = 1 }, high_counts)
+    assert_equal({ labels = 2, room = 4, furniture = 0, door = 0 }, middle_counts)
+    assert_equal({ labels = 0, room = 0, furniture = 0, door = 0 }, none_counts)
+    assert_true(vim.deep_equal(high.bounds, middle.bounds) and vim.deep_equal(middle.bounds, none.bounds))
+    assert_true(vim.deep_equal(high.objects, middle.objects) and vim.deep_equal(middle.objects, none.objects))
+  end)
+
+  it("keeps finite repair geometry renderable through strict footprint adapters", function()
+    for _, rotation in ipairs({ 45, "invalid", math.huge, 0 / 0 }) do
+      local scene = scene_builder.build({
+        rooms = {
+          { id = "room-repair", name = "Repair", origin_mm = { 0.25, -0.5 }, size_mm = { 10.5, 20.25 } },
+        },
+        furniture = {
+          {
+            id = "furniture-repair",
+            room_id = "room-repair",
+            name = "Repair item",
+            center_mm = { 5.25, 6.5 },
+            size_mm = { 7.5, 9.25 },
+            rotation_deg = rotation,
+          },
+        },
+        doors = {},
+      })
+      local interior
+      for _, primitive in ipairs(scene.primitives) do
+        if primitive.kind == "furniture_interior" then interior = primitive end
+      end
+      assert_true(interior ~= nil)
+      assert_equal(1.75, interior.left)
+      assert_equal(9.25, interior.right)
+      assert_equal(1.375, interior.bottom)
+      assert_equal(10.625, interior.top)
+    end
+  end)
+
   it("emits the same handed leaf for every side, hinge, and swing half-plane", function()
     local geometry_door = require("roomplan.geometry.door")
     local room = { id = "room-a", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } }
@@ -327,14 +410,59 @@ describe("scene extraction and rendering", function()
     })
     assert_true(vim.deep_equal(pristine_scene, scene), "rasterization must not mutate its semantic scene")
     assert_equal(table.concat({
-      "       ",
+      " 400mm ",
       " +---+ ",
       " |   | ",
       " | A | ",
       " |   | ",
       " +---+ ",
-      "       ",
+      " 400mm ",
     }, "\n"), table.concat(output.lines, "\n"))
+  end)
+
+  it("keeps names readable without overlapping or clipping partial dimensions", function()
+    local view = fixed_view(0, 200, 100, 100)
+    local names = raster.rasterize({
+      primitives = {
+        {
+          kind = "label", layer = 70, text = "Alpha", x = 0, y = 0,
+          ref = { type = "room", id = "room-alpha" }, order = 1,
+        },
+        {
+          kind = "label", layer = 70, text = "Beta", x = 0, y = 0,
+          ref = { type = "furniture", id = "furniture-beta" }, order = 2,
+        },
+      },
+      warnings = {},
+    }, view, { width = 9, height = 3, glyph_mode = "ascii" })
+    local rendered_names = table.concat(names.lines, "\n")
+    assert_true(rendered_names:find("Alpha", 1, true) ~= nil)
+    assert_true(rendered_names:find("Beta", 1, true) ~= nil)
+
+    local abbreviated = raster.rasterize({
+      primitives = {
+        {
+          kind = "label", layer = 70, text = "Very long sofa label", x = 0, y = 0,
+          ref = { type = "furniture", id = "furniture-long" },
+        },
+      },
+      warnings = {},
+    }, view, { width = 7, height = 3, glyph_mode = "unicode" })
+    assert_true(table.concat(abbreviated.lines, "\n"):find("…", 1, true) ~= nil)
+    assert_equal("LABEL_ABBREVIATED", abbreviated.warnings[1].code)
+
+    local dimension = raster.rasterize({
+      primitives = {
+        {
+          kind = "dimension", layer = 70, text = "123456mm", x = 0, y = 0,
+          allow_truncate = false,
+          ref = { type = "room", id = "room-alpha" },
+        },
+      },
+      warnings = {},
+    }, view, { width = 4, height = 3, glyph_mode = "ascii" })
+    assert_true(table.concat(dimension.lines, ""):match("%d") == nil)
+    assert_equal("LABEL_NOT_RENDERED", dimension.warnings[1].code)
   end)
 
   it("merges only structural walls into junction glyphs", function()
@@ -637,6 +765,20 @@ describe("scene extraction and rendering", function()
       if mapping.lhs == "f" and mapping.desc == "Fit RoomPlan" then has_fit_mapping = true end
     end
     assert_true(has_fit_mapping)
+    local function mapping(lhs)
+      return vim.api.nvim_buf_call(handle.buf, function()
+        return vim.fn.maparg(lhs, "n", false, true)
+      end)
+    end
+    assert_equal("Rotate RoomPlan view clockwise", mapping("<A-l>").desc)
+    assert_equal("Rotate RoomPlan view counter-clockwise", mapping("<A-h>").desc)
+    assert_equal("Next RoomPlan issue", mapping("<A-j>").desc)
+    assert_equal("Previous RoomPlan issue", mapping("<A-k>").desc)
+    assert_equal("Cycle RoomPlan canvas detail", mapping("t").desc)
+    assert_equal(nil, next(mapping("]r")))
+    assert_equal(nil, next(mapping("[r")))
+    assert_equal(nil, next(mapping("]e")))
+    assert_equal(nil, next(mapping("[e")))
     assert_true(canvas.close(session))
     config.reset()
   end)

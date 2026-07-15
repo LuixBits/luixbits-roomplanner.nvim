@@ -6,6 +6,8 @@ local kind_icons = {
   plan = "P",
   room = "R",
   door = "D",
+  window = "W",
+  outlet = "O",
   furniture = "F",
   template = "T",
 }
@@ -14,6 +16,8 @@ local kind_highlights = {
   plan = "RoomPlanWorkspacePlan",
   room = "RoomPlanWorkspaceRoom",
   door = "RoomPlanWorkspaceDoor",
+  window = "RoomPlanWorkspaceWindow",
+  outlet = "RoomPlanWorkspaceOutlet",
   furniture = "RoomPlanWorkspaceFurniture",
   template = "RoomPlanWorkspaceValue",
 }
@@ -31,6 +35,8 @@ local function summary(view)
   local parts = {
     string.format("%dR", counts.rooms or view.room_count or 0),
     string.format("%dD", counts.doors or 0),
+    string.format("%dW", counts.windows or 0),
+    string.format("%dO", counts.outlets or 0),
     string.format("%dF", counts.furniture or 0),
   }
   if (counts.templates or 0) > 0 then parts[#parts + 1] = string.format("%dT", counts.templates) end

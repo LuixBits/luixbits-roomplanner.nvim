@@ -573,7 +573,11 @@ function M.attach(controller)
 
   function controller.maybe_autosave(session)
     local options = config.get().autosave
-    if not options.enabled or session.closed or session.source_conflicted then return false end
+    if not options.enabled or session.closed or session.source_conflicted
+      or session:schema_rewrite_pending()
+    then
+      return false
+    end
     if session.source.adapter == "norg" then
       if not options.norg or session:source_buffer_modified() then return false end
     end
@@ -582,7 +586,11 @@ function M.attach(controller)
     local revision_id = session:revision_id()
     vim.defer_fn(function()
       if session.closed or generation ~= session.autosave_generation
-        or revision_id ~= session:revision_id() or session.source_conflicted then return end
+        or revision_id ~= session:revision_id() or session.source_conflicted
+        or session:schema_rewrite_pending()
+      then
+        return
+      end
       local _, summary = controller.validate(session)
       if summary and summary.errors == 0 then
         controller.save(session, { noninteractive = true, quiet = true, autosave = true })

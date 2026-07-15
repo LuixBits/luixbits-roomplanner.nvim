@@ -1,0 +1,75 @@
+{
+  "format": "roomplan.nvim",
+  "schema_version": 3,
+  "units": "mm",
+  "metadata": {
+    "name": "Wall features",
+    "notes": "Schema-v3 fixture"
+  },
+  "settings": {
+    "grid_mm": 100,
+    "fine_step_mm": 10,
+    "normal_step_mm": 100,
+    "coarse_step_mm": 500,
+    "default_door_width_mm": 900
+  },
+  "rooms": [
+    {
+      "id": "room-main",
+      "name": "Main",
+      "origin_mm": [0, 0],
+      "footprint": {
+        "kind": "rect_union",
+        "parts": [
+          {
+            "id": "part-main",
+            "origin_mm": [0, 0],
+            "size_mm": [5000, 4000]
+          }
+        ]
+      }
+    }
+  ],
+  "doors": [],
+  "windows": [
+    {
+      "id": "window-north",
+      "room_id": "room-main",
+      "connects_to_room_id": null,
+      "part_id": "part-main",
+      "side": "north",
+      "offset_mm": 700,
+      "width_mm": 1400,
+      "vendor": {
+        "exact": 1.250,
+        "empty": []
+      }
+    }
+  ],
+  "outlets": [
+    {
+      "id": "outlet-east-data",
+      "room_id": "room-main",
+      "part_id": "part-main",
+      "side": "east",
+      "offset_mm": 1200,
+      "outlet_type": "ethernet",
+      "slots": 2,
+      "vendor": {
+        "nothing": null,
+        "empty": {}
+      }
+    }
+  ],
+  "furniture": [],
+  "custom_templates": [],
+  "extensions": {
+    "example.nvim": {
+      "enabled": true,
+      "values": [1, false, null]
+    }
+  },
+  "vendor-root": {
+    "preserved": true
+  }
+}

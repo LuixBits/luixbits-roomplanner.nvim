@@ -5,16 +5,20 @@ local M = {}
 local PREFIX = {
   room = "room-",
   door = "door-",
+  window = "window-",
+  outlet = "outlet-",
   furniture = "furniture-",
   custom_template = "custom:",
   template = "custom:",
 }
 
 local COLLECTIONS = {
-  { "rooms", "room" },
-  { "doors", "door" },
-  { "furniture", "furniture" },
-  { "custom_templates", "custom_template" },
+  { "rooms", "room", 1 },
+  { "doors", "door", 1 },
+  { "windows", "window", 3 },
+  { "outlets", "outlet", 3 },
+  { "furniture", "furniture", 1 },
+  { "custom_templates", "custom_template", 1 },
 }
 
 M.prefixes = PREFIX
@@ -96,7 +100,7 @@ local function add_to_index(index, id, kind, entity, collection, position)
   return true
 end
 
--- Build the one global entity index required by schema v1.
+-- Build the one global entity index shared by every schema version.
 function M.index(model)
   local index = {}
   local errors = {}
@@ -107,8 +111,11 @@ function M.index(model)
   while collection_index <= #COLLECTIONS do
     local collection = COLLECTIONS[collection_index][1]
     local kind = COLLECTIONS[collection_index][2]
+    local minimum_version = COLLECTIONS[collection_index][3]
     local entities = model[collection]
-    if type(entities) == "table" then
+    if (type(model.schema_version) ~= "number" or model.schema_version >= minimum_version)
+      and type(entities) == "table"
+    then
       local position = 1
       while position <= #entities do
         local entity = entities[position]

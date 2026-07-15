@@ -71,7 +71,7 @@ canvas = {
   pan_step_cells = 5,
   pan_coarse_step_cells = 20,
   show_grid = false,
-  show_dimensions = true,
+  detail_level = "middle",       -- "high", "middle", or "none"
   show_compass = true,
 },
 snapping = {
@@ -86,6 +86,13 @@ snapping = {
 scene. Snap tolerance begins in displayed cells, converts through the current
 viewport, then is capped in millimetres. The priority resolves equal
 candidates deterministically.
+
+`detail_level` controls transient canvas text. `high` shows labels plus every
+exterior wall-run, furniture width/depth, and door/window-width dimension.
+`middle` (the default) shows labels plus exterior wall-run dimensions. `none` renders
+geometry without labels or dimensions. Press `t`, use
+`:RoomPlanCanvasDetail`, or call `require("roomplan").set_canvas_detail()` to
+change the current session without changing its model or history.
 
 ## Workspace and notifications
 

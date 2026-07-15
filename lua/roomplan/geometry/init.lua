@@ -1,6 +1,7 @@
 local geometry = {
   number = require("roomplan.geometry.number"),
   interval = require("roomplan.geometry.interval"),
+  footprint = require("roomplan.geometry.footprint"),
   rect = require("roomplan.geometry.rect"),
   segment = require("roomplan.geometry.segment"),
   adjacency = require("roomplan.geometry.adjacency"),

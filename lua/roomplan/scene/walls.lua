@@ -1,12 +1,14 @@
 -- Pure wall extraction for roomplan.nvim.
 --
--- A wall segment is a union of one or more room-edge contributions.  Door
--- apertures are subtracted from contributions before coincident edges are
--- unioned, so an unverified connection can never punch through another room.
+-- A wall segment is a union of one or more room-edge contributions.  Valid
+-- door and window apertures are subtracted before coincident edges are unioned;
+-- point attachments such as outlets never cut walls.
 
 local M = {}
 
 local json = require("roomplan.codec.json")
+local footprint = require("roomplan.geometry.footprint")
+local wall_attachment = require("roomplan.geometry.wall_attachment")
 
 local SIDES = {
   north = true,
@@ -27,12 +29,18 @@ local function finite_number(value)
 end
 
 local function valid_room_geometry(room)
-  return type(room) == "table"
+  if not (type(room) == "table"
     and type(room.id) == "string"
     and type(room.origin_mm) == "table"
-    and type(room.size_mm) == "table"
     and finite_number(room.origin_mm[1])
-    and finite_number(room.origin_mm[2])
+    and finite_number(room.origin_mm[2]))
+  then
+    return false
+  end
+  if room.footprint ~= nil then
+    return footprint.from_room(room) ~= nil
+  end
+  return type(room.size_mm) == "table"
     and finite_number(room.size_mm[1])
     and finite_number(room.size_mm[2])
     and room.size_mm[1] > 0
@@ -48,8 +56,8 @@ local function ref_for(kind, id, order, context)
   }
 end
 
-local function contribution(room, order, side, orientation, fixed, start_value, finish_value)
-  return {
+local function contribution(room, order, side, orientation, fixed, start_value, finish_value, part_ids)
+  local result = {
     orientation = orientation,
     fixed = fixed,
     start = start_value,
@@ -59,6 +67,11 @@ local function contribution(room, order, side, orientation, fixed, start_value, 
     side = side,
     ref = ref_for("room", room.id, order, "wall"),
   }
+  if part_ids then
+    result.part_ids = part_ids
+    if #part_ids == 1 then result.part_id = part_ids[1] end
+  end
+  return result
 end
 
 ---Return normalized room edge contributions.
@@ -70,12 +83,31 @@ function M.room_edges(room, order)
     return {}
   end
 
+  order = order or 0
+  if room.footprint ~= nil then
+    local shape = footprint.from_room(room)
+    local boundary = shape and footprint.exterior_boundary2(shape) or nil
+    if not boundary then return {} end
+    local result = {}
+    for _, segment in ipairs(boundary) do
+      result[#result + 1] = contribution(
+        room,
+        order,
+        segment.side,
+        segment.axis == "x" and "horizontal" or "vertical",
+        segment.fixed2 / 2,
+        segment.start2 / 2,
+        segment.finish2 / 2,
+        segment.part_ids
+      )
+    end
+    return result
+  end
+
   local x = room.origin_mm[1]
   local y = room.origin_mm[2]
   local width = room.size_mm[1]
   local depth = room.size_mm[2]
-  order = order or 0
-
   return {
     contribution(room, order, "south", "horizontal", y, x, x + width),
     contribution(room, order, "east", "vertical", x + width, y, y + depth),
@@ -84,119 +116,174 @@ function M.room_edges(room, order)
   }
 end
 
-local function edge_for_side(room, side, order)
-  local edges = M.room_edges(room, order)
-  for i = 1, #edges do
-    if edges[i].side == side then
-      return edges[i]
-    end
-  end
-  return nil
-end
-
-local function point_on_edge(edge, scalar)
-  if edge.orientation == "horizontal" then
-    return { scalar, edge.fixed }
-  end
-  return { edge.fixed, scalar }
-end
-
----Classify a door aperture against the supplied room index.
+---Classify a wall aperture against the supplied room index.
 ---Malformed geometry is represented, not raised, so repair drafts still draw.
----@param door table
+---@param kind "door"|"window"
+---@param value table
 ---@param rooms_by_id table
 ---@param room_orders table|nil
 ---@param order integer|nil
 ---@return table
-function M.classify_door(door, rooms_by_id, room_orders, order)
+local function classify_aperture(kind, value, rooms_by_id, room_orders, order)
   order = order or 0
   local result = {
-    door = door,
-    id = type(door) == "table" and door.id or nil,
-    ref = ref_for("door", type(door) == "table" and door.id or "", order, "aperture"),
+    id = type(value) == "table" and value.id or nil,
+    ref = ref_for(kind, type(value) == "table" and value.id or "", order, "aperture"),
     owner_edge_valid = false,
     connection_valid = false,
     connection_requested = false,
     reason = nil,
   }
+  result[kind] = value
 
-  if type(door) ~= "table" then
-    result.reason = "door is not an object"
+  if type(value) ~= "table" then
+    result.reason = kind .. " is not an object"
     return result
   end
 
-  local owner = rooms_by_id[door.room_id]
+  local owner = rooms_by_id[value.room_id]
   if not owner then
     result.reason = "owner room is missing"
     return result
   end
-  if not SIDES[door.side] then
+  if not SIDES[value.side] then
     result.reason = "unsupported owner side"
     return result
   end
-  if not finite_number(door.offset_mm) or not finite_number(door.width_mm) or door.offset_mm < 0 or door.width_mm <= 0 then
+  if not finite_number(value.offset_mm)
+    or not finite_number(value.width_mm)
+    or value.offset_mm < 0
+    or value.width_mm <= 0
+  then
     result.reason = "invalid aperture dimensions"
     return result
   end
 
-  local owner_order = room_orders and room_orders[owner.id] or 0
-  local edge = edge_for_side(owner, door.side, owner_order)
-  if not edge then
+  local aperture = wall_attachment.aperture(owner, value)
+  if not aperture then
     result.reason = "owner edge is unavailable"
     return result
   end
 
-  local aperture_start = edge.start + door.offset_mm
-  local aperture_finish = aperture_start + door.width_mm
-  result.orientation = edge.orientation
-  result.fixed = edge.fixed
-  result.start = aperture_start
-  result.finish = aperture_finish
-  result.side = door.side
+  result.orientation = aperture.axis == "x" and "horizontal" or "vertical"
+  result.fixed = aperture.fixed_mm
+  result.start = aperture.start_mm
+  result.finish = aperture.finish_mm
+  result.side = value.side
   result.owner_room_id = owner.id
-  result.owner_side = door.side
-  result.p0 = point_on_edge(edge, aperture_start)
-  result.p1 = point_on_edge(edge, aperture_finish)
+  result.owner_side = value.side
+  if value.part_id ~= nil then result.owner_part_id = value.part_id end
+  result.p0 = { aperture.p0[1], aperture.p0[2] }
+  result.p1 = { aperture.p1[1], aperture.p1[2] }
 
-  if aperture_start < edge.start or aperture_finish > edge.finish then
+  if not aperture.within_edge then
     result.reason = "aperture extends beyond owner edge"
     return result
   end
 
+  if not aperture.on_exterior then
+    result.reason = "aperture is not on owner footprint exterior"
+    return result
+  end
+
   result.owner_edge_valid = true
-  result.connection_requested = door.connects_to_room_id ~= nil and not json.is_null(door.connects_to_room_id)
+  result.connection_requested = value.connects_to_room_id ~= nil and not json.is_null(value.connects_to_room_id)
   if not result.connection_requested then
     return result
   end
 
-  local connected = rooms_by_id[door.connects_to_room_id]
+  local connected = rooms_by_id[value.connects_to_room_id]
   if not connected or connected.id == owner.id then
     result.reason = "connected room is missing or equals owner"
     return result
   end
 
-  local opposite_side = OPPOSITE[door.side]
-  local connected_order = room_orders and room_orders[connected.id] or 0
-  local opposite_edge = edge_for_side(connected, opposite_side, connected_order)
-  if not opposite_edge
-    or opposite_edge.orientation ~= edge.orientation
-    or opposite_edge.fixed ~= edge.fixed
-    or opposite_edge.start > aperture_start
-    or opposite_edge.finish < aperture_finish
-  then
+  local connection = wall_attachment.connection(owner, connected, value)
+  if not connection then
     result.reason = "connected room does not cover the aperture"
     return result
   end
 
   result.connection_valid = true
   result.connected_room_id = connected.id
-  result.connected_side = opposite_side
+  result.connected_side = connection.b_side or OPPOSITE[value.side]
+  result.connected_part_ids = connection.b_part_ids
   result.reason = nil
   return result
 end
 
-local function cut_key(room_id, side)
-  return room_id .. "\0" .. side
+function M.classify_door(door, rooms_by_id, room_orders, order)
+  return classify_aperture("door", door, rooms_by_id, room_orders, order)
+end
+
+function M.classify_window(window, rooms_by_id, room_orders, order)
+  return classify_aperture("window", window, rooms_by_id, room_orders, order)
+end
+
+---Classify a point wall attachment. Points at edge endpoints are intentionally
+---invalid because their owning wall is ambiguous.
+function M.classify_outlet(outlet, rooms_by_id, _, order)
+  order = order or 0
+  local result = {
+    outlet = outlet,
+    id = type(outlet) == "table" and outlet.id or nil,
+    ref = ref_for("outlet", type(outlet) == "table" and outlet.id or "", order, "marker"),
+    owner_edge_valid = false,
+    reason = nil,
+  }
+
+  if type(outlet) ~= "table" then
+    result.reason = "outlet is not an object"
+    return result
+  end
+  local owner = rooms_by_id[outlet.room_id]
+  if not owner then
+    result.reason = "owner room is missing"
+    return result
+  end
+  if not SIDES[outlet.side] then
+    result.reason = "unsupported owner side"
+    return result
+  end
+  if not finite_number(outlet.offset_mm) or outlet.offset_mm < 0 then
+    result.reason = "invalid marker position"
+    return result
+  end
+
+  local marker = wall_attachment.marker(owner, outlet)
+  if not marker then
+    result.reason = "owner edge is unavailable"
+    return result
+  end
+
+  result.orientation = marker.axis == "x" and "horizontal" or "vertical"
+  result.fixed = marker.fixed_mm
+  result.position = marker.scalar_mm
+  result.side = outlet.side
+  result.owner_room_id = owner.id
+  result.owner_side = outlet.side
+  if outlet.part_id ~= nil then result.owner_part_id = outlet.part_id end
+  result.p = { marker.p[1], marker.p[2] }
+
+  if not marker.within_edge then
+    if marker.scalar_mm == marker.edge_start_mm or marker.scalar_mm == marker.edge_finish_mm then
+      result.reason = "outlet position is ambiguous at an edge endpoint"
+    else
+      result.reason = "outlet lies outside owner edge"
+    end
+    return result
+  end
+  if not marker.on_exterior then
+    result.reason = "outlet is not on owner footprint exterior"
+    return result
+  end
+
+  result.owner_edge_valid = true
+  return result
+end
+
+local function cut_key(room_id, side, orientation, fixed)
+  return table.concat({ room_id, side, orientation, string.format("%.17g", fixed) }, "\0")
 end
 
 local function sort_intervals(intervals)
@@ -235,7 +322,7 @@ local function subtract_intervals(start_value, finish_value, cuts)
 end
 
 local function copy_contribution(source, start_value, finish_value)
-  return {
+  local result = {
     orientation = source.orientation,
     fixed = source.fixed,
     start = start_value,
@@ -245,6 +332,9 @@ local function copy_contribution(source, start_value, finish_value)
     side = source.side,
     ref = source.ref,
   }
+  if source.part_ids then result.part_ids = source.part_ids end
+  if source.part_id then result.part_id = source.part_id end
+  return result
 end
 
 local function line_key(edge)
@@ -396,13 +486,39 @@ function M.group_contributions(contributions)
   return segments
 end
 
----Build wall segments and classified apertures for a model.
+local function add_aperture_cuts(cuts, aperture)
+  if not aperture.owner_edge_valid then return end
+  local owner_key = cut_key(
+    aperture.owner_room_id,
+    aperture.owner_side,
+    aperture.orientation,
+    aperture.fixed
+  )
+  cuts[owner_key] = cuts[owner_key] or {}
+  cuts[owner_key][#cuts[owner_key] + 1] = { aperture.start, aperture.finish }
+
+  if not aperture.connection_valid then return end
+  local connected_key = cut_key(
+    aperture.connected_room_id,
+    aperture.connected_side,
+    aperture.orientation,
+    aperture.fixed
+  )
+  cuts[connected_key] = cuts[connected_key] or {}
+  cuts[connected_key][#cuts[connected_key] + 1] = { aperture.start, aperture.finish }
+end
+
+---Build wall segments and classified wall attachments for a model.
 ---@param rooms table|nil
 ---@param doors table|nil
+---@param windows table|nil
+---@param outlets table|nil
 ---@return table
-function M.build(rooms, doors)
+function M.build(rooms, doors, windows, outlets)
   rooms = rooms or {}
   doors = doors or {}
+  windows = windows or {}
+  outlets = outlets or {}
   local rooms_by_id = {}
   local room_orders = {}
   local contributions = {}
@@ -428,23 +544,29 @@ function M.build(rooms, doors)
   for i = 1, #doors do
     local aperture = M.classify_door(doors[i], rooms_by_id, room_orders, i)
     apertures[#apertures + 1] = aperture
-    if aperture.owner_edge_valid then
-      local owner_key = cut_key(aperture.owner_room_id, aperture.owner_side)
-      cuts[owner_key] = cuts[owner_key] or {}
-      cuts[owner_key][#cuts[owner_key] + 1] = { aperture.start, aperture.finish }
+    add_aperture_cuts(cuts, aperture)
+  end
 
-      if aperture.connection_valid then
-        local connected_key = cut_key(aperture.connected_room_id, aperture.connected_side)
-        cuts[connected_key] = cuts[connected_key] or {}
-        cuts[connected_key][#cuts[connected_key] + 1] = { aperture.start, aperture.finish }
-      end
-    end
+  local window_apertures = {}
+  for i = 1, #windows do
+    local aperture = M.classify_window(windows[i], rooms_by_id, room_orders, i)
+    window_apertures[#window_apertures + 1] = aperture
+    add_aperture_cuts(cuts, aperture)
+  end
+
+  local outlet_markers = {}
+  for i = 1, #outlets do
+    outlet_markers[#outlet_markers + 1] = M.classify_outlet(outlets[i], rooms_by_id, room_orders, i)
   end
 
   local cut_contributions = {}
   for i = 1, #contributions do
     local edge = contributions[i]
-    local pieces = subtract_intervals(edge.start, edge.finish, cuts[cut_key(edge.room_id, edge.side)])
+    local pieces = subtract_intervals(
+      edge.start,
+      edge.finish,
+      cuts[cut_key(edge.room_id, edge.side, edge.orientation, edge.fixed)]
+    )
     for j = 1, #pieces do
       cut_contributions[#cut_contributions + 1] = copy_contribution(edge, pieces[j][1], pieces[j][2])
     end
@@ -453,6 +575,8 @@ function M.build(rooms, doors)
   return {
     segments = M.group_contributions(cut_contributions),
     apertures = apertures,
+    window_apertures = window_apertures,
+    outlet_markers = outlet_markers,
     rooms_by_id = rooms_by_id,
     room_orders = room_orders,
     contributions = cut_contributions,

@@ -1,43 +1,141 @@
 local alignment = require("roomplan.geometry.alignment")
 local config = require("roomplan.config")
 local model_helpers = require("roomplan.model")
+local room_footprints = require("roomplan.model.room_footprints")
 local common = require("roomplan.ui.forms.common")
 
 local M = {}
 
 local RELATIVE = { north = "place_north", east = "place_east", south = "place_south", west = "place_west" }
 
-local function proposal(draft, context)
-  local room = {
-    origin_mm = { 0, 0 },
-    size_mm = { draft.width_mm, draft.depth_mm },
+local function schema_version(context)
+  local plan = common.model(context)
+  return plan and plan.schema_version or 1
+end
+
+local function editable_preset(room, version)
+  if version < 2 then
+    return { shape = "rectangle", width_mm = room.size_mm[1], depth_mm = room.size_mm[2] }
+  end
+  return room_footprints.classify(room.footprint)
+end
+
+local function dependency_summary(context, room_id)
+  local plan = common.model(context) or {}
+  local door_count, furniture_count = 0, 0
+  for _, door in ipairs(plan.doors or {}) do
+    if door.room_id == room_id or door.connects_to_room_id == room_id then
+      door_count = door_count + 1
+    end
+  end
+  for _, furniture in ipairs(plan.furniture or {}) do
+    if furniture.room_id == room_id then furniture_count = furniture_count + 1 end
+  end
+  return string.format("%d door%s · %d furniture", door_count, door_count == 1 and "" or "s", furniture_count)
+end
+
+local function width_field(runtime)
+  return {
+    key = "width_mm", label = "Overall width", type = "measurement", required = true,
+    max = runtime.limits.max_dimension_mm,
   }
+end
+
+local function depth_field(runtime)
+  return {
+    key = "depth_mm", label = "Overall depth", type = "measurement", required = true,
+    max = runtime.limits.max_dimension_mm,
+  }
+end
+
+local function leg_width_field(runtime)
+  return {
+    key = "leg_width_mm", label = "Vertical leg width", type = "measurement", required = true,
+    max = runtime.limits.max_dimension_mm,
+    visible = function(_, draft) return draft.shape == "l_shape" end,
+    validate = function(value, _, draft)
+      if type(value) == "number" and type(draft.width_mm) == "number" and value >= draft.width_mm then
+        return "must be smaller than the overall width"
+      end
+    end,
+  }
+end
+
+local function leg_depth_field(runtime)
+  return {
+    key = "leg_depth_mm", label = "Horizontal leg depth", type = "measurement", required = true,
+    max = runtime.limits.max_dimension_mm,
+    visible = function(_, draft) return draft.shape == "l_shape" end,
+    validate = function(value, _, draft)
+      if type(value) == "number" and type(draft.depth_mm) == "number" and value >= draft.depth_mm then
+        return "must be smaller than the overall depth"
+      end
+    end,
+  }
+end
+
+local function missing_corner_field()
+  return {
+    key = "missing_corner", label = "Missing corner", type = "enum", required = true,
+    visible = function(_, draft) return draft.shape == "l_shape" end,
+    choices = {
+      { value = "northeast", label = "North-east" },
+      { value = "northwest", label = "North-west" },
+      { value = "southeast", label = "South-east" },
+      { value = "southwest", label = "South-west" },
+    },
+  }
+end
+
+local function draft_room(draft, context)
   if type(draft.width_mm) ~= "number" or type(draft.depth_mm) ~= "number" then
     return nil, { code = "ROOM_FORM_DIMENSIONS", message = "enter valid room dimensions" }
   end
+  local room = { origin_mm = { 0, 0 } }
+  if schema_version(context) >= 2 then
+    local footprint, err = room_footprints.build(draft)
+    if not footprint then return nil, err end
+    room.footprint = footprint
+  else
+    if draft.shape ~= nil and draft.shape ~= "rectangle" then
+      return nil, { code = "ROOM_FORM_SHAPE", field = "shape", message = "compound rooms require schema v2 or newer" }
+    end
+    room.size_mm = { draft.width_mm, draft.depth_mm }
+  end
+  return room
+end
+
+local function placement(result, room)
+  if result then result.footprint = room.footprint end
+  return result
+end
+
+local function proposal(draft, context)
+  local room, room_error = draft_room(draft, context)
+  if not room then return nil, room_error end
   if draft.placement == "origin" then
-    return { origin_mm = { 0, 0 }, description = "World origin" }
+    return placement({ origin_mm = { 0, 0 }, description = "World origin" }, room)
   elseif draft.placement == "cursor" then
     local cursor = common.cursor(context)
     if not cursor then return nil, { code = "CURSOR_UNAVAILABLE", message = "the canvas cursor position is unavailable" } end
-    return { origin_mm = cursor, description = "Canvas cursor" }
+    return placement({ origin_mm = cursor, description = "Canvas cursor" }, room)
   elseif RELATIVE[draft.placement] then
     local reference = common.find(context, "room", draft.reference_room_id)
     if not reference then return nil, { code = "ROOM_REFERENCE", message = "choose a reference room" } end
     local result, err = alignment.propose(room, reference, RELATIVE[draft.placement], { gap_mm = draft.gap_mm or 0 })
     if not result then return nil, err end
     result.description = string.format("%s of %s", draft.placement, reference.name or reference.id)
-    return result
+    return placement(result, room)
   end
   local plan = common.model(context)
-  local result, err = alignment.auto_place(room.size_mm, plan and plan.rooms or {}, {
+  local result, err = alignment.auto_place(room, plan and plan.rooms or {}, {
     cursor_mm = common.cursor(context),
     grid_mm = plan and plan.settings and plan.settings.grid_mm or 100,
     max_distance_mm = context.max_auto_place_distance_mm,
   })
   if not result then return nil, err end
   result.description = result.reference_id and ("Automatic beside " .. result.reference_id) or "Automatic placement"
-  return result
+  return placement(result, room)
 end
 
 function M.add(session, opts)
@@ -64,13 +162,17 @@ function M.add(session, opts)
     id = "add-room",
     title = "Add room",
     mode = "ROOM CREATE",
-    description = "Exact stored geometry uses integer millimetres.",
+    description = "Create a rectangular or L-shaped room using exact integer millimetres.",
     apply_label = "Create room",
     context = context,
     initial = {
       name = opts.name or "Room",
+      shape = opts.shape or "rectangle",
       width_mm = opts.width_mm or 4000,
       depth_mm = opts.depth_mm or 3000,
+      leg_width_mm = opts.leg_width_mm or 1500,
+      leg_depth_mm = opts.leg_depth_mm or 1200,
+      missing_corner = opts.missing_corner or "northeast",
       placement = opts.placement or "automatic",
       reference_room_id = opts.reference_room_id or common.selected_room(context),
       gap_mm = opts.gap_mm or 0,
@@ -78,8 +180,19 @@ function M.add(session, opts)
     },
     fields = {
       { key = "name", label = "Name", type = "text", required = true, trim = true, max_length = 256 },
-      { key = "width_mm", label = "Width", type = "measurement", required = true, max = runtime.limits.max_dimension_mm },
-      { key = "depth_mm", label = "Depth", type = "measurement", required = true, max = runtime.limits.max_dimension_mm },
+      {
+        key = "shape", label = "Shape", type = "enum", required = true,
+        choices = function(ctx)
+          local choices = { { value = "rectangle", label = "Rectangle" } }
+          if schema_version(ctx) >= 2 then choices[#choices + 1] = { value = "l_shape", label = "L-shaped" } end
+          return choices
+        end,
+      },
+      width_field(runtime),
+      depth_field(runtime),
+      leg_width_field(runtime),
+      leg_depth_field(runtime),
+      missing_corner_field(),
       { key = "placement", label = "Placement", type = "enum", required = true, choices = placement_choices },
       {
         key = "reference_room_id", label = "Reference room", type = "object_ref", required = true,
@@ -100,13 +213,22 @@ function M.add(session, opts)
         format = function(value) return common.point_text(value) end,
       },
     },
+    validate = function(draft, ctx)
+      local _, err = draft_room(draft, ctx)
+      if not err then return {} end
+      return { [err.field or "_form"] = err.message or err.code }
+    end,
     preview = function(draft, ctx)
       local result, err = proposal(draft, ctx)
       if not result then return nil, err end
+      local geometry = draft.shape == "l_shape"
+          and string.format("L-shaped: %d x %d mm overall; legs %d x %d mm",
+            draft.width_mm, draft.depth_mm, draft.leg_width_mm, draft.leg_depth_mm)
+        or string.format("Footprint: %d x %d mm", draft.width_mm, draft.depth_mm)
       return {
         lines = {
           (result.description or "Placement") .. " at " .. common.point_text(result.origin_mm),
-          string.format("Footprint: %d x %d mm", draft.width_mm, draft.depth_mm),
+          geometry,
         },
       }
     end,
@@ -116,14 +238,17 @@ function M.add(session, opts)
     if not result then return nil, err end
     local id, id_err = common.generate_id(ctx or context, "room", draft.name)
     if not id then return nil, id_err end
+    local version = schema_version(ctx or context)
+    local fields = {
+      id = id,
+      name = draft.name,
+      origin_mm = result.origin_mm,
+    }
+    if version >= 2 then fields.footprint = result.footprint
+    else fields.size_mm = { draft.width_mm, draft.depth_mm } end
     return {
       type = "add_room",
-      room = model_helpers.new_room({
-        id = id,
-        name = draft.name,
-        origin_mm = result.origin_mm,
-        size_mm = { draft.width_mm, draft.depth_mm },
-      }),
+      room = model_helpers.new_room(fields, { schema_version = version }),
       force = draft.force == true,
     }
   end
@@ -136,61 +261,116 @@ function M.edit(session, room, opts)
   assert(type(room) == "table" and type(room.id) == "string", "room.edit requires a room")
   local runtime = config.get()
   local context = { session = session, room_id = room.id }
+  local version = schema_version(context)
+  local preset = editable_preset(room, version)
+  local can_edit_geometry = preset ~= nil
+  local shape_label = preset and (preset.shape == "l_shape" and "L-shaped" or "Rectangle") or "Compound"
   local spec = {
     id = "edit-room",
     title = "Edit room",
     mode = "ROOM EDIT",
-    description = "All room properties are applied as one undoable edit.",
+    description = can_edit_geometry and "Room geometry and properties are applied as one undoable edit."
+      or "This form preserves compound geometry while editing the room name and origin.",
     apply_label = "Apply room changes",
     context = context,
     initial = {
       name = room.name,
       origin_x_mm = room.origin_mm[1],
       origin_y_mm = room.origin_mm[2],
-      width_mm = room.size_mm[1],
-      depth_mm = room.size_mm[2],
+      shape = preset and preset.shape or nil,
+      width_mm = preset and preset.width_mm or nil,
+      depth_mm = preset and preset.depth_mm or nil,
+      leg_width_mm = preset and preset.leg_width_mm or nil,
+      leg_depth_mm = preset and preset.leg_depth_mm or nil,
+      missing_corner = preset and preset.missing_corner or nil,
       force = opts.force == true,
     },
     fields = {
       { key = "name", label = "Name", type = "text", required = true, trim = true, max_length = 256 },
       { key = "origin_x_mm", label = "World X", type = "measurement", allow_negative = true, allow_zero = true },
       { key = "origin_y_mm", label = "World Y", type = "measurement", allow_negative = true, allow_zero = true },
-      { key = "width_mm", label = "Width", type = "measurement", max = runtime.limits.max_dimension_mm },
-      { key = "depth_mm", label = "Depth", type = "measurement", max = runtime.limits.max_dimension_mm },
-      { key = "force", label = "Allow invalid draft", type = "toggle", default = false },
-      {
-        key = "summary", label = "Result", type = "readonly",
-        value = function(_, draft)
-          return string.format("%s at (%d, %d), %d x %d mm", draft.name, draft.origin_x_mm,
-            draft.origin_y_mm, draft.width_mm, draft.depth_mm)
-        end,
-      },
     },
-    validate = function(_, ctx)
-      return common.find(ctx, "room", ctx.room_id) and {} or { _form = "the room no longer exists" }
-    end,
-    preview = function(draft)
-      return {
-        lines = {
-          string.format("Origin %s; footprint %d x %d mm", common.point_text({ draft.origin_x_mm, draft.origin_y_mm }),
-            draft.width_mm, draft.depth_mm),
-        },
-      }
+    validate = function(draft, ctx)
+      if not common.find(ctx, "room", ctx.room_id) then return { _form = "the room no longer exists" } end
+      if can_edit_geometry and version >= 2 then
+        local _, err = room_footprints.build(draft)
+        if err then return { [err.field or "_form"] = err.message or err.code } end
+      end
+      return {}
     end,
   }
+  if can_edit_geometry then
+    spec.fields[#spec.fields + 1] = {
+      key = "shape", label = "Shape", type = "readonly", value = function() return shape_label end,
+    }
+    spec.fields[#spec.fields + 1] = width_field(runtime)
+    spec.fields[#spec.fields + 1] = depth_field(runtime)
+    if preset.shape == "l_shape" then
+      spec.fields[#spec.fields + 1] = leg_width_field(runtime)
+      spec.fields[#spec.fields + 1] = leg_depth_field(runtime)
+      spec.fields[#spec.fields + 1] = missing_corner_field()
+    end
+  else
+    spec.fields[#spec.fields + 1] = {
+      key = "footprint", label = "Footprint", type = "readonly",
+      value = function() return string.format("%d parts (preserved)", #(room.footprint.parts or {})) end,
+    }
+  end
+  spec.fields[#spec.fields + 1] = {
+    key = "attached", label = "Attached", type = "readonly",
+    value = function(ctx) return dependency_summary(ctx, room.id) end,
+  }
+  spec.fields[#spec.fields + 1] = { key = "force", label = "Allow invalid draft", type = "toggle", default = false }
+  spec.fields[#spec.fields + 1] = {
+    key = "summary", label = "Result", type = "readonly",
+    value = function(_, draft)
+      if can_edit_geometry then
+        local geometry = draft.shape == "l_shape"
+            and string.format("L-shaped %d x %d mm; legs %d x %d mm",
+              draft.width_mm, draft.depth_mm, draft.leg_width_mm, draft.leg_depth_mm)
+          or string.format("%d x %d mm", draft.width_mm, draft.depth_mm)
+        return string.format("%s at (%d, %d), %s", draft.name, draft.origin_x_mm,
+          draft.origin_y_mm, geometry)
+      end
+      return string.format("%s at (%d, %d), compound footprint preserved", draft.name,
+        draft.origin_x_mm, draft.origin_y_mm)
+    end,
+  }
+  spec.preview = function(draft)
+    local geometry
+    if can_edit_geometry and draft.shape == "l_shape" then
+      geometry = string.format("L-shaped %d x %d mm; legs %d x %d mm; missing %s",
+        draft.width_mm, draft.depth_mm, draft.leg_width_mm, draft.leg_depth_mm, draft.missing_corner)
+    elseif can_edit_geometry then
+      geometry = string.format("rectangle %d x %d mm", draft.width_mm, draft.depth_mm)
+    else
+      geometry = string.format("%d-part footprint preserved", #(room.footprint.parts or {}))
+    end
+    return { lines = { string.format("Origin %s; %s",
+      common.point_text({ draft.origin_x_mm, draft.origin_y_mm }), geometry) } }
+  end
   function spec.build(draft, ctx)
     ctx = ctx or context
     if not common.find(ctx, "room", ctx.room_id) then
       return nil, { code = "NOT_FOUND", message = "the room no longer exists" }
     end
+    local patch = {
+      name = draft.name,
+      origin_mm = { draft.origin_x_mm, draft.origin_y_mm },
+    }
+    if can_edit_geometry then
+      if version >= 2 then
+        local footprint, footprint_error = room_footprints.build(draft)
+        if not footprint then return nil, footprint_error end
+        patch.footprint = footprint
+      else
+        patch.size_mm = { draft.width_mm, draft.depth_mm }
+      end
+    end
     return {
       type = "edit_room",
       id = ctx.room_id,
-      patch = {
-        name = draft.name,
-        origin_mm = { draft.origin_x_mm, draft.origin_y_mm },
-        size_mm = { draft.width_mm, draft.depth_mm },
-      },
+      patch = patch,
       force = draft.force == true,
     }
   end

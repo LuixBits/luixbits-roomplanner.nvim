@@ -2,6 +2,7 @@
 -- snapshots as immutable by convention.
 
 local json = require("roomplan.codec.json")
+local entities = require("roomplan.model.entities")
 local schema = require("roomplan.schema")
 
 local M = {}
@@ -9,30 +10,11 @@ local M = {}
 local COLLECTION_FOR_KIND = {
   room = "rooms",
   door = "doors",
+  window = "windows",
+  outlet = "outlets",
   furniture = "furniture",
   template = "custom_templates",
 }
-
-local function copy_fields(fields)
-  local result = json.object()
-  if type(fields) == "table" then
-    for key, value in pairs(fields) do
-      result[key] = json.deep_copy(value)
-    end
-  end
-  return result
-end
-
-local function tagged_tuple(values, defaults)
-  local result = json.array()
-  values = values or defaults or {}
-  local position = 1
-  while position <= #values do
-    result[position] = values[position]
-    position = position + 1
-  end
-  return result
-end
 
 function M.deep_copy(value)
   return json.deep_copy(value)
@@ -80,6 +62,8 @@ function M.new(options)
     settings = settings,
     rooms = json.array(),
     doors = json.array(),
+    windows = json.array(),
+    outlets = json.array(),
     furniture = json.array(),
     custom_templates = json.array(),
     extensions = extensions,
@@ -91,57 +75,31 @@ function M.new(options)
   return normalized, info_or_error
 end
 
-function M.new_room(fields)
-  fields = fields or {}
-  local result = copy_fields(fields)
-  result.id = fields.id
-  result.name = fields.name or "Room"
-  result.origin_mm = tagged_tuple(fields.origin_mm, { 0, 0 })
-  result.size_mm = tagged_tuple(fields.size_mm)
-  return result
+function M.new_room(fields, options)
+  return entities.room(fields, options and options.schema_version or schema.CURRENT_VERSION)
 end
 
-function M.new_door(fields)
-  fields = fields or {}
-  local result = copy_fields(fields)
-  result.id = fields.id
-  result.kind = fields.kind or "hinged"
-  result.room_id = fields.room_id
-  result.connects_to_room_id = fields.connects_to_room_id == nil and json.null or fields.connects_to_room_id
-  result.side = fields.side
-  result.offset_mm = fields.offset_mm or 0
-  result.width_mm = fields.width_mm
-  result.hinge = fields.hinge or "start"
-  local has_connection = fields.connects_to_room_id ~= nil and not json.is_null(fields.connects_to_room_id)
-  result.opens_into = fields.opens_into or (has_connection and "connected" or "owner")
-  result.open_angle_deg = fields.open_angle_deg or 90
-  return result
+function M.new_door(fields, options)
+  return entities.door(fields, options and options.schema_version or schema.CURRENT_VERSION)
 end
 
-function M.new_furniture(fields)
-  fields = fields or {}
-  local result = copy_fields(fields)
-  result.id = fields.id
-  result.room_id = fields.room_id
-  result.template_id = fields.template_id or "builtin:custom-rectangle"
-  result.name = fields.name or "Furniture"
-  result.category = fields.category or "custom"
-  result.center_mm = tagged_tuple(fields.center_mm, { 0, 0 })
-  result.size_mm = tagged_tuple(fields.size_mm)
-  result.rotation_deg = fields.rotation_deg or 0
-  return result
+function M.new_window(fields, options)
+  return entities.window(fields, options and options.schema_version or schema.CURRENT_VERSION)
 end
 
-function M.new_custom_template(fields)
-  fields = fields or {}
-  local result = copy_fields(fields)
-  result.id = fields.id
-  result.name = fields.name or "Custom furniture"
-  result.category = fields.category or "custom"
-  result.shape = fields.shape or "rectangle"
-  result.default_size_mm = tagged_tuple(fields.default_size_mm)
-  return result
+function M.new_outlet(fields, options)
+  return entities.outlet(fields, options and options.schema_version or schema.CURRENT_VERSION)
 end
+
+function M.new_furniture(fields, options)
+  return entities.furniture(fields, options and options.schema_version or schema.CURRENT_VERSION)
+end
+
+function M.new_custom_template(fields, options)
+  return entities.template(fields, options and options.schema_version or schema.CURRENT_VERSION)
+end
+
+M.rectangle_footprint = entities.rectangle_footprint
 
 function M.find(model, kind, id)
   local collection_name = COLLECTION_FOR_KIND[kind]

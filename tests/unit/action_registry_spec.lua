@@ -21,6 +21,7 @@ local function context(focus, selection)
     selection = selection,
     can_undo = true,
     can_redo = false,
+    detail_level = "middle",
     focused_row = focused_row,
   }
 end
@@ -66,8 +67,8 @@ describe("action registry", function()
     assert_true(present.properties ~= nil)
     assert_true(present.issues ~= nil)
     for _, id in ipairs({
-      "add", "add_door", "add_furniture", "pan", "align", "rotate",
-      "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
+      "add", "add_door", "add_window", "add_outlet", "add_furniture", "pan", "align", "rotate",
+      "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
       "toggle_snap", "bypass_snap", "save_as", "next_issue", "previous_issue",
       "aspect", "reload", "close",
     }) do
@@ -75,19 +76,32 @@ describe("action registry", function()
       assert_true(present[id].primary == false)
     end
     assert_equal("zoom", present.zoom_in.handler)
+    assert_equal("t", present.cycle_detail_level.key)
+    assert_equal("set_detail_level", present.cycle_detail_level.handler)
+    assert_equal("cycle", present.cycle_detail_level.args[1])
+    assert_equal("Canvas detail: middle → none", present.cycle_detail_level.label)
     assert_equal("in", present.zoom_in.args[1])
     assert_equal("rotate_view", present.rotate_view_clockwise.handler)
     assert_equal("clockwise", present.rotate_view_clockwise.args[1])
-    assert_equal("]r", present.rotate_view_clockwise.key)
+    assert_equal("<A-l>", present.rotate_view_clockwise.key)
+    assert_equal("Alt-l", present.rotate_view_clockwise.key_label)
     assert_equal("counterclockwise", present.rotate_view_counterclockwise.args[1])
+    assert_equal("<A-h>", present.rotate_view_counterclockwise.key)
+    assert_equal("<A-j>", present.next_issue.key)
+    assert_equal("Alt-j", present.next_issue.key_label)
     assert_equal("reset", present.reset_view.args[1])
     assert_equal("next_issue", present.previous_issue.handler)
     assert_equal(-1, present.previous_issue.args[1])
+    assert_equal("<A-k>", present.previous_issue.key)
     assert_equal("Source and session", present.reload.group_label)
     assert_equal("Disable snapping", present.toggle_snap.label)
+    assert_equal("W", present.add_window.key)
+    assert_equal("add_window", present.add_window.handler)
+    assert_equal("O", present.add_outlet.key)
+    assert_equal("add_outlet", present.add_outlet.handler)
     local controller = require("roomplan.controller")
     for _, id in ipairs({
-      "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
+      "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
       "toggle_snap", "bypass_snap", "save_as", "next_issue", "previous_issue",
       "aspect", "reload", "close",
     }) do
@@ -100,6 +114,24 @@ describe("action registry", function()
     for _, group in ipairs(grouped) do
       for _, action in ipairs(group.actions) do assert_true(action.id ~= "help") end
     end
+  end)
+
+  it("keeps window and outlet selection actions movable and duplicable", function()
+    for _, kind in ipairs({ "window", "outlet" }) do
+      local ctx = context("canvas", { kind = kind, id = kind .. "-1" })
+      assert_equal({ "edit", "move", "delete", "help" }, ids(registry.primary(ctx)))
+      local present = {}
+      for _, action in ipairs(registry.full(ctx)) do present[action.id] = action end
+      for _, id in ipairs({ "edit", "move", "duplicate", "delete" }) do
+        assert_true(present[id] ~= nil, kind .. " is missing " .. id)
+        assert_true(present[id].enabled, kind .. " unexpectedly disables " .. id)
+      end
+    end
+
+    local empty = context("canvas", nil)
+    empty.model.rooms = {}
+    assert_equal("Add a room first", registry.get("add_window", empty).reason)
+    assert_equal("Add a room first", registry.get("add_outlet", empty).reason)
   end)
 
   it("prioritizes pane-local keys and respects mapping overrides", function()
