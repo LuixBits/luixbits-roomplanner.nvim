@@ -32,6 +32,7 @@ local function status(ctx)
     values[#values + 1] = ctx.dirty and "DIRTY" or "SAVED"
   end
   if ctx.snap_enabled then values[#values + 1] = "SNAP" end
+  if not ctx.form then values[#values + 1] = "DETAIL " .. tostring(ctx.detail_level or "middle"):upper() end
   if ctx.zoom then values[#values + 1] = string.format("×%.2g", ctx.zoom) end
   return table.concat(values, " · ")
 end

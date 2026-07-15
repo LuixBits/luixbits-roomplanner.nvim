@@ -6,9 +6,10 @@ RoomPlan separates saved data from its terminal presentation.
 
 ## Plan
 
-The plan is structured geometry: metadata, settings, rooms, doors, furniture,
-and project-local furniture templates. Coordinates and dimensions are stored as
-integer millimetres. Canvas characters are never source data.
+The plan is structured geometry: metadata, settings, rooms, doors, windows,
+outlets, furniture, and project-local furniture templates. Coordinates and
+dimensions are stored as integer millimetres. Canvas characters are never
+source data.
 
 ## Source
 
@@ -40,4 +41,3 @@ entry. Zoom, pan, pane visibility, filtering, aspect calibration, and view
 rotation are transient presentation state and are not written into the plan.
 
 [← Quick start](quick-start.md) · [Documentation home](../README.md) · [Next: Workspace overview →](../workspace/overview.md)
-

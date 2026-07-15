@@ -28,9 +28,11 @@ bypass structural validation or source-conflict checks.
 | `:RoomPlanAddRoom` | Open Add Room form |
 | `:RoomPlanAlign` | Align the selected room against another room |
 | `:RoomPlanAddDoor` | Open Add Door form |
+| `:RoomPlanAddWindow` | Open Add Window form |
+| `:RoomPlanAddOutlet` | Open Add Outlet form |
 | `:RoomPlanAddFurniture` | Open Add Furniture form |
-| `:RoomPlanEdit` | Edit the selected plan, room, door, furniture, or project template |
-| `:RoomPlanDuplicate` | Duplicate the selected supported object |
+| `:RoomPlanEdit` | Edit the selected plan, room, door, window, outlet, furniture, or project template |
+| `:RoomPlanDuplicate` | Duplicate the selected room, door, window, outlet, furniture, or project template |
 | `:RoomPlanDelete` | Delete selection; room dependencies are confirmed as one cascade |
 | `:RoomPlanUndo` / `:RoomPlanRedo` | Move through semantic model history |
 
@@ -43,6 +45,7 @@ bypass structural validation or source-conflict checks.
 | `:RoomPlanValidate` | Revalidate and focus Issues |
 | `:RoomPlanNextIssue` / `:RoomPlanPrevIssue` | Select the next/previous diagnostic |
 | `:RoomPlanFit` | Fit scene geometry to the canvas |
+| `:RoomPlanCanvasDetail [high\|middle\|none\|cycle]` | Set canvas detail, or cycle when omitted |
 | `:RoomPlanAspect [ratio]` | Prompt for or set terminal cell height/width calibration |
 | `:RoomPlanRotateView [clockwise\|counterclockwise\|reset]` | Rotate only the viewport projection |
 
@@ -57,6 +60,7 @@ The following convenience aliases remain available:
 Commands target the session attached to the current source, canvas, workspace,
 form, or palette buffer. When no buffer owns a session, exactly one live
 session is an unambiguous fallback. Use `:RoomPlan` to choose when several are
-open.
+open. Canvas detail is session-local presentation and never changes model
+history.
 
 ← [Keymaps](../configuration/keymaps.md) | [Documentation home](../README.md) | [Lua API](lua-api.md) →

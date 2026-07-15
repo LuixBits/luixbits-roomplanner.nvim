@@ -30,6 +30,8 @@ local definitions = {
   RoomPlanAddRoom = { method = "add_room", desc = "Add a RoomPlan room" },
   RoomPlanAlign = { method = "align_room", desc = "Align RoomPlan rooms" },
   RoomPlanAddDoor = { method = "add_door", desc = "Add a RoomPlan door" },
+  RoomPlanAddWindow = { method = "add_window", desc = "Add a RoomPlan window" },
+  RoomPlanAddOutlet = { method = "add_outlet", desc = "Add a RoomPlan outlet" },
   RoomPlanAddFurniture = { method = "add_furniture", desc = "Add RoomPlan furniture" },
   RoomPlanEdit = { method = "edit_selected", desc = "Edit RoomPlan selection" },
   RoomPlanDuplicate = { method = "duplicate_selected", desc = "Duplicate RoomPlan selection" },
@@ -45,6 +47,11 @@ local definitions = {
   RoomPlanRedo = { method = "redo", desc = "Redo RoomPlan action" },
   RoomPlanFit = { method = "fit", desc = "Fit RoomPlan canvas" },
   RoomPlanAspect = { method = "set_aspect", nargs = "?", desc = "Calibrate RoomPlan terminal cell aspect" },
+  RoomPlanCanvasDetail = {
+    method = "set_detail_level", nargs = "?",
+    complete = function() return { "high", "middle", "none", "cycle" } end,
+    desc = "Set or cycle RoomPlan canvas detail",
+  },
   RoomPlanRotateView = {
     method = "rotate_view", nargs = "?", desc = "Rotate the RoomPlan view without changing geometry",
   },

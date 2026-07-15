@@ -2,6 +2,7 @@
 local catalog = require("roomplan.catalog")
 local config = require("roomplan.config")
 local model = require("roomplan.model")
+local state = require("roomplan.state")
 local util = require("roomplan.util")
 
 local common = require("roomplan.controller.common")
@@ -31,7 +32,8 @@ function M.attach(controller)
 
   local function spatial_object_count(plan)
     if type(plan) ~= "table" then return 0 end
-    return #(plan.rooms or {}) + #(plan.doors or {}) + #(plan.furniture or {})
+    return #(plan.rooms or {}) + #(plan.doors or {}) + #(plan.windows or {})
+      + #(plan.outlets or {}) + #(plan.furniture or {})
   end
 
   function controller.dispatch(session, action)
@@ -178,6 +180,26 @@ function M.attach(controller)
     return open_structured_form(resolved, spec)
   end
 
+  function controller.add_window(session)
+    local resolved, err = resolve(session)
+    if not resolved then return notify_error(err) end
+    if #resolved:model().rooms == 0 then
+      return notify_error(util.err("ROOM_REQUIRED", "add a room before placing a window"))
+    end
+    local spec = require("roomplan.ui.forms").window.add(resolved, { cursor_mm = cursor_world(resolved) })
+    return open_structured_form(resolved, spec)
+  end
+
+  function controller.add_outlet(session)
+    local resolved, err = resolve(session)
+    if not resolved then return notify_error(err) end
+    if #resolved:model().rooms == 0 then
+      return notify_error(util.err("ROOM_REQUIRED", "add a room before placing an outlet"))
+    end
+    local spec = require("roomplan.ui.forms").outlet.add(resolved, { cursor_mm = cursor_world(resolved) })
+    return open_structured_form(resolved, spec)
+  end
+
   function controller.align_room(session)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
@@ -210,6 +232,10 @@ function M.attach(controller)
     if resolved.selection.kind == "room" then spec = forms.room.edit(resolved, entity)
     elseif resolved.selection.kind == "furniture" then spec = forms.furniture.edit(resolved, entity)
     elseif resolved.selection.kind == "door" then spec = forms.door.edit(resolved, entity)
+    elseif resolved.selection.kind == "window" then
+      spec = forms.window.edit(resolved, entity, { cursor_mm = cursor_world(resolved) })
+    elseif resolved.selection.kind == "outlet" then
+      spec = forms.outlet.edit(resolved, entity, { cursor_mm = cursor_world(resolved) })
     elseif resolved.selection.kind == "template" then spec = forms.template.edit(resolved, entity) end
     if not spec then return notify_error(util.err("EDIT_UNSUPPORTED", "selected object cannot be edited here")) end
     return open_structured_form(resolved, spec)
@@ -245,6 +271,12 @@ function M.attach(controller)
       action = { type = "duplicate_furniture", id = entity.id, new_id = id }
     elseif selection.kind == "door" then
       return open_structured_form(resolved, require("roomplan.ui.forms").door.duplicate(resolved, entity))
+    elseif selection.kind == "window" then
+      id, id_err = generate_id(resolved, "window", entity.id .. " copy")
+      action = { type = "duplicate_window", id = entity.id, new_id = id }
+    elseif selection.kind == "outlet" then
+      id, id_err = generate_id(resolved, "outlet", entity.id .. " copy")
+      action = { type = "duplicate_outlet", id = entity.id, new_id = id }
     elseif selection.kind == "template" then
       id, id_err = generate_id(resolved, "custom_template", entity.name .. " copy")
       action = { type = "duplicate_custom_template", id = entity.id, new_id = id }
@@ -261,6 +293,8 @@ function M.attach(controller)
     if selection.kind == "room" then return { type = "delete_room_cascade", id = selection.id } end
     if selection.kind == "furniture" then return { type = "delete_furniture", id = selection.id } end
     if selection.kind == "door" then return { type = "delete_door", id = selection.id } end
+    if selection.kind == "window" then return { type = "delete_window", id = selection.id } end
+    if selection.kind == "outlet" then return { type = "delete_outlet", id = selection.id } end
     if selection.kind == "template" then return { type = "delete_custom_template", id = selection.id } end
   end
 
@@ -302,8 +336,10 @@ function M.attach(controller)
       session = resolved,
       title = "Add to plan",
       items = {
-        { key = "r", label = "Room", description = "Create and place a rectangular room", callback = function() controller.add_room(resolved) end },
+        { key = "r", label = "Room", description = "Create and place a rectangular or L-shaped room", callback = function() controller.add_room(resolved) end },
         { key = "d", label = "Door", description = "Place a hinged door on a room wall", callback = function() controller.add_door(resolved) end },
+        { key = "w", label = "Window", description = "Place a window opening on a room wall", callback = function() controller.add_window(resolved) end },
+        { key = "o", label = "Outlet", description = "Place a typed outlet on a room wall", callback = function() controller.add_outlet(resolved) end },
         { key = "f", label = "Furniture", description = "Place a catalogue or custom furniture footprint", callback = function() controller.add_furniture(resolved) end },
       },
     })
@@ -320,6 +356,8 @@ function M.attach(controller)
       { label = "Add room", method = "add_room" },
       { label = "Align rooms", method = "align_room" },
       { label = "Add door", method = "add_door" },
+      { label = "Add window", method = "add_window" },
+      { label = "Add outlet", method = "add_outlet" },
       { label = "Add furniture", method = "add_furniture" },
       { label = "Edit selected object", method = "edit_selected" },
       { label = "Duplicate selected object", method = "duplicate_selected" },

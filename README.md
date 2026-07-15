@@ -7,17 +7,22 @@ Neorg block. The Unicode/ASCII canvas is an interactive view, so display
 rounding can never corrupt the saved plan.
 
 > RoomPlan is a space-planning tool, not CAD/BIM software or a building-code
-> checker. Version 1 models one floor with rectangular rooms and furniture,
-> shared-wall doors, and 90-degree furniture rotations.
+> checker. The current schema models one floor with rectangular-union room and
+> furniture footprints, doors, windows, wall outlets, and 90-degree furniture
+> rotations.
 
 ## Highlights
 
 - Canvas-first responsive workspace with toggleable Navigator and Details
   panes, contextual actions, validation issues, semantic highlighting, and a
-  north compass.
-- Structured forms for rooms, furniture, doors, alignment, plan settings, and
-  project furniture templates, including palette-based room and furniture
-  colors.
+  north compass. Three transient detail levels keep labels and measurements
+  as sparse or complete as the current task needs.
+- Structured forms for rooms, furniture, doors, windows, outlets, alignment,
+  plan settings, and project furniture templates, including palette-based room
+  and furniture colors.
+- Compound footprints for L-, T-, and U-shaped rooms and furniture, with
+  seam-free walls and one logical selection per object; the room form can
+  directly create configurable L shapes.
 - View-only 90-degree rotation and runtime terminal-cell aspect calibration;
   neither operation changes saved geometry.
 - Strict, deterministic JSON with preserved extension fields, plus marked Neorg
@@ -67,9 +72,11 @@ Initialize a standalone source without overwriting an existing file:
 ```
 
 Then press `a` to add a room, move with `h/j/k/l`, use `e` for exact edits,
-and save with `s`. `1` focuses or toggles the Navigator, `3` does the same for
-Details, `?` opens every currently available action, and `q` returns to the
-canvas before hiding the workspace.
+and save with `s`. Press `t` to cycle canvas detail, `1` to focus or toggle the
+Navigator, and `3` to do the same for Details. `?` opens every currently
+available action, and `q` returns to the canvas before hiding the workspace.
+Add a window directly with `W` or an outlet with `O`; from the Add palette use
+`a` followed by lowercase `w` or `o`.
 
 Open the plan again with:
 
@@ -78,7 +85,7 @@ Open the plan again with:
 ```
 
 The [quick-start chapter](docs/getting-started/quick-start.md) walks through a
-complete room, furniture, and door workflow.
+complete room, furniture, door, window, and outlet workflow.
 
 ## Documentation
 
@@ -86,7 +93,8 @@ The documentation is a linked, chaptered handbook:
 
 - [Documentation home](docs/README.md) and [complete chapter list](docs/SUMMARY.md)
 - [Workspace and navigation](docs/workspace/overview.md)
-- [Rooms](docs/planning/rooms.md), [doors](docs/planning/doors.md), and
+- [Rooms](docs/planning/rooms.md), [doors](docs/planning/doors.md),
+  [windows and outlets](docs/planning/windows-and-outlets.md), and
   [furniture](docs/planning/furniture.md)
 - [Settings](docs/configuration/settings.md),
   [keymaps](docs/configuration/keymaps.md), and
@@ -114,7 +122,7 @@ require("roomplan").setup({
   canvas = {
     cell_aspect = 2.0,
     show_grid = false,
-    show_dimensions = true,
+    detail_level = "middle",
     show_compass = true,
   },
   furniture = {

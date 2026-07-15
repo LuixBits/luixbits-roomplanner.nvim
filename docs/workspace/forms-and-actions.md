@@ -1,8 +1,9 @@
 # Forms and actions
 
-RoomPlan groups related changes in structured forms. A room, door, furniture,
-alignment, plan-settings, or project-template form shows every relevant field,
-derived values, validation messages, and a preview at once.
+RoomPlan groups related changes in structured forms. A room, door, window,
+outlet, furniture, alignment, plan-settings, or project-template form shows
+every relevant field, derived values, validation messages, and a preview at
+once.
 
 ## Form controls
 
@@ -36,9 +37,11 @@ palette and explains why actions such as Align or Rotate are unavailable.
 `:RoomPlan` opens the same context-aware action surface for the active session.
 
 Common actions are `a` (Add), `e` (Edit), `m` (Move), `A` (Align), `r`
-(rotate furniture), `y` (Duplicate), and `d` (Delete). `D` and `F` open Door
-and Furniture directly. Deleting a room summarizes and confirms its cascading
-doors and furniture when deletion confirmation is enabled.
+(rotate furniture), `y` (Duplicate), and `d` (Delete). `D`, `W`, `O`, and `F`
+open Door, Window, Outlet, and Furniture directly; the `a` palette uses
+lowercase `d`, `w`, `o`, and `f`. Deleting a room summarizes and confirms its
+cascading doors, windows, outlets, and furniture when deletion confirmation is
+enabled.
 
 Add Room and Align include **Allow invalid draft** for deliberate repair work.
 It never hides the resulting diagnostics, and ordinary save rules still

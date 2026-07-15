@@ -1,9 +1,11 @@
 -- Canonical-model to semantic-scene extraction.  This module is intentionally
 -- independent from Neovim and from the model/action implementation.
 
+local footprint = require("roomplan.geometry.footprint")
 local walls = require("roomplan.scene.walls")
 local labels = require("roomplan.scene.labels")
 local color = require("roomplan.color")
+local canvas_detail = require("roomplan.canvas_detail")
 
 local M = {}
 
@@ -14,6 +16,8 @@ M.layers = {
   door_swing = 40,
   wall = 50,
   door = 60,
+  window = 61,
+  outlet = 62,
   label = 70,
   diagnostic = 80,
   selection = 90,
@@ -190,10 +194,16 @@ local function add_primitive(scene, primitive, roles)
 end
 
 local function valid_furniture(item, room)
-  return type(item) == "table"
+  if not (type(item) == "table"
     and type(item.id) == "string"
-    and room ~= nil
-    and type(item.center_mm) == "table"
+    and room ~= nil)
+  then
+    return false
+  end
+  if item.footprint ~= nil then
+    return footprint.from_furniture(room, item, { rotation_fallback = 0 }) ~= nil
+  end
+  return type(item.center_mm) == "table"
     and type(item.size_mm) == "table"
     and finite(item.center_mm[1])
     and finite(item.center_mm[2])
@@ -203,22 +213,80 @@ local function valid_furniture(item, room)
     and item.size_mm[2] > 0
 end
 
-local function furniture_bounds(item, room)
-  local width = item.size_mm[1]
-  local depth = item.size_mm[2]
-  if item.rotation_deg == 90 or item.rotation_deg == 270 then
-    width, depth = depth, width
-  end
-  local cx = room.origin_mm[1] + item.center_mm[1]
-  local cy = room.origin_mm[2] + item.center_mm[2]
+local function geometry_bounds(shape)
+  local bounds = shape and footprint.bounds(shape) or nil
+  if not bounds then return nil end
   return {
-    left = cx - width / 2,
-    right = cx + width / 2,
-    bottom = cy - depth / 2,
-    top = cy + depth / 2,
-    center_x = cx,
-    center_y = cy,
+    left = bounds.left,
+    right = bounds.right,
+    bottom = bounds.bottom,
+    top = bounds.top,
+    center_x = bounds.center_x,
+    center_y = bounds.center_y,
   }
+end
+
+local function shape_rectangles(shape)
+  local result = {}
+  for index, part in ipairs(shape.parts) do
+    result[index] = {
+      left = part.left2 / 2,
+      bottom = part.bottom2 / 2,
+      right = part.right2 / 2,
+      top = part.top2 / 2,
+      part_id = part.id,
+    }
+  end
+  return result
+end
+
+local function furniture_geometry(item, room)
+  -- Scene extraction is intentionally tolerant of repair drafts. Preserve the
+  -- historical unrotated fallback for a malformed rotation while deriving all
+  -- valid geometry through the shared footprint adapter.
+  local shape = footprint.from_furniture(room, item, { rotation_fallback = 0 })
+  if shape then
+    return geometry_bounds(shape), shape
+  end
+
+  -- Non-canonical repair drafts historically still rendered when their 2D
+  -- values were finite. Keep that fallback outside the exact geometry layer.
+  local width, depth = item.size_mm[1], item.size_mm[2]
+  if item.rotation_deg == 90 or item.rotation_deg == 270 then width, depth = depth, width end
+  local center_x = room.origin_mm[1] + item.center_mm[1]
+  local center_y = room.origin_mm[2] + item.center_mm[2]
+  return {
+    left = center_x - width / 2,
+    right = center_x + width / 2,
+    bottom = center_y - depth / 2,
+    top = center_y + depth / 2,
+    center_x = center_x,
+    center_y = center_y,
+  }, nil
+end
+
+local function room_geometry(room)
+  if not walls.valid_room_geometry(room) then return nil end
+  local shape = footprint.from_room(room)
+  if shape then return geometry_bounds(shape), shape end
+  local left, bottom = room.origin_mm[1], room.origin_mm[2]
+  local right, top = left + room.size_mm[1], bottom + room.size_mm[2]
+  local bounds = {
+    left = left,
+    bottom = bottom,
+    right = right,
+    top = top,
+    width = right - left,
+    depth = top - bottom,
+    center_x = (left + right) / 2,
+    center_y = (bottom + top) / 2,
+  }
+  return bounds, nil
+end
+
+local function furniture_bounds(item, room)
+  local bounds = furniture_geometry(item, room)
+  return bounds
 end
 
 local INWARD = {
@@ -330,11 +398,16 @@ end
 function M.build(model, validation, opts)
   model = type(model) == "table" and model or {}
   opts = opts or {}
+  local detail_level = canvas_detail.normalize(opts.detail_level) or canvas_detail.default
+  local show_labels = detail_level ~= "none"
+  local high_detail = detail_level == "high"
   local rooms = type(model.rooms) == "table" and model.rooms or {}
   local doors = type(model.doors) == "table" and model.doors or {}
+  local windows = type(model.windows) == "table" and model.windows or {}
+  local outlets = type(model.outlets) == "table" and model.outlets or {}
   local furniture = type(model.furniture) == "table" and model.furniture or {}
   local roles = diagnostic_roles(validation, opts.selected or opts.selected_ref or opts.selected_id)
-  local wall_scene = walls.build(rooms, doors)
+  local wall_scene = walls.build(rooms, doors, windows, outlets)
   local scene = {
     primitives = {},
     bounds = bbox_new(),
@@ -343,6 +416,16 @@ function M.build(model, validation, opts)
     wall_data = wall_scene,
   }
   local object_points = {}
+  local dimension_edges = {}
+
+  local function dimension_edge_key(edge)
+    return table.concat({
+      edge.orientation,
+      string.format("%.17g", edge.fixed),
+      string.format("%.17g", edge.start),
+      string.format("%.17g", edge.finish),
+    }, ":")
+  end
 
   if opts.show_grid then
     add_primitive(scene, {
@@ -355,33 +438,47 @@ function M.build(model, validation, opts)
 
   for i = 1, #rooms do
     local room = rooms[i]
-    if walls.valid_room_geometry(room) then
+    local bounds, shape = room_geometry(room)
+    if bounds then
       local ref = spatial_ref("room", room, i, "interior")
-      local left = room.origin_mm[1]
-      local bottom = room.origin_mm[2]
-      local right = left + room.size_mm[1]
-      local top = bottom + room.size_mm[2]
       scene.objects[#scene.objects + 1] = ref
-      object_points[room.id] = { (left + right) / 2, (bottom + top) / 2, ref }
-      bbox_rect(scene.bounds, left, bottom, right, top)
-      add_primitive(scene, {
-        kind = "room_interior",
-        layer = M.layers.room_interior,
-        left = left,
-        bottom = bottom,
-        right = right,
-        top = top,
-        ref = ref,
-      }, roles)
-      if opts.show_labels ~= false then
-        local room_label = labels.room(room, ref, i)
+      local anchor = shape and footprint.label_anchor(shape) or nil
+      object_points[room.id] = {
+        anchor and anchor.x or bounds.center_x,
+        anchor and anchor.y or bounds.center_y,
+        ref,
+      }
+      bbox_rect(scene.bounds, bounds.left, bounds.bottom, bounds.right, bounds.top)
+      local rectangles = room.footprint ~= nil and shape_rectangles(shape) or { bounds }
+      for part_index, rectangle in ipairs(rectangles) do
+        add_primitive(scene, {
+          kind = "room_interior",
+          layer = M.layers.room_interior,
+          left = rectangle.left,
+          bottom = rectangle.bottom,
+          right = rectangle.right,
+          top = rectangle.top,
+          part_id = rectangle.part_id,
+          part_index = room.footprint ~= nil and part_index or nil,
+          ref = ref,
+        }, roles)
+      end
+      if show_labels then
+        local room_label = labels.room(room, ref, i, room.footprint ~= nil and {
+          bounds = bounds,
+          anchor = anchor,
+          rectangles = rectangles,
+        } or nil)
         room_label.color = color.resolve(room.color)
         add_primitive(scene, room_label, roles)
       end
-      if opts.show_dimensions then
-        local dimensions = labels.room_dimensions(room, ref, i)
-        for j = 1, #dimensions do
-          add_primitive(scene, dimensions[j], roles)
+      if show_labels then
+        for _, edge in ipairs(walls.room_edges(room, i)) do
+          local key = dimension_edge_key(edge)
+          if not dimension_edges[key] then
+            dimension_edges[key] = true
+            add_primitive(scene, labels.edge_dimension(edge, edge.ref, i, 10), roles)
+          end
         end
       end
     else
@@ -398,33 +495,59 @@ function M.build(model, validation, opts)
     local room = type(item) == "table" and wall_scene.rooms_by_id[item.room_id] or nil
     if valid_furniture(item, room) then
       local ref = spatial_ref("furniture", item, i, "interior")
-      local bounds = furniture_bounds(item, room)
-      scene.objects[#scene.objects + 1] = ref
-      object_points[item.id] = { bounds.center_x, bounds.center_y, ref }
-      bbox_rect(scene.bounds, bounds.left, bounds.bottom, bounds.right, bounds.top)
-      add_primitive(scene, {
-        kind = "furniture_interior",
-        layer = M.layers.furniture,
-        left = bounds.left,
-        bottom = bounds.bottom,
-        right = bounds.right,
-        top = bounds.top,
-        ref = ref,
-      }, roles)
-      add_primitive(scene, {
-        kind = "furniture_outline",
-        layer = M.layers.furniture + 1,
-        left = bounds.left,
-        bottom = bounds.bottom,
-        right = bounds.right,
-        top = bounds.top,
-        ref = ref,
-        color = color.resolve(item.color),
-      }, roles)
-      if opts.show_labels ~= false then
-        local furniture_label = labels.furniture(item, bounds, ref, i)
-        furniture_label.color = color.resolve(item.color)
-        add_primitive(scene, furniture_label, roles)
+      local bounds, shape = furniture_geometry(item, room)
+      if bounds then
+        scene.objects[#scene.objects + 1] = ref
+        local anchor = shape and footprint.label_anchor(shape) or nil
+        object_points[item.id] = {
+          anchor and anchor.x or bounds.center_x,
+          anchor and anchor.y or bounds.center_y,
+          ref,
+        }
+        bbox_rect(scene.bounds, bounds.left, bounds.bottom, bounds.right, bounds.top)
+        local rectangles = item.footprint ~= nil and shape_rectangles(shape) or { bounds }
+        for part_index, rectangle in ipairs(rectangles) do
+          add_primitive(scene, {
+            kind = "furniture_interior",
+            layer = M.layers.furniture,
+            left = rectangle.left,
+            bottom = rectangle.bottom,
+            right = rectangle.right,
+            top = rectangle.top,
+            part_id = rectangle.part_id,
+            part_index = item.footprint ~= nil and part_index or nil,
+            ref = ref,
+          }, roles)
+          add_primitive(scene, {
+            kind = "furniture_outline",
+            layer = M.layers.furniture + 1,
+            left = rectangle.left,
+            bottom = rectangle.bottom,
+            right = rectangle.right,
+            top = rectangle.top,
+            part_id = rectangle.part_id,
+            part_index = item.footprint ~= nil and part_index or nil,
+            ref = ref,
+            color = color.resolve(item.color),
+          }, roles)
+        end
+        if show_labels then
+          local furniture_label = labels.furniture(item, bounds, ref, i, anchor)
+          furniture_label.color = color.resolve(item.color)
+          add_primitive(scene, furniture_label, roles)
+        end
+        if high_detail then
+          local dimensions = labels.furniture_dimensions(bounds, ref, i)
+          for dimension_index = 1, #dimensions do
+            add_primitive(scene, dimensions[dimension_index], roles)
+          end
+        end
+      else
+        scene.warnings[#scene.warnings + 1] = {
+          code = "SCENE_FURNITURE_SKIPPED",
+          object_id = item.id,
+          message = "Furniture geometry or owner cannot be rendered safely",
+        }
       end
     else
       scene.warnings[#scene.warnings + 1] = {
@@ -473,6 +596,9 @@ function M.build(model, validation, opts)
         connection_valid = aperture.connection_valid,
         connection_requested = aperture.connection_requested,
       }, roles)
+      if high_detail then
+        add_primitive(scene, labels.door_dimension(aperture, ref, i), roles)
+      end
 
       local swing = door_swing(aperture)
       if swing then
@@ -511,6 +637,68 @@ function M.build(model, validation, opts)
         code = "SCENE_DOOR_SKIPPED",
         object_id = aperture.id,
         message = aperture.reason or "Door aperture cannot be rendered safely",
+      }
+    end
+  end
+
+  for i = 1, #wall_scene.window_apertures do
+    local aperture = wall_scene.window_apertures[i]
+    if aperture.owner_edge_valid then
+      local ref = aperture.ref
+      ref.context = "aperture"
+      scene.objects[#scene.objects + 1] = ref
+      local midpoint_x = (aperture.p0[1] + aperture.p1[1]) / 2
+      local midpoint_y = (aperture.p0[2] + aperture.p1[2]) / 2
+      object_points[aperture.id] = { midpoint_x, midpoint_y, ref }
+      add_primitive(scene, {
+        kind = "window_aperture",
+        layer = M.layers.window,
+        x1 = aperture.p0[1],
+        y1 = aperture.p0[2],
+        x2 = aperture.p1[1],
+        y2 = aperture.p1[2],
+        ref = ref,
+        connection_valid = aperture.connection_valid,
+        connection_requested = aperture.connection_requested,
+      }, roles)
+      if high_detail then
+        add_primitive(scene, labels.opening_dimension(aperture, ref, i), roles)
+      end
+      bbox_point(scene.bounds, aperture.p0[1], aperture.p0[2])
+      bbox_point(scene.bounds, aperture.p1[1], aperture.p1[2])
+    else
+      scene.warnings[#scene.warnings + 1] = {
+        code = "SCENE_WINDOW_SKIPPED",
+        object_id = aperture.id,
+        message = aperture.reason or "Window aperture cannot be rendered safely",
+      }
+    end
+  end
+
+  for i = 1, #wall_scene.outlet_markers do
+    local marker = wall_scene.outlet_markers[i]
+    if marker.owner_edge_valid then
+      local ref = marker.ref
+      ref.context = "marker"
+      scene.objects[#scene.objects + 1] = ref
+      object_points[marker.id] = { marker.p[1], marker.p[2], ref }
+      add_primitive(scene, {
+        kind = "outlet_marker",
+        layer = M.layers.outlet,
+        x = marker.p[1],
+        y = marker.p[2],
+        orientation = marker.orientation,
+        ref = ref,
+      }, roles)
+      if show_labels then
+        add_primitive(scene, labels.outlet(marker.outlet, marker, ref, i), roles)
+      end
+      bbox_point(scene.bounds, marker.p[1], marker.p[2])
+    else
+      scene.warnings[#scene.warnings + 1] = {
+        code = "SCENE_OUTLET_SKIPPED",
+        object_id = marker.id,
+        message = marker.reason or "Outlet marker cannot be rendered safely",
       }
     end
   end

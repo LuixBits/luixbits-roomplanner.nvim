@@ -1,9 +1,10 @@
 # Canvas
 
 The canvas is a bounded terminal rendering of exact model geometry. Walls,
-door leaves and swings, furniture footprints, labels, dimensions, grid points,
-diagnostics, and selection are separate semantic layers with hit information;
-the buffer text is never the source of truth.
+door leaves and swings, window apertures, outlet points, furniture footprints,
+labels, dimensions, grid points, diagnostics, and selection are separate
+semantic layers with hit information; the buffer text is never the source of
+truth.
 
 ## View controls
 
@@ -13,13 +14,24 @@ the buffer text is never the source of truth.
 | `z+` / `z-` | Zoom in / out around the logical cursor |
 | `zh zj zk zl` | Pan the viewport |
 | `p`, then directions | Enter dedicated PAN mode |
-| `]r` / `[r` | Rotate the view clockwise / counter-clockwise |
+| `t` | Cycle high, middle, and no canvas detail |
+| `Alt-l` / `Alt-h` | Rotate the view clockwise / counter-clockwise |
 | `g0` | Restore north-up view |
 
 Zoom is limited by `canvas.min_mm_per_column` and
 `canvas.max_mm_per_column`. Terminal rows use `cell_aspect` times the
 millimetres-per-column scale so plan proportions look correct in non-square
 terminal cells.
+
+## Detail levels
+
+The default `middle` level shows object labels and dimensions for every
+exterior wall run. `high` additionally shows furniture width/depth and
+door/window width dimensions. `none` leaves geometry only, with no labels or
+dimensions.
+Use `t` to cycle levels or
+`:RoomPlanCanvasDetail high|middle|none|cycle` to choose explicitly. The level
+belongs to the live session and never dirties or rewrites the plan.
 
 The header contains the plan state and, by default, a compact compass. The
 action bar below the canvas reports mode, saved/dirty/conflict state, snapping,

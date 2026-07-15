@@ -128,7 +128,7 @@ describe("controller lifecycle", function()
     }))
     h.truthy(controller.dispatch(session, {
       type = "move_furniture", id = session:model().furniture[1].id,
-      center_mm = { 4900, 3900 }, exact = true,
+      position_mm = { 4900, 3900 }, exact = true,
     }))
     local _, invalid_summary = controller.validate(session)
     h.truthy(invalid_summary.errors > 0)
@@ -143,6 +143,62 @@ describe("controller lifecycle", function()
     h.eq(2, #reopened_model.rooms)
     h.eq(1, #reopened_model.furniture)
     h.eq(1, #reopened_model.doors)
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
+  it("keeps window and outlet selections stable through movement, history, duplication, and deletion", function()
+    cleanup()
+    local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-wall-features", name = "Wall features",
+        origin_mm = { 0, 0 }, size_mm = { 5000, 4000 },
+      }),
+    }))
+
+    h.truthy(controller.dispatch(session, {
+      type = "add_window",
+      window = model.new_window({
+        id = "window-north", room_id = "room-wall-features", side = "north",
+        offset_mm = 700, width_mm = 1200,
+      }),
+    }))
+    h.eq({ kind = "window", id = "window-north" }, session.selection)
+    h.eq("MOVE", h.truthy(controller.set_mode(session, "MOVE")))
+    h.truthy(controller.direction(session, 1, 0, "normal"))
+    h.eq(800, session:model().windows[1].offset_mm)
+    h.eq({ kind = "window", id = "window-north" }, session.selection)
+    h.eq("NAV", h.truthy(controller.set_mode(session, "NAV")))
+
+    h.truthy(controller.dispatch(session, {
+      type = "add_outlet",
+      outlet = model.new_outlet({
+        id = "outlet-east", room_id = "room-wall-features", side = "east",
+        offset_mm = 800, outlet_type = "power", slots = 2,
+      }),
+    }))
+    h.eq({ kind = "outlet", id = "outlet-east" }, session.selection)
+    h.truthy(controller.undo(session))
+    h.eq(0, #session:model().outlets)
+    h.eq({ kind = "window", id = "window-north" }, session.selection)
+    h.truthy(controller.redo(session))
+    h.eq(1, #session:model().outlets)
+    h.eq({ kind = "outlet", id = "outlet-east" }, session.selection)
+
+    h.truthy(controller.duplicate_selected(session))
+    h.eq(2, #session:model().outlets)
+    h.eq("outlet", session.selection.kind)
+    h.truthy(session.selection.id ~= "outlet-east")
+    h.truthy(model.find(session:model(), "outlet", session.selection.id))
+
+    drive_ui({}, { "Delete" }, function()
+      h.truthy(controller.delete_selected(session))
+    end)
+    h.eq(1, #session:model().outlets)
+    h.eq(nil, session.selection)
+
     controller.close(session, { bang = true })
     cleanup()
   end)
@@ -410,6 +466,40 @@ describe("controller lifecycle", function()
     cleanup()
   end)
 
+  it("keeps canvas detail transient while cycling every level", function()
+    cleanup()
+    local path = temp(".roomplan.json")
+    local session = h.truthy(controller.init_source(nil, { path = path }))
+    local revision = session:revision_id()
+    local plan = vim.deepcopy(session:model())
+    local history = session.history:stats()
+    local dirty = session:model_dirty()
+
+    local function unchanged()
+      h.eq(revision, session:revision_id())
+      h.eq(plan, session:model())
+      h.eq(history, session.history:stats())
+      h.eq(dirty, session:model_dirty())
+    end
+
+    h.eq("middle", session.canvas_detail_level)
+    h.eq("none", controller.set_detail_level(session, { level = "cycle", quiet = true }))
+    unchanged()
+    h.eq("high", controller.set_detail_level(session, { level = "cycle", quiet = true }))
+    unchanged()
+    h.eq("middle", controller.set_detail_level(session, { level = "middle", quiet = true }))
+    unchanged()
+
+    local invalid, invalid_err = controller.set_detail_level(session, { level = "verbose", quiet = true })
+    h.eq(nil, invalid)
+    h.eq("CANVAS_DETAIL_INVALID", h.truthy(invalid_err).code)
+    h.eq("middle", session.canvas_detail_level)
+    unchanged()
+
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
   it("uses a hidden modified acwrite buffer to block ordinary qall", function()
     cleanup()
     local plan_path = temp(".roomplan.json")
@@ -533,6 +623,112 @@ describe("controller lifecycle", function()
     h.eq("SOURCE_CONFLICT", save_err.code)
     h.eq(changed, source.buffer_text(bufnr))
     controller.close(session, { bang = true })
+    cleanup()
+  end)
+
+  it("keeps normalized source content protected across reconciliation", function()
+    cleanup()
+    local path = temp(".roomplan.json")
+    local bytes = table.concat({
+      '{"format":"roomplan.nvim","schema_version":1,"units":"mm",',
+      '"rooms":[],"doors":[],"furniture":[],"custom_templates":[]}',
+    })
+    write_bytes(path, bytes)
+
+    local session, open_err = controller.open(nil, { path = path, noninteractive = true })
+    h.truthy(session, vim.inspect(open_err))
+    h.eq(bytes, source.read_file(path))
+    h.truthy(session:model_dirty())
+    h.falsy(session.durable_source_matches_savepoint)
+    h.truthy(session:requires_protection())
+
+    h.truthy(controller.check_source(session))
+    h.falsy(session.durable_source_matches_savepoint)
+    h.truthy(session:requires_protection())
+
+    controller.source_written(session)
+    h.falsy(session.durable_source_matches_savepoint)
+    h.truthy(session:requires_protection())
+    h.eq(bytes, source.read_file(path))
+
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
+  it("keeps normalized Norg payloads protected without touching surrounding text", function()
+    cleanup()
+    local path = temp(".norg")
+    local payload = table.concat({
+      '{"format":"roomplan.nvim","schema_version":1,"units":"mm",',
+      '"rooms":[],"doors":[],"furniture":[],"custom_templates":[]}',
+    })
+    local bytes = table.concat({
+      "* Notes",
+      "Keep this prose byte-for-byte.",
+      "",
+      "@code json roomplan.nvim",
+      payload,
+      "@end",
+      "",
+      "* After",
+      "Still outside the payload.",
+    }, "\n")
+    write_bytes(path, bytes)
+
+    local session, open_err = controller.open(nil, { path = path, filetype = "norg", noninteractive = true })
+    h.truthy(session, vim.inspect(open_err))
+    h.eq(bytes, source.read_file(path))
+    h.truthy(session:model_dirty())
+    h.falsy(session.durable_source_matches_savepoint)
+    h.truthy(session:requires_protection())
+
+    h.truthy(controller.check_source(session))
+    h.falsy(session.durable_source_matches_savepoint)
+    controller.source_written(session)
+    h.falsy(session.durable_source_matches_savepoint)
+    h.truthy(session:requires_protection())
+    h.eq(bytes, source.read_file(path))
+
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
+  it("requires an explicit save before autosave may rewrite normalized source", function()
+    cleanup()
+    local runtime_config = require("roomplan.config")
+    runtime_config.setup({ autosave = { enabled = true, debounce_ms = 10 } })
+    local path = temp(".roomplan.json")
+    local bytes = table.concat({
+      '{"format":"roomplan.nvim","schema_version":1,"units":"mm",',
+      '"rooms":[],"doors":[],"furniture":[],"custom_templates":[]}',
+    })
+    write_bytes(path, bytes)
+
+    local session, open_err = controller.open(nil, { path = path, noninteractive = true })
+    h.truthy(session, vim.inspect(open_err))
+    h.truthy(session:schema_rewrite_pending())
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-explicit-save",
+        name = "Explicit save",
+        origin_mm = { 0, 0 },
+        size_mm = { 1000, 1000 },
+      }),
+    }))
+    vim.wait(100, function() return false end, 10)
+    h.eq(bytes, source.read_file(path))
+    h.truthy(session:model_dirty())
+    h.truthy(session:schema_rewrite_pending())
+
+    local saved, save_err = controller.save(session, { quiet = true, noninteractive = true })
+    h.truthy(saved, vim.inspect(save_err))
+    h.falsy(session:model_dirty())
+    h.falsy(session:schema_rewrite_pending())
+    h.falsy(source.read_file(path) == bytes)
+
+    controller.close(session, { bang = true })
+    runtime_config.reset()
     cleanup()
   end)
 

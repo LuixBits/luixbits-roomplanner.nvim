@@ -1,0 +1,79 @@
+{
+  "format": "roomplan.nvim",
+  "schema_version": 2,
+  "units": "mm",
+  "metadata": { "name": "Compound v2 fixture", "notes": "" },
+  "settings": {
+    "grid_mm": 100,
+    "fine_step_mm": 10,
+    "normal_step_mm": 100,
+    "coarse_step_mm": 500,
+    "default_door_width_mm": 900
+  },
+  "rooms": [
+    {
+      "id": "room-compound",
+      "name": "L room",
+      "origin_mm": [100, 200],
+      "footprint": {
+        "kind": "rect_union",
+        "parts": [
+          { "id": "part-main", "origin_mm": [0, 0], "size_mm": [4000, 3000] },
+          { "id": "part-east", "origin_mm": [4000, 0], "size_mm": [1500, 1000] }
+        ]
+      }
+    }
+  ],
+  "doors": [
+    {
+      "id": "door-compound",
+      "kind": "hinged",
+      "room_id": "room-compound",
+      "connects_to_room_id": null,
+      "part_id": "part-main",
+      "side": "west",
+      "offset_mm": 500,
+      "width_mm": 900,
+      "hinge": "start",
+      "opens_into": "owner",
+      "open_angle_deg": 90
+    }
+  ],
+  "furniture": [
+    {
+      "id": "furniture-sectional",
+      "room_id": "room-compound",
+      "template_id": "custom:sectional",
+      "name": "Sectional",
+      "category": "seating",
+      "position_mm": [1200, 1000],
+      "anchor2_mm": [1000, 500],
+      "footprint": {
+        "kind": "rect_union",
+        "parts": [
+          { "id": "part-main", "origin_mm": [0, 0], "size_mm": [1000, 500] },
+          { "id": "part-return", "origin_mm": [0, 500], "size_mm": [500, 500] }
+        ]
+      },
+      "height_mm": 850,
+      "rotation_deg": 0
+    }
+  ],
+  "custom_templates": [
+    {
+      "id": "custom:sectional",
+      "name": "Sectional",
+      "category": "seating",
+      "default_footprint": {
+        "kind": "rect_union",
+        "parts": [
+          { "id": "part-main", "origin_mm": [0, 0], "size_mm": [1000, 500] },
+          { "id": "part-return", "origin_mm": [0, 500], "size_mm": [500, 500] }
+        ]
+      },
+      "default_anchor2_mm": [1000, 500],
+      "default_height_mm": 850
+    }
+  ],
+  "extensions": {}
+}

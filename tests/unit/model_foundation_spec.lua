@@ -95,9 +95,10 @@ describe("pure model foundation", function()
     assert_true(format_at < version_at and version_at < units_at and units_at < alpha_at and alpha_at < zebra_at)
   end)
 
-  it("constructs and deterministically round-trips an empty v1 model", function()
+  it("constructs and deterministically round-trips an empty current model", function()
     local plan = assert(model.new({ name = "Test flat" }))
     assert_equal("roomplan.nvim", plan.format)
+    assert_equal(schema.CURRENT_VERSION, plan.schema_version)
     assert_equal(100, plan.settings.normal_step_mm)
     assert_nil(plan.settings.default_wall_thickness_mm)
     assert_true(json.is_array(plan.rooms))
@@ -109,6 +110,73 @@ describe("pure model foundation", function()
     assert_true(model.deep_equal(plan, loaded))
     assert_equal(false, info.normalized)
     assert_equal(encoded, assert(model.encode(loaded)))
+  end)
+
+  it("loads explicit schema-v1 rectangles into the current footprint authority", function()
+    local source = [=[
+      {
+        "format":"roomplan.nvim",
+        "schema_version":1,
+        "units":"mm",
+        "metadata":{"name":"Footprint compatibility","notes":""},
+        "settings":{},
+        "rooms":[{"id":"room-a","name":"A","origin_mm":[-100,50],"size_mm":[1001,999]}],
+        "doors":[],
+        "furniture":[{
+          "id":"furniture-a","room_id":"room-a","template_id":"builtin:chair",
+          "name":"Chair","category":"seating","center_mm":[500,500],
+          "size_mm":[501,499,800],"rotation_deg":90
+        }],
+        "custom_templates":[],
+        "extensions":{}
+      }
+    ]=]
+    local plan, info = model.decode(source)
+    assert_true(plan ~= nil, vim.inspect(info))
+    assert_equal(3, plan.schema_version)
+    assert_true(info.migrated)
+    assert_nil(plan.rooms[1].size_mm)
+    assert_nil(plan.furniture[1].center_mm)
+    assert_equal({ 1001, 999 }, plan.rooms[1].footprint.parts[1].size_mm)
+    assert_equal({ 500, 500 }, plan.furniture[1].position_mm)
+    local encoded = assert(model.encode(plan))
+    assert_true(encoded:find('"footprint"', 1, true) ~= nil)
+    assert_nil(encoded:find('"center_mm"', 1, true))
+    assert_true(model.deep_equal(plan, assert(model.decode(encoded))))
+  end)
+
+  it("constructs canonical v2 entities without retaining v1 geometry", function()
+    local options = { schema_version = 2 }
+    local room = model.new_room({
+      id = "room-a", name = "A", origin_mm = { 10, 20 }, size_mm = { 100, 200 },
+    }, options)
+    assert_nil(room.size_mm)
+    assert_equal({ 100, 200 }, room.footprint.parts[1].size_mm)
+    assert_true(json.is_array(room.footprint.parts))
+
+    local furniture = model.new_furniture({
+      id = "furniture-a", room_id = room.id, name = "Chair", category = "seating",
+      position_mm = { 50, 60 }, size_mm = { 20, 30, 40 },
+    }, options)
+    assert_nil(furniture.center_mm)
+    assert_nil(furniture.size_mm)
+    assert_equal({ 50, 60 }, furniture.position_mm)
+    assert_equal({ 20, 30 }, furniture.anchor2_mm)
+    assert_equal(40, furniture.height_mm)
+
+    local door = model.new_door({
+      id = "door-a", room_id = room.id, side = "south", width_mm = 10,
+    }, options)
+    assert_equal("part-main", door.part_id)
+
+    local template = model.new_custom_template({
+      id = "custom:chair", name = "Chair", category = "seating",
+      default_size_mm = { 20, 30, 40 },
+    }, options)
+    assert_nil(template.shape)
+    assert_nil(template.default_size_mm)
+    assert_equal({ 20, 30 }, template.default_anchor2_mm)
+    assert_equal(40, template.default_height_mm)
   end)
 
   it("normalizes fixed defaults and preserves nested extension types", function()
@@ -128,6 +196,8 @@ describe("pure model foundation", function()
     local plan, info = schema.decode(source)
     assert_true(plan ~= nil, info and info.message)
     assert_true(info.normalized)
+    assert_true(info.migrated)
+    assert_equal(3, plan.schema_version)
     assert_equal("Untitled plan", plan.metadata.name)
     assert_equal(100, plan.settings.grid_mm)
     assert_true(json.is_object(plan.metadata["x-extra"].empty))
@@ -146,9 +216,11 @@ describe("pure model foundation", function()
     assert_true(json.deep_equal(plan, reloaded))
   end)
 
-  it("rejects missing, zero, and future schema versions", function()
-    local function document(version_member)
-      return '{"format":"roomplan.nvim"' .. version_member .. ',"units":"mm","rooms":[],"doors":[],"furniture":[],"custom_templates":[]}'
+  it("accepts the current schema, migrates v2, and rejects missing, zero, and future versions", function()
+    local function document(version_member, wall_collections)
+      return '{"format":"roomplan.nvim"' .. version_member .. ',"units":"mm","rooms":[],"doors":[]'
+        .. (wall_collections and ',"windows":[],"outlets":[]' or '')
+        .. ',"furniture":[],"custom_templates":[]}'
     end
     local value, err = schema.decode(document(""))
     assert_nil(value)
@@ -157,6 +229,12 @@ describe("pure model foundation", function()
     assert_nil(value)
     assert_equal("SCHEMA_VERSION", err.code)
     value, err = schema.decode(document(',"schema_version":2'))
+    assert_true(value ~= nil, vim.inspect(err))
+    assert_equal(3, value.schema_version)
+    value, err = schema.decode(document(',"schema_version":3', true))
+    assert_true(value ~= nil, vim.inspect(err))
+    assert_equal(3, value.schema_version)
+    value, err = schema.decode(document(',"schema_version":4'))
     assert_nil(value)
     assert_equal("SCHEMA_FUTURE_VERSION", err.code)
   end)

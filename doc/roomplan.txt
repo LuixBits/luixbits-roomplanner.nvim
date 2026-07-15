@@ -10,11 +10,12 @@ CONTENTS                                                        *roomplan*
 5. Workspace                                             |roomplan-workspace|
 6. Keymaps                                                 |roomplan-keymaps|
 7. Configuration                                           |roomplan-config|
-8. Furniture catalogues                                 |roomplan-furniture|
-9. Aspect and view rotation                               |roomplan-display|
-10. Storage and safety                                    |roomplan-storage|
-11. Lua API                                                   |roomplan-api|
-12. Health and troubleshooting                            |roomplan-troubles|
+8. Windows and outlets                              |roomplan-wall-features|
+9. Furniture catalogues                                 |roomplan-furniture|
+10. Aspect and view rotation                              |roomplan-display|
+11. Storage and safety                                    |roomplan-storage|
+12. Lua API                                                   |roomplan-api|
+13. Health and troubleshooting                            |roomplan-troubles|
 
 ==============================================================================
 1. INTRODUCTION                                      *roomplan-introduction*
@@ -23,9 +24,11 @@ RoomPlan stores exact millimetre geometry in structured JSON or a marked
 Neorg block and renders an interactive terminal view. Display rounding,
 zooming, aspect calibration, and view rotation never alter saved geometry.
 
-Version 1 supports one floor, rectangular rooms, rectangular furniture,
-shared-wall doors, and furniture rotations in 90-degree steps. It is a space
-planner, not CAD/BIM software or a building-code checker.
+Schema v3 supports one floor, connected rectangular-union room and furniture
+footprints, shared-wall doors/windows, typed wall outlets, and furniture
+rotations in 90-degree steps. Existing schema-v1/v2 plans migrate in memory
+and are rewritten only by an explicit save. RoomPlan is a space planner, not
+CAD/BIM software or a building-code checker.
 
 Requirements:
 
@@ -77,8 +80,13 @@ Create a standalone plan without overwriting an existing file: >vim
 <
 
 Press `a` to add the first room. In the form, move with `j`/`k`, edit with
-<CR>, and apply with <C-s>. Back on the canvas, use `h`/`j`/`k`/`l`, press
-`e` for exact edits, and `s` to save.
+<CR>, choose a Rectangle or L-shaped footprint, and apply with <C-s>. An L
+accepts exact overall/leg dimensions and any missing corner. Back on the
+canvas, use `h`/`j`/`k`/`l`, press `e` to edit the rectangle or canonical L
+dimensions, `t` to cycle canvas detail, and `s` to save.
+
+With a room present, `W` adds a window and `O` adds an outlet. The `a` Add
+palette offers the same objects with lowercase `w` and `o`.
 
 Open the plan later with: >vim
   :RoomPlanOpen ~/plans/flat.roomplan.json
@@ -115,6 +123,12 @@ explicitly.
                                                         *:RoomPlanAddDoor*
 :RoomPlanAddDoor          Open the structured door form.
 
+                                                        *:RoomPlanAddWindow*
+:RoomPlanAddWindow        Open the structured window form.
+
+                                                        *:RoomPlanAddOutlet*
+:RoomPlanAddOutlet        Open the structured outlet form.
+
                                                         *:RoomPlanAddFurniture*
 :RoomPlanAddFurniture     Open the structured furniture form.
 
@@ -150,6 +164,11 @@ explicitly.
 
                                                         *:RoomPlanFit*
 :RoomPlanFit              Fit all plan geometry in the canvas.
+
+                                                        *:RoomPlanCanvasDetail*
+:RoomPlanCanvasDetail [high\|middle\|none\|cycle]
+                          Set an exact canvas detail level. Use cycle, or omit
+                          the argument, to advance to the next level.
 
                                                         *:RoomPlanAspect*
 :RoomPlanAspect [ratio]   Set the process-wide terminal cell aspect ratio.
@@ -191,10 +210,10 @@ Wide terminals use side panes. Medium layouts retain only the panes that fit.
 Compact layouts open bordered drawers. Manually closing a pane keeps it closed
 until explicitly toggled again.
 
-Navigator shows rooms with nested doors and furniture. Issues filters and
-selects diagnostics. Details presents compact, collapsible sections whose
-contents change with the selection. `?` always exposes the full action set,
-including disabled actions and their reasons.
+Navigator shows rooms with nested doors, windows, outlets, and furniture.
+Issues filters and selects diagnostics. Details presents compact, collapsible
+sections whose contents change with the selection. `?` always exposes the full
+action set, including disabled actions and their reasons.
 
 Structured forms keep their complete draft visible. A form is revision-bound:
 if the plan changes elsewhere, the stale form cannot apply over newer data.
@@ -227,16 +246,20 @@ Canvas and editing:
   <C-h/j/k/l>    fine movement
   <CR>           select object under cursor
   m / p          MOVE / PAN mode
-  a              Add palette
-  D / F          add door / furniture
+  a              Add palette (r/d/w/o/f choose object type)
+  D / W / O / F  add door / window / outlet / furniture
   A              align room
   e              exact edit
-  d / y / r      delete / duplicate / rotate furniture
-  v / ]e / [e    validate / next issue / previous issue
+  d / y          delete / duplicate selection
+  r              rotate furniture
+  v / Alt-j / Alt-k
+                  validate / next issue / previous issue
   u / <C-r>      undo / redo
   z+ / z- / f    zoom in / zoom out / fit
+  t              cycle high / middle / none canvas detail
   zh zj zk zl    pan without entering PAN mode
-  ]r / [r / g0   rotate view clockwise / counterclockwise / north-up
+  Alt-l / Alt-h / g0
+                  rotate view clockwise / counterclockwise / north-up
   gs / g!        toggle snapping / bypass the next snap
   s / S          save / save as
 
@@ -284,7 +307,7 @@ errors; options are not silently ignored. The important defaults are: >lua
       pan_step_cells = 5,
       pan_coarse_step_cells = 20,
       show_grid = false,
-      show_dimensions = true,
+      detail_level = "middle",
       show_compass = true,
     },
     snapping = {
@@ -326,7 +349,31 @@ Highlight groups start with RoomPlan and use default links, so colorschemes or
 user configuration can override them normally. See docs/display/appearance.md.
 
 ==============================================================================
-8. FURNITURE CATALOGUES                                 *roomplan-furniture*
+8. WINDOWS AND OUTLETS                              *roomplan-wall-features*
+
+Schema v3 adds windows as wall apertures and outlets as wall points. Press W
+or O, run :RoomPlanAddWindow or :RoomPlanAddOutlet, or press `a` then lowercase
+`w`/`o`. Select either object and use `e`, `m`, `y`, or `d` to edit, move along
+its assigned wall, duplicate, or delete it.
+
+Both types reference an owner room, footprint part, side, and integer-mm
+offset. North/south offsets start at the west end; east/west offsets start at
+the south end. Internal part seams are not attachable walls.
+
+A window also stores width and connects either to outside (JSON null) or to a
+room whose opposite wall covers the whole aperture. A valid window cuts its
+owner wall; only a verified connection cuts the matching connected wall.
+Invalid aperture geometry never cuts a wall. Windows have no swing.
+
+An outlet never cuts its wall. Types are power, usb, ethernet, coax, phone,
+and other; slots must be 1 through 32. Its point must be strictly inside the
+exterior edge because corners and part endpoints are ambiguous.
+
+The top-down model does not yet store window sill/head/opening height or outlet
+mounting height. See docs/planning/windows-and-outlets.md.
+
+==============================================================================
+9. FURNITURE CATALOGUES                                 *roomplan-furniture*
 
 RoomPlan includes generic built-in templates. Add process-wide defaults inline
 or load one or more dependency-free JSON files. Set
@@ -371,20 +418,26 @@ Catalogue setup is atomic: an invalid definition or file leaves the previous
 effective catalogue unchanged. Files are limited to 1 MiB.
 
 ==============================================================================
-9. ASPECT AND VIEW ROTATION                               *roomplan-display*
+10. ASPECT AND VIEW ROTATION                              *roomplan-display*
 
 Terminal cells are usually taller than they are wide. canvas.cell_aspect is
 cell height divided by cell width; the default is 2.0. If a square room looks
 vertically stretched, use :RoomPlanAspect with a measured ratio. This updates
 the current Neovim process and refits every live canvas; no rebuild is needed.
 
-View rotation is also transient. ]r and [r rotate by 90 degrees, g0 restores
-north-up, and the compass shows where world north points. Movement and panning
-remain screen-relative. Saved room, door, and furniture coordinates never
-rotate.
+View rotation is also transient. Alt-l and Alt-h rotate by 90 degrees, g0
+restores north-up, and the compass shows where world north points. Movement
+and panning remain screen-relative. Saved room, door, window, outlet, and
+furniture coordinates never rotate.
+
+canvas.detail_level defaults to "middle". high shows labels plus all exterior
+wall-run, furniture width/depth, and door/window width dimensions. middle shows
+labels plus exterior wall-run dimensions. none renders geometry without
+labels or dimensions. Press `t`, use |:RoomPlanCanvasDetail|, or call
+set_canvas_detail() to change only the live session presentation.
 
 ==============================================================================
-10. STORAGE AND SAFETY                                    *roomplan-storage*
+11. STORAGE AND SAFETY                                    *roomplan-storage*
 
 Standalone files conventionally end in .roomplan.json. Neorg plans use a
 marked ranged tag. RoomPlan preserves unknown extension fields and refuses
@@ -399,12 +452,14 @@ Structural schema failures cannot be saved. Layout-invalid drafts may be
 reviewed in Issues, repaired, or explicitly saved with !. That escape hatch is
 not a claim that the layout is safe or physically constructible.
 
-The current schema is schema/roomplan.schema.json. Geometry uses integer
-millimetres; derived door geometry may use doubled-millimetre arithmetic so
-half-millimetre endpoints stay exact.
+The current schema is schema/roomplan-v3.schema.json; v1 and v2 remain readable
+through sequential migrations. Geometry uses integer millimetres and exact
+doubled-millimetre arithmetic where centred odd-sized objects create half-
+millimetre edges. Loading or normalizing an older plan never rewrites its
+source, and autosave pauses until the first explicit schema-v3 save.
 
 ==============================================================================
-11. LUA API                                                   *roomplan-api*
+12. LUA API                                                   *roomplan-api*
 
 Public entry points: >lua
   local roomplan = require("roomplan")
@@ -416,6 +471,7 @@ Public entry points: >lua
   roomplan.save_as(path, opts, callback)
   roomplan.reload(opts, callback)
   roomplan.set_aspect(ratio, opts, callback)
+  roomplan.set_canvas_detail(level)
   roomplan.rotate_view(direction)
   roomplan.hide(opts)
   roomplan.close(opts, callback)
@@ -435,7 +491,7 @@ action) sends a model action through the normal controller/history boundary;
 session(session_id) returns the live session.
 
 ==============================================================================
-12. HEALTH AND TROUBLESHOOTING                            *roomplan-troubles*
+13. HEALTH AND TROUBLESHOOTING                            *roomplan-troubles*
 
 Run: >vim
   :checkhealth roomplan

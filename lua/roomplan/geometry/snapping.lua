@@ -1,5 +1,5 @@
 local number = require("roomplan.geometry.number")
-local rect = require("roomplan.geometry.rect")
+local footprint = require("roomplan.geometry.footprint")
 
 local M = {}
 
@@ -129,36 +129,55 @@ local function add_grid_target(targets, moving_value2, axis, grid)
 end
 
 local function room_features(room)
-  local x2 = 2 * room.origin_mm[1]
-  local y2 = 2 * room.origin_mm[2]
-  local width2 = 2 * room.size_mm[1]
-  local depth2 = 2 * room.size_mm[2]
+  local shape, shape_error = footprint.from_room(room)
+  if not shape then return nil, shape_error end
+  local bounds, bounds_error = footprint.bounds2(shape)
+  if not bounds then return nil, bounds_error end
   local id = room.id or ""
   return {
     x = {
-      M.feature("x", x2, "room_edge", id, "west"),
-      M.feature("x", x2 + width2, "room_edge", id, "east"),
-      M.feature("x", x2 + room.size_mm[1], "room_center", id, "center-x"),
+      M.feature("x", bounds.left2, "room_edge", id, "west"),
+      M.feature("x", bounds.right2, "room_edge", id, "east"),
+      M.feature("x", bounds.center_x2, "room_center", id, "center-x"),
     },
     y = {
-      M.feature("y", y2, "room_edge", id, "south"),
-      M.feature("y", y2 + depth2, "room_edge", id, "north"),
-      M.feature("y", y2 + room.size_mm[2], "room_center", id, "center-y"),
+      M.feature("y", bounds.bottom2, "room_edge", id, "south"),
+      M.feature("y", bounds.top2, "room_edge", id, "north"),
+      M.feature("y", bounds.center_y2, "room_center", id, "center-y"),
     },
+  }
+end
+
+local function unsnapped(field, point, geometry_error)
+  point = type(point) == "table" and point or { 0, 0 }
+  return {
+    [field] = { point[1], point[2] },
+    delta_mm = { 0, 0 },
+    delta2 = { 0, 0 },
+    residual_mm = { 0, 0 },
+    snapped = false,
+    candidates = { x = nil, y = nil },
+    geometry_error = geometry_error,
   }
 end
 
 function M.snap_room(proposed_room, other_rooms, options)
   options = options or {}
-  local moving = room_features(proposed_room)
+  local moving, moving_error = room_features(proposed_room)
+  if not moving then return unsnapped("origin_mm", proposed_room.origin_mm, moving_error) end
   local tx, ty = {}, {}
+  local geometry_error
   local i, j
   for i = 1, #(other_rooms or {}) do
     local other = other_rooms[i]
     if other.id ~= proposed_room.id then
-      local features = room_features(other)
-      for j = 1, #features.x do tx[#tx + 1] = features.x[j] end
-      for j = 1, #features.y do ty[#ty + 1] = features.y[j] end
+      local features, feature_error = room_features(other)
+      if features then
+        for j = 1, #features.x do tx[#tx + 1] = features.x[j] end
+        for j = 1, #features.y do ty[#ty + 1] = features.y[j] end
+      else
+        geometry_error = geometry_error or feature_error
+      end
     end
   end
   for i = 1, #moving.x do add_grid_target(tx, moving.x[i].value2, "x", options.grid_mm) end
@@ -172,11 +191,15 @@ function M.snap_room(proposed_room, other_rooms, options)
     proposed_room.origin_mm[1] + result.delta_mm[1],
     proposed_room.origin_mm[2] + result.delta_mm[2],
   }
+  result.geometry_error = geometry_error
   return result
 end
 
 local function furniture_features(room, furniture)
-  local bounds = rect.furniture_rect2(room, furniture)
+  local shape, shape_error = footprint.from_furniture(room, furniture)
+  if not shape then return nil, shape_error end
+  local bounds, bounds_error = footprint.bounds2(shape)
+  if not bounds then return nil, bounds_error end
   local id = furniture.id or ""
   return {
     x = {
@@ -192,22 +215,40 @@ local function furniture_features(room, furniture)
   }
 end
 
+local function furniture_position(furniture)
+  if furniture.position_mm ~= nil or furniture.footprint ~= nil then
+    return "position_mm", furniture.position_mm
+  end
+  return "center_mm", furniture.center_mm
+end
+
 function M.snap_furniture(room, proposed, furniture_with_rooms, door_apertures, options)
   options = options or {}
-  local moving = furniture_features(room, proposed)
+  local position_field, position = furniture_position(proposed)
+  local moving, moving_error = furniture_features(room, proposed)
+  if not moving then return unsnapped(position_field, position, moving_error) end
   local tx, ty = {}, {}
-  local room_target = room_features(room)
+  local geometry_error
+  local room_target, room_error = room_features(room)
   local i, j
-  for i = 1, #room_target.x do tx[#tx + 1] = room_target.x[i] end
-  for i = 1, #room_target.y do ty[#ty + 1] = room_target.y[i] end
+  if room_target then
+    for i = 1, #room_target.x do tx[#tx + 1] = room_target.x[i] end
+    for i = 1, #room_target.y do ty[#ty + 1] = room_target.y[i] end
+  else
+    geometry_error = room_error
+  end
   for i = 1, #(furniture_with_rooms or {}) do
     local item = furniture_with_rooms[i]
     local furniture = item.furniture or item[1]
     local owner = item.room or item[2]
     if furniture and owner and furniture.id ~= proposed.id then
-      local features = furniture_features(owner, furniture)
-      for j = 1, #features.x do tx[#tx + 1] = features.x[j] end
-      for j = 1, #features.y do ty[#ty + 1] = features.y[j] end
+      local features, feature_error = furniture_features(owner, furniture)
+      if features then
+        for j = 1, #features.x do tx[#tx + 1] = features.x[j] end
+        for j = 1, #features.y do ty[#ty + 1] = features.y[j] end
+      else
+        geometry_error = geometry_error or feature_error
+      end
     end
   end
   for i = 1, #(door_apertures or {}) do
@@ -230,10 +271,11 @@ function M.snap_furniture(room, proposed, furniture_with_rooms, door_apertures, 
     tolerance_mm = options.tolerance_mm, mm_per_screen_unit = options.mm_per_screen_unit,
     priority = options.priority, bypass = options.bypass,
   })
-  result.center_mm = {
-    proposed.center_mm[1] + result.delta_mm[1],
-    proposed.center_mm[2] + result.delta_mm[2],
+  result[position_field] = {
+    position[1] + result.delta_mm[1],
+    position[2] + result.delta_mm[2],
   }
+  result.geometry_error = geometry_error
   return result
 end
 

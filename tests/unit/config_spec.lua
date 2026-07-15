@@ -7,6 +7,7 @@ describe("config", function()
     one.canvas.open = "split"
     one.ui.workspace.left_width = 99
     assert_equal(config.defaults().canvas.open, "tab")
+    assert_equal(config.defaults().canvas.detail_level, "middle")
     assert_equal(config.defaults().ui.workspace.left_width, 26)
     assert_equal(
       config.defaults().ui.workspace,
@@ -22,6 +23,7 @@ describe("config", function()
     config.reset()
     for _, options in ipairs({
       { canvas = { show_rulers = true } },
+      { canvas = { show_dimensions = true } },
       { ui = { experience = "classic" } },
       { ui = { inspector = "float" } },
     }) do
@@ -29,6 +31,16 @@ describe("config", function()
       assert_true(not ok)
       assert_true(tostring(err):match("unknown option") ~= nil)
     end
+  end)
+
+  it("validates the canvas detail level", function()
+    config.reset()
+    assert_equal("high", config.setup({ canvas = { detail_level = "high" } }).canvas.detail_level)
+    local ok, err = pcall(config.setup, { canvas = { detail_level = "verbose" } })
+    assert_true(not ok)
+    assert_true(tostring(err):match("high, middle, or none") ~= nil)
+    assert_equal("high", config.get().canvas.detail_level)
+    config.reset()
   end)
 
   it("validates unknown keys without replacing prior config", function()

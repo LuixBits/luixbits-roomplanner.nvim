@@ -26,7 +26,7 @@ value. Use `:checkhealth roomplan` to see the effective calibration.
 
 ## Rotating the view
 
-`]r` rotates clockwise, `[r` rotates counter-clockwise, and `g0` resets to
+`Alt-l` rotates clockwise, `Alt-h` rotates counter-clockwise, and `g0` resets to
 north-up. The command form is:
 
 ```vim

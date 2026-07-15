@@ -21,11 +21,11 @@ RoomPlan displays the active mode in the action bar.
 presses cycle overlapping hit targets. `Tab` and `Shift-Tab` cycle scene
 objects through the workspace panes.
 
-**MOVE** starts with `m` and requires a selected room, door, or furniture item.
-Directions move by the plan's normal step, uppercase directions use the coarse
-step, and Ctrl-directions use the fine step. Door movement is constrained to
-its wall. Snapping applies unless disabled with `gs` or bypassed once with
-`g!`.
+**MOVE** starts with `m` and requires a selected room, door, window, outlet, or
+furniture item. Directions move by the plan's normal step, uppercase directions
+use the coarse step, and Ctrl-directions use the fine step. Door, window, and
+outlet movement is constrained to the assigned wall. Snapping applies unless
+disabled with `gs` or bypassed once with `g!`.
 
 **PAN** starts with `p`. Directions shift the viewport without changing model
 geometry. The normal and coarse distances come from `canvas.pan_step_cells`

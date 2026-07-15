@@ -20,6 +20,8 @@ local definitions = {
   add = { key = "a", mapping = "add", label = "Add", handler = "add_menu", priority = 80 },
   add_room = { key = "a", mapping = "add", label = "Add room", handler = "add_room", priority = 100 },
   add_door = { key = "D", mapping = "add_door", label = "Add door", handler = "add_door", priority = 50 },
+  add_window = { key = "W", mapping = "add_window", label = "Add window", handler = "add_window", priority = 50 },
+  add_outlet = { key = "O", mapping = "add_outlet", label = "Add outlet", handler = "add_outlet", priority = 50 },
   add_furniture = { key = "F", mapping = "add_furniture", label = "Add furniture", handler = "add_furniture", priority = 50 },
   select = {
     key = "<CR>", mapping = "select", label = "Select", handler = "select_under_cursor",
@@ -33,14 +35,18 @@ local definitions = {
   duplicate = { key = "y", mapping = "duplicate", label = "Duplicate", handler = "duplicate_selected", priority = 45 },
   delete = { key = "d", mapping = "delete", label = "Delete", handler = "delete_selected", priority = 40 },
   fit = { key = "f", mapping = "fit", label = "Fit", handler = "fit", priority = 65 },
+  cycle_detail_level = {
+    key = "t", mapping = "cycle_detail_level", label = "Cycle canvas detail",
+    handler = "set_detail_level", args = { "cycle" }, priority = 40,
+  },
   zoom_in = { key = "z+", mapping = "zoom_in", label = "Zoom in", handler = "zoom", args = { "in" }, priority = 35 },
   zoom_out = { key = "z-", mapping = "zoom_out", label = "Zoom out", handler = "zoom", args = { "out" }, priority = 35 },
   rotate_view_clockwise = {
-    key = "]r", mapping = "rotate_view_clockwise", label = "Rotate view clockwise",
+    key = "<A-l>", mapping = "rotate_view_clockwise", label = "Rotate view clockwise",
     handler = "rotate_view", args = { "clockwise" }, priority = 25,
   },
   rotate_view_counterclockwise = {
-    key = "[r", mapping = "rotate_view_counterclockwise", label = "Rotate view counter-clockwise",
+    key = "<A-h>", mapping = "rotate_view_counterclockwise", label = "Rotate view counter-clockwise",
     handler = "rotate_view", args = { "counterclockwise" }, priority = 25,
   },
   reset_view = {
@@ -48,8 +54,8 @@ local definitions = {
     handler = "rotate_view", args = { "reset" }, priority = 20,
   },
   validate = { key = "v", mapping = "validate", label = "Validate", handler = "validate", args = { true }, priority = 60 },
-  next_issue = { key = "]e", mapping = "next_issue", label = "Next issue", handler = "next_issue", args = { 1 }, priority = 30 },
-  previous_issue = { key = "[e", mapping = "previous_issue", label = "Previous issue", handler = "next_issue", args = { -1 }, priority = 30 },
+  next_issue = { key = "<A-j>", mapping = "next_issue", label = "Next issue", handler = "next_issue", args = { 1 }, priority = 30 },
+  previous_issue = { key = "<A-k>", mapping = "previous_issue", label = "Previous issue", handler = "next_issue", args = { -1 }, priority = 30 },
   toggle_snap = { key = "gs", mapping = "toggle_snap", label = "Toggle snapping", handler = "toggle_snap", priority = 30 },
   bypass_snap = { key = "g!", mapping = "bypass_snap", label = "Bypass next snap", handler = "bypass_snap", priority = 20 },
   aspect = { mapping = "aspect", label = "Calibrate terminal aspect", handler = "set_aspect", priority = 10 },
@@ -95,10 +101,10 @@ local definitions = {
 }
 
 local group_members = {
-  create = { "add", "add_room", "add_door", "add_furniture" },
+  create = { "add", "add_room", "add_door", "add_window", "add_outlet", "add_furniture" },
   selection = { "select", "edit", "move", "align", "rotate", "duplicate", "delete" },
   view = {
-    "pan", "fit", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
+    "pan", "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
     "reset_view", "validate", "next_issue", "previous_issue",
     "toggle_snap", "bypass_snap", "aspect",
   },
@@ -152,6 +158,10 @@ local friendly_keys = {
   ["<C-r>"] = "Ctrl-r",
   ["<Tab>"] = "Tab",
   ["<S-Tab>"] = "S-Tab",
+  ["<A-h>"] = "Alt-h",
+  ["<A-j>"] = "Alt-j",
+  ["<A-k>"] = "Alt-k",
+  ["<A-l>"] = "Alt-l",
 }
 
 function M.display_key(key)
@@ -162,18 +172,24 @@ local function availability(id, ctx)
   local kind = selected_kind(ctx)
   if id == "select" and room_count(ctx) == 0 then
     return false, "Add a room first"
-  elseif id == "add_door" or id == "add_furniture" then
+  elseif id == "add_door" or id == "add_window" or id == "add_outlet" or id == "add_furniture" then
     if room_count(ctx) == 0 then return false, "Add a room first" end
   elseif id == "edit" or id == "delete" or id == "duplicate" then
     if not ctx.selection then return false, "Select an object first" end
     if (id == "delete" or id == "duplicate") and kind == "plan" then
       return false, "The plan itself cannot be " .. (id == "delete" and "deleted" or "duplicated")
     end
-    if id == "duplicate" and kind ~= "room" and kind ~= "door" and kind ~= "furniture" and kind ~= "template" then
+    if id == "duplicate" and kind ~= "room" and kind ~= "door" and kind ~= "window"
+      and kind ~= "outlet" and kind ~= "furniture" and kind ~= "template"
+    then
       return false, "This object cannot be duplicated"
     end
   elseif id == "move" then
-    if kind ~= "room" and kind ~= "door" and kind ~= "furniture" then return false, "Select a movable object first" end
+    if kind ~= "room" and kind ~= "door" and kind ~= "window"
+      and kind ~= "outlet" and kind ~= "furniture"
+    then
+      return false, "Select a movable object first"
+    end
   elseif id == "align" then
     if kind ~= "room" then return false, "Select a room first" end
     if room_count(ctx) < 2 then return false, "Add another room first" end
@@ -224,6 +240,10 @@ function M.get(id, ctx)
     end
   elseif id == "toggle_snap" then
     result.label = ctx.snap_enabled == false and "Enable snapping" or "Disable snapping"
+  elseif id == "cycle_detail_level" then
+    local detail = require("roomplan.canvas_detail")
+    local current = detail.normalize(ctx.detail_level) or detail.default
+    result.label = string.format("Canvas detail: %s → %s", current, detail.next(current))
   end
   return result
 end
@@ -244,7 +264,10 @@ local function ids_for(ctx)
     if kind == "plan" then
       return { "edit", "add_room", "fit", "validate", "save", "undo", "redo", "help", "hide" }
     end
-    return { "add_room", "add_door", "add_furniture", "fit", "save", "undo", "redo", "help", "hide" }
+    return {
+      "add_room", "add_door", "add_window", "add_outlet", "add_furniture",
+      "fit", "save", "undo", "redo", "help", "hide",
+    }
   elseif kind == "plan" then
     return { "edit", "add", "fit", "validate", "save", "undo", "redo", "help", "hide" }
   elseif kind == "room" then
@@ -252,6 +275,8 @@ local function ids_for(ctx)
   elseif kind == "furniture" then
     return { "edit", "move", "rotate", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
   elseif kind == "door" then
+    return { "edit", "move", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
+  elseif kind == "window" or kind == "outlet" then
     return { "edit", "move", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
   elseif kind == "template" then
     return { "edit", "duplicate", "delete", "save", "undo", "redo", "help" }
@@ -266,7 +291,7 @@ local pane_ids = {
 }
 
 local safe_full_ids = {
-  "fit", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
+  "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
   "validate", "next_issue", "previous_issue",
   "toggle_snap", "bypass_snap", "aspect", "save", "save_as", "undo", "redo", "reload", "close",
 }
@@ -274,8 +299,10 @@ local safe_full_ids = {
 local selection_full_ids = { "edit", "move", "align", "rotate", "duplicate", "delete" }
 
 local function create_full_ids(ctx)
-  if room_count(ctx) == 0 then return { "add_room", "add_door", "add_furniture" } end
-  return { "add", "add_door", "add_furniture" }
+  if room_count(ctx) == 0 then
+    return { "add_room", "add_door", "add_window", "add_outlet", "add_furniture" }
+  end
+  return { "add", "add_door", "add_window", "add_outlet", "add_furniture" }
 end
 
 local function primary_ids_for(ctx)
@@ -305,6 +332,8 @@ local function primary_ids_for(ctx)
   elseif kind == "furniture" then
     return { "edit", "move", "rotate", "delete", "help" }
   elseif kind == "door" then
+    return { "edit", "move", "delete", "help" }
+  elseif kind == "window" or kind == "outlet" then
     return { "edit", "move", "delete", "help" }
   elseif kind == "template" then
     return { "edit", "duplicate", "delete", "help" }

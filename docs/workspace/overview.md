@@ -5,8 +5,8 @@ of the saved model; editing canvas characters never edits the plan.
 
 The workspace has four areas:
 
-- **Canvas** renders rooms, doors, furniture, selection, dimensions, and the
-  compass.
+- **Canvas** renders rooms, doors, windows, outlets, furniture, selection,
+  dimensions, and the compass.
 - **Navigator** uses one side slot for either Objects or Issues.
 - **Details** shows compact, accordion-style information about the selection.
 - **Action bar** shows only the most useful actions for the current pane and

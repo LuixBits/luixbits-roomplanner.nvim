@@ -33,7 +33,7 @@ commands or your own buffer mappings in that case.
 | `/` | `workspace_filter_focused` | Filter Objects or Issues |
 | `h` / `l` | `workspace_collapse_focused` / `workspace_expand_focused` | Collapse/expand an Objects room |
 | `Enter` | `workspace_toggle_details_section` | Toggle a Details section |
-| `a`, `D`, `F` | `add`, `add_door`, `add_furniture` | Add objects |
+| `a`, `D`, `W`, `O`, `F` | `add`, `add_door`, `add_window`, `add_outlet`, `add_furniture` | Add objects |
 | `e`, `d`, `y` | `edit`, `delete`, `duplicate` | Act on selection |
 | `m`, `A`, `r` | `move_mode`, `align`, `rotate` | Move, align, rotate |
 | `Enter` | `select` | Select under Canvas cursor |
@@ -43,14 +43,19 @@ The convenience `o` and `i` keys use semantic names `objects` and `inspector`
 for Navigator and Details. `select_next` and `select_previous` name the Canvas
 object-cycle mappings when pane cycling is disabled.
 
+The `a` Add palette has its own one-key choices: `r` room, `d` door, `w`
+window, `o` outlet, and `f` furniture. Selected windows and outlets use the
+ordinary `e`, `m`, `y`, and `d` edit/move/duplicate/delete mappings.
+
 ## View, history, and source
 
 | Default | Semantic name | Action |
 | --- | --- | --- |
-| `v`, `[e`, `]e` | `validate`, `previous_issue`, `next_issue` | Validate/navigate issues |
+| `v`, `Alt-k`, `Alt-j` | `validate`, `previous_issue`, `next_issue` | Validate/navigate issues |
 | `u`, `Ctrl-r` | `undo`, `redo` | Semantic history |
 | `f`, `z+`, `z-` | `fit`, `zoom_in`, `zoom_out` | Fit/zoom |
-| `[r`, `]r`, `g0` | `rotate_view_counterclockwise`, `rotate_view_clockwise`, `reset_view` | Rotate projection |
+| `t` | `cycle_detail_level` | Cycle `high`, `middle`, and `none` canvas detail |
+| `Alt-h`, `Alt-l`, `g0` | `rotate_view_counterclockwise`, `rotate_view_clockwise`, `reset_view` | Rotate projection |
 | `gs`, `g!` | `toggle_snap`, `bypass_snap` | Snapping controls |
 | `s`, `S` | `save`, `save_as` | Save / Save As |
 

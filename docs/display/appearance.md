@@ -18,30 +18,43 @@ hex input and recently used colors remain future UX work.
 ## Glyph modes
 
 Set `canvas.unicode` to `"auto"` (default), `"unicode"`, or `"ascii"`.
-Unicode provides box-drawing walls, furniture, hinge, and swing glyphs. ASCII
-uses only portable `+|-/.#oD!?` characters. RoomPlan validates the entire set
-with Neovim's display-width calculation; if any configured glyph does not
-occupy exactly one cell, it falls back atomically to ASCII rather than mixing
-misaligned characters.
+Unicode provides box-drawing walls, furniture, hinge, and swing glyphs plus
+double-line windows and circular outlet markers. ASCII uses portable
+single-cell characters, including `=`/`W` for windows and `O` for outlets.
+RoomPlan validates the entire set with Neovim's display-width calculation; if
+any configured glyph does not occupy exactly one cell, it falls back atomically
+to ASCII rather than mixing misaligned characters.
 
 `ui.workspace.ascii = true` separately changes the Details panel borders and
-expansion markers to ASCII. `canvas.show_grid`, `canvas.show_dimensions`, and
-`canvas.show_compass` control optional visual layers. They never change saved
-geometry.
+expansion markers to ASCII. `canvas.show_grid` and `canvas.show_compass`
+control optional visual layers. They never change saved geometry.
+
+## Canvas detail
+
+`canvas.detail_level` defaults to `"middle"`. The three levels are:
+
+- `high`: labels plus all exterior wall-run, furniture width/depth, and
+  door/window width dimensions;
+- `middle`: labels plus exterior wall-run dimensions;
+- `none`: geometry only, with no labels or dimensions.
+
+Press `t` to cycle them for the current session, or set an exact level with
+`:RoomPlanCanvasDetail high|middle|none`. Detail is transient presentation;
+it never changes plan geometry or semantic history.
 
 A custom `glyphs` table must supply all 16 wall masks (`wall[0]` through
-`wall[15]`) and every furniture, door, grid, error, warning, and replacement
-glyph. Each value must be a non-empty one-cell string. Run
+`wall[15]`) and every furniture, door, window, outlet, grid, error, warning,
+and replacement glyph. Each value must be a non-empty one-cell string. Run
 `:checkhealth roomplan` after changing fonts or glyphs.
 
 ## Highlight groups
 
 The main canvas groups are:
 
-`RoomPlanWall`, `RoomPlanDoor`, `RoomPlanFurniture`, `RoomPlanRoomLabel`,
-`RoomPlanFurnitureLabel`, `RoomPlanSelected`, `RoomPlanError`,
-`RoomPlanWarning`, `RoomPlanGrid`, `RoomPlanStatus`, `RoomPlanMuted`, and
-`RoomPlanCompass`.
+`RoomPlanWall`, `RoomPlanDoor`, `RoomPlanWindow`, `RoomPlanOutlet`,
+`RoomPlanFurniture`, `RoomPlanRoomLabel`, `RoomPlanFurnitureLabel`,
+`RoomPlanSelected`, `RoomPlanError`, `RoomPlanWarning`, `RoomPlanGrid`,
+`RoomPlanStatus`, `RoomPlanMuted`, and `RoomPlanCompass`.
 
 Workspace groups use the `RoomPlanWorkspace*` prefix for titles, active and
 inactive borders, cursor rows, selection, keys, values, object kinds, and

@@ -5,15 +5,17 @@
 local adjacency = require("roomplan.geometry.adjacency")
 local json = require("roomplan.codec.json")
 local door_geometry = require("roomplan.geometry.door")
+local footprint_geometry = require("roomplan.geometry.footprint")
 local interval = require("roomplan.geometry.interval")
 local number = require("roomplan.geometry.number")
-local rect = require("roomplan.geometry.rect")
+local schema = require("roomplan.schema")
 local sector = require("roomplan.geometry.sector")
+local wall_attachment = require("roomplan.geometry.wall_attachment")
 
 local M = {}
 
-local function connected_id(door)
-  local value = door and door.connects_to_room_id
+local function connected_id(attachment)
+  local value = attachment and attachment.connects_to_room_id
   if value == nil or json.is_null(value) then return nil end
   return value
 end
@@ -34,7 +36,16 @@ local builtin_templates = {
   ["builtin:custom-rectangle"] = true,
 }
 
-local kind_rank = { room = 1, door = 2, furniture = 3, template = 4, plan = 5, settings = 6 }
+local kind_rank = {
+  room = 1,
+  door = 2,
+  window = 3,
+  outlet = 4,
+  furniture = 5,
+  template = 6,
+  plan = 7,
+  settings = 8,
+}
 local severity_rank = { error = 1, warning = 2, info = 3 }
 
 local function object_ref(kind, id)
@@ -57,6 +68,37 @@ end
 
 local function append(target, value)
   target[#target + 1] = value
+end
+
+local function append_geometry_problem(target, kind, entity, err)
+  local id = entity and entity.id or "<unknown>"
+  append(target, diagnostic(
+    "GEOMETRY_RANGE",
+    "error",
+    kind,
+    id,
+    id .. " exceeds the exact footprint geometry range",
+    nil,
+    {
+      cause_code = err and err.code,
+      cause_message = err and err.message,
+      cause_details = err and err.details,
+    }
+  ))
+end
+
+local function safe_footprint(target, kind, entity, build)
+  local shape, shape_error = build()
+  if not shape then
+    append_geometry_problem(target, kind, entity, shape_error)
+    return nil
+  end
+  local bounds, bounds_error = footprint_geometry.bounds2(shape)
+  if not bounds then
+    append_geometry_problem(target, kind, entity, bounds_error)
+    return nil
+  end
+  return shape, bounds
 end
 
 local function valid_id(value)
@@ -94,18 +136,59 @@ local function structural_field(target, code, kind, id, message, details)
   append(target, diagnostic(code, "error", kind, id, message, nil, details, true))
 end
 
+local function schema_object(model, path)
+  local collection, index
+  if type(path) == "string" then collection, index = path:match("^%$%.([%a_]+)%[(%d+)%]") end
+  local kinds = {
+    rooms = "room",
+    doors = "door",
+    windows = "window",
+    outlets = "outlet",
+    furniture = "furniture",
+    custom_templates = "template",
+  }
+  local values = collection and model[collection]
+  local entity = type(values) == "table" and values[tonumber(index)] or nil
+  local kind = kinds[collection] or (collection == "settings" and "settings") or "plan"
+  local id = type(entity) == "table" and entity.id
+    or (kind == "settings" and "settings")
+    or "roomplan.nvim"
+  return kind, id
+end
+
+local function versioned_structural(model)
+  local valid, info = schema.validate_versioned(model)
+  if valid then return {} end
+  local result = {}
+  local diagnostics = info and info.diagnostics or { info }
+  for _, value in ipairs(diagnostics) do
+    if value then
+      local kind, id = schema_object(model, value.path)
+      structural_field(result, value.code or "SCHEMA_INVALID", kind, id,
+        (value.path and (value.path .. ": ") or "") .. (value.message or "invalid versioned model"), {
+          path = value.path,
+          value = value.value,
+        })
+    end
+  end
+  return result
+end
+
 function M.structural(model)
   local result = {}
   if type(model) ~= "table" then
     structural_field(result, "INVALID_MODEL", "plan", "roomplan.nvim", "RoomPlan model root must be an object")
     return result
   end
+  if type(model.schema_version) == "number" and model.schema_version >= 2 then
+    return versioned_structural(model)
+  end
   if model.format ~= "roomplan.nvim" then
     structural_field(result, "INVALID_FORMAT", "plan", "roomplan.nvim", "format must be exactly roomplan.nvim")
   end
   if model.schema_version ~= 1 then
     structural_field(result, "UNSUPPORTED_SCHEMA_VERSION", "plan", "roomplan.nvim",
-      "schema_version must be the supported version 1", { actual = model.schema_version })
+      "schema_version is unsupported", { actual = model.schema_version })
   end
   if model.units ~= "mm" then
     structural_field(result, "INVALID_UNITS", "plan", "roomplan.nvim", "units must be exactly mm")
@@ -269,10 +352,25 @@ function M.structural(model)
 end
 
 local function build_indexes(model)
-  local result = { rooms = {}, room_order = {}, doors = {}, door_order = {}, furniture = {}, furniture_order = {}, templates = {} }
+  local result = {
+    rooms = {}, room_order = {},
+    doors = {}, door_order = {},
+    windows = {}, window_order = {},
+    outlets = {}, outlet_order = {},
+    furniture = {}, furniture_order = {},
+    templates = {},
+  }
   local i
   for i = 1, #(model.rooms or {}) do result.rooms[model.rooms[i].id] = model.rooms[i]; result.room_order[model.rooms[i].id] = i end
   for i = 1, #(model.doors or {}) do result.doors[model.doors[i].id] = model.doors[i]; result.door_order[model.doors[i].id] = i end
+  for i = 1, #(model.windows or {}) do
+    result.windows[model.windows[i].id] = model.windows[i]
+    result.window_order[model.windows[i].id] = i
+  end
+  for i = 1, #(model.outlets or {}) do
+    result.outlets[model.outlets[i].id] = model.outlets[i]
+    result.outlet_order[model.outlets[i].id] = i
+  end
   for i = 1, #(model.furniture or {}) do
     result.furniture[model.furniture[i].id] = model.furniture[i]
     result.furniture_order[model.furniture[i].id] = i
@@ -293,6 +391,43 @@ local function template_resolves(id, indexes, options)
     end
   end
   return false
+end
+
+local function attachment_candidates(model, owner, attachment, aperture)
+  local positive, full = {}, {}
+  if not aperture or not aperture.within_edge or not aperture.on_exterior then
+    return positive, full
+  end
+  for _, other in ipairs(model.rooms or {}) do
+    if other.id ~= owner.id then
+      local overlaps, covers = false, false
+      for _, other_edge in ipairs(adjacency.edges(other)) do
+        if other_edge.side == adjacency.opposite(attachment.side)
+          and other_edge.axis == aperture.axis
+          and other_edge.fixed_mm == aperture.fixed_mm
+          and interval.overlaps_positive(
+            other_edge.start_mm,
+            other_edge.finish_mm,
+            aperture.start_mm,
+            aperture.finish_mm
+          )
+        then
+          overlaps = true
+          if interval.contains_interval(
+            other_edge.start_mm,
+            other_edge.finish_mm,
+            aperture.start_mm,
+            aperture.finish_mm
+          ) then
+            covers = true
+          end
+        end
+      end
+      if overlaps then positive[#positive + 1] = other end
+      if covers then full[#full + 1] = other end
+    end
+  end
+  return positive, full
 end
 
 local function layout_diagnostics(model, options)
@@ -331,93 +466,168 @@ local function layout_diagnostics(model, options)
         { object_ref("room", connection_id) }, { field = "connects_to_room_id" }))
     end
   end
+  for i = 1, #(model.windows or {}) do
+    local window = model.windows[i]
+    if not indexes.rooms[window.room_id] then
+      append(result, diagnostic("INVALID_REFERENCE", "error", "window", window.id,
+        window.id .. " references missing owner room " .. window.room_id,
+        { object_ref("room", window.room_id) }, { field = "room_id" }))
+    end
+    local connection_id = connected_id(window)
+    if connection_id and not indexes.rooms[connection_id] then
+      append(result, diagnostic("INVALID_REFERENCE", "error", "window", window.id,
+        window.id .. " references missing connected room " .. connection_id,
+        { object_ref("room", connection_id) }, { field = "connects_to_room_id" }))
+    end
+  end
+  for i = 1, #(model.outlets or {}) do
+    local outlet = model.outlets[i]
+    if not indexes.rooms[outlet.room_id] then
+      append(result, diagnostic("INVALID_REFERENCE", "error", "outlet", outlet.id,
+        outlet.id .. " references missing owner room " .. outlet.room_id,
+        { object_ref("room", outlet.room_id) }, { field = "room_id" }))
+    end
+  end
 
   -- Rooms and plan limits.
+  local room_footprints, room_bounds, room_footprints_by_id = {}, {}, {}
+  for i = 1, #model.rooms do
+    local room = model.rooms[i]
+    local shape, bounds = safe_footprint(result, "room", room, function()
+      return footprint_geometry.from_room(room)
+    end)
+    if shape then
+      room_footprints[i] = shape
+      room_bounds[i] = bounds
+      room_footprints_by_id[room.id] = shape
+    end
+  end
   for i = 1, #model.rooms do
     local room_a = model.rooms[i]
-    local box_a = rect.from_room(room_a)
-    if limits.max_dimension_mm and (room_a.size_mm[1] > limits.max_dimension_mm or room_a.size_mm[2] > limits.max_dimension_mm) then
-      append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "room", room_a.id,
-        room_a.id .. " exceeds the configured maximum room dimension", nil,
-        { max_dimension_mm = limits.max_dimension_mm }))
-    end
-    if limits.max_abs_coordinate_mm then
-      local maximum = math.max(math.abs(box_a.left), math.abs(box_a.right), math.abs(box_a.bottom), math.abs(box_a.top))
-      if maximum > limits.max_abs_coordinate_mm then
+    local bounds_a = room_bounds[i]
+    if bounds_a then
+      if limits.max_dimension_mm and (bounds_a.width2 / 2 > limits.max_dimension_mm
+        or bounds_a.depth2 / 2 > limits.max_dimension_mm) then
         append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "room", room_a.id,
-          room_a.id .. " exceeds the configured coordinate limit", nil,
-          { max_abs_coordinate_mm = limits.max_abs_coordinate_mm, actual_mm = maximum }))
+          room_a.id .. " exceeds the configured maximum room dimension", nil,
+          { max_dimension_mm = limits.max_dimension_mm }))
       end
-    end
-    for j = i + 1, #model.rooms do
-      local room_b = model.rooms[j]
-      local intersection = rect.intersection(box_a, rect.from_room(room_b))
-      if intersection then
-        append(result, diagnostic("ROOM_OVERLAP", "error", "room", room_a.id,
-          room_a.id .. " overlaps " .. room_b.id .. " with positive area",
-          { object_ref("room", room_b.id) },
-          { width_mm = intersection.width, depth_mm = intersection.depth,
-            area_mm2 = intersection.width * intersection.depth }))
+      if limits.max_abs_coordinate_mm then
+        local maximum = math.max(math.abs(bounds_a.left2 / 2), math.abs(bounds_a.right2 / 2),
+          math.abs(bounds_a.bottom2 / 2), math.abs(bounds_a.top2 / 2))
+        if maximum > limits.max_abs_coordinate_mm then
+          append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "room", room_a.id,
+            room_a.id .. " exceeds the configured coordinate limit", nil,
+            { max_abs_coordinate_mm = limits.max_abs_coordinate_mm, actual_mm = maximum }))
+        end
+      end
+      for j = i + 1, #model.rooms do
+        if room_footprints[j] then
+          local room_b = model.rooms[j]
+          local intersection = footprint_geometry.first_intersection2(room_footprints[i], room_footprints[j])
+          if intersection then
+            local width = (intersection.right2 - intersection.left2) / 2
+            local depth = (intersection.top2 - intersection.bottom2) / 2
+            append(result, diagnostic("ROOM_OVERLAP", "error", "room", room_a.id,
+              room_a.id .. " overlaps " .. room_b.id .. " with positive area",
+              { object_ref("room", room_b.id) },
+              { width_mm = width, depth_mm = depth, area_mm2 = width * depth }))
+          end
+        end
       end
     end
   end
-  if limits.max_plan_span_mm and #model.rooms > 0 then
-    local boxes = {}
-    for i = 1, #model.rooms do boxes[i] = rect.from_room(model.rooms[i]) end
-    local bounds = rect.union(boxes)
-    if bounds.width > limits.max_plan_span_mm or bounds.depth > limits.max_plan_span_mm then
-      append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "plan", "roomplan.nvim",
-        "plan span exceeds the configured maximum", nil,
-        { width_mm = bounds.width, depth_mm = bounds.depth, max_plan_span_mm = limits.max_plan_span_mm }))
+  if limits.max_plan_span_mm then
+    local left2, bottom2, right2, top2
+    for i = 1, #model.rooms do
+      local bounds = room_bounds[i]
+      if bounds then
+        if left2 == nil then
+          left2, bottom2, right2, top2 = bounds.left2, bounds.bottom2, bounds.right2, bounds.top2
+        else
+          left2, bottom2 = math.min(left2, bounds.left2), math.min(bottom2, bounds.bottom2)
+          right2, top2 = math.max(right2, bounds.right2), math.max(top2, bounds.top2)
+        end
+      end
+    end
+    if left2 ~= nil then
+      local width, depth = (right2 - left2) / 2, (top2 - bottom2) / 2
+      if width > limits.max_plan_span_mm or depth > limits.max_plan_span_mm then
+        append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "plan", "roomplan.nvim",
+          "plan span exceeds the configured maximum", nil,
+          { width_mm = width, depth_mm = depth, max_plan_span_mm = limits.max_plan_span_mm }))
+      end
     end
   end
 
   -- Furniture containment and pairwise global overlap.
-  local furniture_bounds = {}
+  local furniture_footprints = {}
   for i = 1, #model.furniture do
     local furniture = model.furniture[i]
     local room = indexes.rooms[furniture.room_id]
     if room then
-      local footprint = rect.furniture_rect2(room, furniture)
-      furniture_bounds[i] = footprint
-      if limits.max_dimension_mm and (furniture.size_mm[1] > limits.max_dimension_mm
-        or furniture.size_mm[2] > limits.max_dimension_mm or furniture.size_mm[3] > limits.max_dimension_mm) then
-        append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "furniture", furniture.id,
-          furniture.id .. " exceeds the configured maximum object dimension", nil,
-          { max_dimension_mm = limits.max_dimension_mm }))
-      end
-      if limits.max_abs_coordinate_mm then
-        local maximum = math.max(math.abs(footprint.left2 / 2), math.abs(footprint.right2 / 2),
-          math.abs(footprint.bottom2 / 2), math.abs(footprint.top2 / 2))
-        if maximum > limits.max_abs_coordinate_mm then
+      local shape, bounds = safe_footprint(result, "furniture", furniture, function()
+        return footprint_geometry.from_furniture(room, furniture)
+      end)
+      if shape then
+        furniture_footprints[i] = shape
+        local height = furniture.height_mm or (furniture.size_mm and furniture.size_mm[3])
+        if limits.max_dimension_mm and (bounds.width2 / 2 > limits.max_dimension_mm
+          or bounds.depth2 / 2 > limits.max_dimension_mm or height > limits.max_dimension_mm) then
           append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "furniture", furniture.id,
-            furniture.id .. " exceeds the configured coordinate limit", nil,
-            { max_abs_coordinate_mm = limits.max_abs_coordinate_mm, actual_mm = maximum }))
+            furniture.id .. " exceeds the configured maximum object dimension", nil,
+            { max_dimension_mm = limits.max_dimension_mm }))
         end
-      end
-      local room_bounds = rect.room_rect2(room)
-      if not rect.contains_rect2(room_bounds, footprint) then
-        local overflow2 = rect.overflow2(room_bounds, footprint)
-        local details = { overflow_mm = {
-          west = overflow2.west / 2, east = overflow2.east / 2,
-          south = overflow2.south / 2, north = overflow2.north / 2,
-        } }
-        append(result, diagnostic("FURNITURE_OUTSIDE_ROOM", "error", "furniture", furniture.id,
-          furniture.id .. " extends outside owning room " .. room.id,
-          { object_ref("room", room.id) }, details))
+        if limits.max_abs_coordinate_mm then
+          local maximum = math.max(math.abs(bounds.left2 / 2), math.abs(bounds.right2 / 2),
+            math.abs(bounds.bottom2 / 2), math.abs(bounds.top2 / 2))
+          if maximum > limits.max_abs_coordinate_mm then
+            append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "furniture", furniture.id,
+              furniture.id .. " exceeds the configured coordinate limit", nil,
+              { max_abs_coordinate_mm = limits.max_abs_coordinate_mm, actual_mm = maximum }))
+          end
+        end
+        local room_shape = room_footprints_by_id[room.id]
+        if room_shape then
+          local contained, containment_error = footprint_geometry.contains(room_shape, shape)
+          if contained == nil then
+            append_geometry_problem(result, "furniture", furniture, containment_error)
+          elseif contained == false then
+            local overflow2, overflow_error = footprint_geometry.overflow2(room_shape, shape)
+            if not overflow2 then
+              append_geometry_problem(result, "furniture", furniture, overflow_error)
+            else
+              local details = { overflow_mm = {
+                west = overflow2.west / 2, east = overflow2.east / 2,
+                south = overflow2.south / 2, north = overflow2.north / 2,
+              } }
+              append(result, diagnostic("FURNITURE_OUTSIDE_ROOM", "error", "furniture", furniture.id,
+                furniture.id .. " extends outside owning room " .. room.id,
+                { object_ref("room", room.id) }, details))
+            end
+          end
+        end
       end
     end
   end
   for i = 1, #model.furniture do
-    if furniture_bounds[i] then
+    if furniture_footprints[i] then
       for j = i + 1, #model.furniture do
-        if furniture_bounds[j] and rect.overlaps_positive2(furniture_bounds[i], furniture_bounds[j]) then
-          local overlap = rect.intersection2(furniture_bounds[i], furniture_bounds[j])
-          append(result, diagnostic("FURNITURE_OVERLAP", "error", "furniture", model.furniture[i].id,
-            model.furniture[i].id .. " overlaps " .. model.furniture[j].id .. " with positive area",
-            { object_ref("furniture", model.furniture[j].id) },
-            { width_mm = (overlap.right2 - overlap.left2) / 2,
-              depth_mm = (overlap.top2 - overlap.bottom2) / 2 }))
+        if furniture_footprints[j] then
+          local overlaps = footprint_geometry.overlaps_positive(furniture_footprints[i], furniture_footprints[j])
+          if overlaps then
+            local overlap = footprint_geometry.first_intersection2(
+              furniture_footprints[i],
+              furniture_footprints[j]
+            )
+            if overlap then
+              append(result, diagnostic("FURNITURE_OVERLAP", "error", "furniture", model.furniture[i].id,
+                model.furniture[i].id .. " overlaps " .. model.furniture[j].id .. " with positive area",
+                { object_ref("furniture", model.furniture[j].id) },
+                { width_mm = (overlap.right2 - overlap.left2) / 2,
+                  depth_mm = (overlap.top2 - overlap.bottom2) / 2 }))
+            end
+          end
         end
       end
     end
@@ -429,32 +639,57 @@ local function layout_diagnostics(model, options)
     local door = model.doors[i]
     local owner = indexes.rooms[door.room_id]
     if owner then
-      local aperture = door_geometry.aperture(owner, door)
-      apertures[i] = aperture
+      local aperture, aperture_error = door_geometry.aperture(owner, door)
       if limits.max_dimension_mm and door.width_mm > limits.max_dimension_mm then
         append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "door", door.id,
           door.id .. " exceeds the configured maximum object dimension", nil,
           { max_dimension_mm = limits.max_dimension_mm, width_mm = door.width_mm }))
       end
-      if not aperture.within_edge then
+      if not aperture then
+        append(result, diagnostic("DOOR_EDGE_INVALID", "error", "door", door.id,
+          door.id .. " references an unavailable owner-room edge",
+          { object_ref("room", owner.id) }, { cause = aperture_error }))
+      elseif not aperture.within_edge then
         append(result, diagnostic("DOOR_OUTSIDE_EDGE", "error", "door", door.id,
           door.id .. " aperture extends outside its owning wall edge",
           { object_ref("room", owner.id) },
           { edge_start_mm = aperture.edge_start_mm, edge_finish_mm = aperture.edge_finish_mm,
             aperture_start_mm = aperture.start_mm, aperture_finish_mm = aperture.finish_mm }))
+      elseif not aperture.on_exterior then
+        append(result, diagnostic("DOOR_NOT_EXTERIOR", "error", "door", door.id,
+          door.id .. " aperture lies on an internal footprint seam",
+          { object_ref("room", owner.id) }, { part_id = door.part_id, side = door.side }))
       end
 
       local positive_candidates, full_candidates = {}, {}
-      for j = 1, #model.rooms do
-        local other = model.rooms[j]
-        if other.id ~= owner.id then
-          local other_edge = adjacency.edge(other, adjacency.opposite(door.side))
-          if other_edge and other_edge.axis == aperture.axis and other_edge.fixed_mm == aperture.fixed_mm
-            and interval.overlaps_positive(other_edge.start_mm, other_edge.finish_mm, aperture.start_mm, aperture.finish_mm) then
-            positive_candidates[#positive_candidates + 1] = other
-            if interval.contains_interval(other_edge.start_mm, other_edge.finish_mm, aperture.start_mm, aperture.finish_mm) then
-              full_candidates[#full_candidates + 1] = other
+      if aperture and aperture.within_edge and aperture.on_exterior then
+        for j = 1, #model.rooms do
+          local other = model.rooms[j]
+          if other.id ~= owner.id then
+            local overlaps, covers = false, false
+            for _, other_edge in ipairs(adjacency.edges(other)) do
+              if other_edge.side == adjacency.opposite(door.side)
+                and other_edge.axis == aperture.axis and other_edge.fixed_mm == aperture.fixed_mm
+                and interval.overlaps_positive(
+                  other_edge.start_mm,
+                  other_edge.finish_mm,
+                  aperture.start_mm,
+                  aperture.finish_mm
+                )
+              then
+                overlaps = true
+                if interval.contains_interval(
+                  other_edge.start_mm,
+                  other_edge.finish_mm,
+                  aperture.start_mm,
+                  aperture.finish_mm
+                ) then
+                  covers = true
+                end
+              end
             end
+            if overlaps then positive_candidates[#positive_candidates + 1] = other end
+            if covers then full_candidates[#full_candidates + 1] = other end
           end
         end
       end
@@ -491,7 +726,10 @@ local function layout_diagnostics(model, options)
             { opens_into = door.opens_into }))
         end
       end
-      swings[i] = door_geometry.swing(owner, door)
+      apertures[i] = aperture
+      if aperture and aperture.within_edge and aperture.on_exterior then
+        swings[i] = door_geometry.swing(owner, door)
+      end
       if swings[i] and limits.max_abs_coordinate_mm then
         local swing_bounds = sector.aabb(swings[i])
         local maximum = math.max(math.abs(swing_bounds.left), math.abs(swing_bounds.right),
@@ -504,10 +742,91 @@ local function layout_diagnostics(model, options)
       end
     end
   end
+
+  local window_apertures = {}
+  for i = 1, #(model.windows or {}) do
+    local window = model.windows[i]
+    local owner = indexes.rooms[window.room_id]
+    if owner then
+      local aperture, aperture_error = wall_attachment.aperture(owner, window)
+      if limits.max_dimension_mm and window.width_mm > limits.max_dimension_mm then
+        append(result, diagnostic("PLAN_LIMIT_EXCEEDED", "error", "window", window.id,
+          window.id .. " exceeds the configured maximum object dimension", nil,
+          { max_dimension_mm = limits.max_dimension_mm, width_mm = window.width_mm }))
+      end
+      if not aperture then
+        append(result, diagnostic("WINDOW_EDGE_INVALID", "error", "window", window.id,
+          window.id .. " references an unavailable owner-room edge",
+          { object_ref("room", owner.id) }, { cause = aperture_error }))
+      elseif not aperture.within_edge then
+        append(result, diagnostic("WINDOW_OUTSIDE_EDGE", "error", "window", window.id,
+          window.id .. " aperture extends outside its owning wall edge",
+          { object_ref("room", owner.id) },
+          { edge_start_mm = aperture.edge_start_mm, edge_finish_mm = aperture.edge_finish_mm,
+            aperture_start_mm = aperture.start_mm, aperture_finish_mm = aperture.finish_mm }))
+      elseif not aperture.on_exterior then
+        append(result, diagnostic("WINDOW_NOT_EXTERIOR", "error", "window", window.id,
+          window.id .. " aperture lies on an internal footprint seam",
+          { object_ref("room", owner.id) }, { part_id = window.part_id, side = window.side }))
+      end
+
+      local connection_id = connected_id(window)
+      if connection_id then
+        local connected = indexes.rooms[connection_id]
+        local connection = connected and wall_attachment.connection(owner, connected, window) or nil
+        if connection_id == window.room_id or not connection then
+          append(result, diagnostic("WINDOW_CONNECTION_INVALID", "error", "window", window.id,
+            window.id .. " claimed connection does not cover the complete aperture",
+            { object_ref("room", connection_id) }, { side = window.side }))
+        end
+      else
+        local positive_candidates, full_candidates = attachment_candidates(model, owner, window, aperture)
+        if #positive_candidates == 1 and #full_candidates == 1 then
+          append(result, diagnostic("WINDOW_CONNECTION_MISSING", "error", "window", window.id,
+            window.id .. " aperture is fully covered by adjacent room " .. full_candidates[1].id,
+            { object_ref("room", full_candidates[1].id) }, {}))
+        elseif #positive_candidates > 0 then
+          local related = {}
+          for candidate_index = 1, #positive_candidates do
+            related[candidate_index] = object_ref("room", positive_candidates[candidate_index].id)
+          end
+          append(result, diagnostic("WINDOW_EXTERIOR_OBSTRUCTED", "error", "window", window.id,
+            window.id .. " exterior aperture is partially or ambiguously obstructed", related,
+            { candidate_count = #positive_candidates, full_cover_count = #full_candidates }))
+        end
+      end
+      window_apertures[i] = aperture
+    end
+  end
+
+  for i = 1, #(model.outlets or {}) do
+    local outlet = model.outlets[i]
+    local owner = indexes.rooms[outlet.room_id]
+    if owner then
+      local marker, marker_error = wall_attachment.marker(owner, outlet)
+      if not marker then
+        append(result, diagnostic("OUTLET_EDGE_INVALID", "error", "outlet", outlet.id,
+          outlet.id .. " references an unavailable owner-room edge",
+          { object_ref("room", owner.id) }, { cause = marker_error }))
+      elseif not marker.within_edge then
+        append(result, diagnostic("OUTLET_OUTSIDE_EDGE", "error", "outlet", outlet.id,
+          outlet.id .. " must lie strictly inside its owning wall edge, away from corners",
+          { object_ref("room", owner.id) },
+          { edge_start_mm = marker.edge_start_mm, edge_finish_mm = marker.edge_finish_mm,
+            marker_mm = marker.scalar_mm }))
+      elseif not marker.on_exterior then
+        append(result, diagnostic("OUTLET_NOT_EXTERIOR", "error", "outlet", outlet.id,
+          outlet.id .. " lies on an internal footprint seam",
+          { object_ref("room", owner.id) }, { part_id = outlet.part_id, side = outlet.side }))
+      end
+    end
+  end
+
   for i = 1, #model.doors do
-    if apertures[i] then
+    if apertures[i] and apertures[i].within_edge and apertures[i].on_exterior then
       for j = i + 1, #model.doors do
-        if apertures[j] and door_geometry.apertures_overlap(apertures[i], apertures[j]) then
+        if apertures[j] and apertures[j].within_edge and apertures[j].on_exterior
+          and door_geometry.apertures_overlap(apertures[i], apertures[j]) then
           local overlap_start = math.max(apertures[i].start_mm, apertures[j].start_mm)
           local overlap_finish = math.min(apertures[i].finish_mm, apertures[j].finish_mm)
           append(result, diagnostic("DOOR_OPENING_OVERLAP", "error", "door", model.doors[i].id,
@@ -518,13 +837,58 @@ local function layout_diagnostics(model, options)
       end
     end
   end
+  for i = 1, #model.doors do
+    local door_aperture = apertures[i]
+    if door_aperture and door_aperture.within_edge and door_aperture.on_exterior then
+      for j = 1, #(model.windows or {}) do
+        local window_aperture = window_apertures[j]
+        if window_aperture and window_aperture.within_edge and window_aperture.on_exterior
+          and wall_attachment.apertures_overlap(door_aperture, window_aperture)
+        then
+          local overlap_start = math.max(door_aperture.start_mm, window_aperture.start_mm)
+          local overlap_finish = math.min(door_aperture.finish_mm, window_aperture.finish_mm)
+          append(result, diagnostic("WALL_OPENING_OVERLAP", "error", "door", model.doors[i].id,
+            model.doors[i].id .. " opening overlaps " .. model.windows[j].id,
+            { object_ref("window", model.windows[j].id) },
+            { overlap_mm = overlap_finish - overlap_start,
+              start_mm = overlap_start, finish_mm = overlap_finish }))
+        end
+      end
+    end
+  end
+  for i = 1, #(model.windows or {}) do
+    local first = window_apertures[i]
+    if first and first.within_edge and first.on_exterior then
+      for j = i + 1, #(model.windows or {}) do
+        local second = window_apertures[j]
+        if second and second.within_edge and second.on_exterior
+          and wall_attachment.apertures_overlap(first, second)
+        then
+          local overlap_start = math.max(first.start_mm, second.start_mm)
+          local overlap_finish = math.min(first.finish_mm, second.finish_mm)
+          append(result, diagnostic("WALL_OPENING_OVERLAP", "error", "window", model.windows[i].id,
+            model.windows[i].id .. " opening overlaps " .. model.windows[j].id,
+            { object_ref("window", model.windows[j].id) },
+            { overlap_mm = overlap_finish - overlap_start,
+              start_mm = overlap_start, finish_mm = overlap_finish }))
+        end
+      end
+    end
+  end
 
   -- Door swept sectors against furniture.
   for i = 1, #model.doors do
     if swings[i] then
       for j = 1, #model.furniture do
-        if furniture_bounds[j] then
-          local hit = sector.intersects_rect(swings[i], rect.from_rect2(furniture_bounds[j]))
+        if furniture_footprints[j] then
+          local rectangles = assert(footprint_geometry.rectangles(furniture_footprints[j]))
+          local hit = false
+          for rectangle_index = 1, #rectangles do
+            if sector.intersects_rect(swings[i], rectangles[rectangle_index]) then
+              hit = true
+              break
+            end
+          end
           if hit then
             append(result, diagnostic("DOOR_SWING_FURNITURE", "warning", "door", model.doors[i].id,
               model.doors[i].id .. " swing intersects " .. model.furniture[j].id,
@@ -600,9 +964,10 @@ local function layout_diagnostics(model, options)
 end
 
 local function order_map(model)
-  local result = { room = {}, door = {}, furniture = {}, template = {} }
+  local result = { room = {}, door = {}, window = {}, outlet = {}, furniture = {}, template = {} }
   local collections = {
     { key = "rooms", kind = "room" }, { key = "doors", kind = "door" },
+    { key = "windows", kind = "window" }, { key = "outlets", kind = "outlet" },
     { key = "furniture", kind = "furniture" }, { key = "custom_templates", kind = "template" },
   }
   local c, i

@@ -221,8 +221,10 @@ function M.map_common(api, session, buffer, role)
   end, "Hide RoomPlan workspace", "hide")
   for _, id in ipairs({
     "add", "edit", "move", "pan", "align", "rotate", "duplicate", "delete",
-    "validate", "save", "fit", "help", "add_door", "add_furniture", "undo", "redo",
+    "validate", "save", "fit", "cycle_detail_level", "help",
+    "add_door", "add_window", "add_outlet", "add_furniture", "undo", "redo",
     "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view", "apply", "reset",
+    "next_issue", "previous_issue",
   }) do
     local definition = action_registry.get(id, { keymaps = require("roomplan.config").get().keymaps })
     local lhs = definition and definition.key
