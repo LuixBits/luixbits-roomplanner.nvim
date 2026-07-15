@@ -70,6 +70,7 @@ describe("furniture catalog imports", function()
     local session = { model = function() return empty_plan end }
     local add_spec = require("roomplan.ui.forms.furniture").add(session)
     assert_equal("custom:standing-desk", add_spec.initial.template_id)
+    assert_equal("roomplan_furniture_template", add_spec.fields[2].kind)
 
     -- Hiding defaults affects new choices only. Existing plans using stable
     -- builtin IDs must keep resolving and validating normally.
@@ -84,6 +85,7 @@ describe("furniture catalog imports", function()
       },
     }
     local edit_spec = require("roomplan.ui.forms.furniture").edit(session, empty_plan.furniture[1])
+    assert_equal("roomplan_furniture_template", edit_spec.fields[2].kind)
     local edit_choices = edit_spec.fields[2].choices(edit_spec.context)
     local found_builtin = false
     for _, choice in ipairs(edit_choices) do

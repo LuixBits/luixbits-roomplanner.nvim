@@ -49,6 +49,9 @@ local function normalize_room(context, source, path)
       return common.dimension(context, value, item_path)
     end
   )
+  if result.color ~= nil then
+    result.color = common.persisted_color(context, result.color, path .. ".color")
+  end
   return result
 end
 
@@ -132,6 +135,9 @@ local function normalize_furniture(context, source, path)
     rotation = nil
   end
   result.rotation_deg = rotation
+  if result.color ~= nil then
+    result.color = common.persisted_color(context, result.color, path .. ".color")
+  end
   return result
 end
 

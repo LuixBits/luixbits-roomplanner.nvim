@@ -64,6 +64,14 @@ Neovim 0.12 vim.pack: >lua
 For Nix flakes, nvf, rocks.nvim, native packages, and local checkout examples,
 see docs/getting-started/installation.md.
 
+RoomPlan owns its workspace, forms, and action palette, but delegates
+transient scalar editors and choices to vim.ui.input() and vim.ui.select().
+With no UI provider, Neovim may show scalar input on the command line. An
+installed provider such as Snacks can show floating input and searchable
+choices without becoming a RoomPlan dependency. Enable Snacks `input` and
+`picker.ui_select`; load one vim.ui provider before an interactive RoomPlan
+workflow. See docs/getting-started/installation.md for a complete example.
+
 ==============================================================================
 3. FIRST PLAN                                            *roomplan-quickstart*
 
@@ -217,6 +225,9 @@ action set, including disabled actions and their reasons.
 
 Structured forms keep their complete draft visible. A form is revision-bound:
 if the plan changes elsewhere, the stale form cannot apply over newer data.
+Room and furniture forms include a dependency-free color palette. Stored
+#RRGGBB colors accent labels and furniture outlines; selection, warning, and
+error highlights always take priority. Theme default follows the colorscheme.
 
 ==============================================================================
 6. KEYMAPS                                                 *roomplan-keymaps*

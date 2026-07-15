@@ -124,6 +124,10 @@
       "maxLength": 512,
       "pattern": "^[^\\u0000-\\u001F]+$"
     },
+    "color": {
+      "type": "string",
+      "pattern": "^(auto|#[0-9A-Fa-f]{6})$"
+    },
     "coordinate": {
       "type": "integer",
       "minimum": -1125899906842623,
@@ -228,6 +232,7 @@
       "properties": {
         "id": { "$ref": "#/$defs/room_id" },
         "name": { "$ref": "#/$defs/display_string" },
+        "color": { "$ref": "#/$defs/color" },
         "origin_mm": { "$ref": "#/$defs/point_mm" },
         "footprint": { "$ref": "#/$defs/footprint" },
         "size_mm": false
@@ -337,6 +342,7 @@
         "room_id": { "$ref": "#/$defs/room_id" },
         "template_id": { "$ref": "#/$defs/template_reference" },
         "name": { "$ref": "#/$defs/display_string" },
+        "color": { "$ref": "#/$defs/color" },
         "category": { "$ref": "#/$defs/display_string" },
         "position_mm": { "$ref": "#/$defs/point_mm" },
         "anchor2_mm": { "$ref": "#/$defs/point2_mm" },

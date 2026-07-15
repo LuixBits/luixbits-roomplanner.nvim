@@ -452,6 +452,7 @@ function M.attach(controller)
           end
           vim.ui.select(headings, {
             prompt = "Insert at which destination Floor plan heading?",
+            kind = "roomplan_norg_heading",
             format_item = function(line) return "Floor plan heading at line " .. line end,
           }, function(line)
             if line then
@@ -515,7 +516,10 @@ function M.attach(controller)
     choices[#choices + 1] = "Cancel"
     local flow, flow_err = require("roomplan.ui.flow").new(resolved, "resolve-conflict")
     if not flow then return notify_error(flow_err) end
-    flow:select(choices, { prompt = "Resolve RoomPlan source conflict" }, function(choice)
+    flow:select(choices, {
+      prompt = "Resolve RoomPlan source conflict",
+      kind = "roomplan_conflict_resolution",
+    }, function(choice)
       flow:finish()
       if choice == "Review source" and resolved.source.bufnr and vim.api.nvim_buf_is_valid(resolved.source.bufnr) then
         vim.api.nvim_set_current_buf(resolved.source.bufnr)

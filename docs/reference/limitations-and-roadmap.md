@@ -43,11 +43,27 @@ storage, and UI can support them coherently.
 
 ## Direction of future work
 
-Likely extensions should arrive end-to-end: schema and migration, pure model
-and geometry, validation, scene/raster representation, structured forms,
-fixtures, and recovery documentation. Candidates include additional opening
-types, stable physical wall construction, vertical wall-feature data, multiple
-floors, richer annotations, and a stable tagged LuaRock release.
+Likely extensions should arrive end-to-end: schema and migration when needed,
+pure model and geometry, validation, scene/raster representation, structured
+forms, fixtures, and recovery documentation.
+
+Palette-based room and furniture colors, compound footprints, wall-anchored
+windows, and wall outlets are implemented. Likely next candidates include a
+transient companion cat that is never saved in the plan or undo history, and
+an approximate sunlight preview based on plan north, location, date, time, and
+windows.
+
+Related UX candidates are layer toggles, recent furniture and colors,
+duplicate-and-place-again actions, live placement previews, diagnostic object
+focus, and clearance overlays. Longer-term candidates already on the roadmap
+remain additional opening types, stable physical wall construction, vertical
+wall-feature data, multiple floors, richer annotations, and a stable tagged
+LuaRock release.
+
+Sunlight work should begin with direction, elevation, and exposed walls. Indoor
+ray previews depend on windows and remain explicitly approximate in a 2D plan.
+The companion is view-only, pauses with the workspace, avoids spatial errors,
+patrols outside warning regions, and may be sent away temporarily.
 
 No candidate is a compatibility promise. The source of truth for shipped work
 is the current documentation and tests; planned work belongs in the project

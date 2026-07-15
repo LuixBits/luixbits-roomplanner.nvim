@@ -66,6 +66,9 @@ function M.normalize_room(context, source, path, room_footprints)
     end
     room_footprints[result.id] = { runtime = runtime, part_ids = part_ids }
   end
+  if result.color ~= nil then
+    result.color = common.persisted_color(context, result.color, path .. ".color")
+  end
   return result
 end
 
@@ -158,6 +161,9 @@ function M.normalize_furniture(context, source, path)
     rotation = nil
   end
   result.rotation_deg = rotation
+  if result.color ~= nil then
+    result.color = common.persisted_color(context, result.color, path .. ".color")
+  end
   return result
 end
 

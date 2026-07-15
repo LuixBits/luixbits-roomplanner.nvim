@@ -36,6 +36,13 @@ local HIT_RANK = {
   room = 6,
 }
 
+local COLORABLE_ROLES = {
+  room = true,
+  room_label = true,
+  furniture = true,
+  furniture_label = true,
+}
+
 local function finite(value)
   return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
@@ -83,6 +90,13 @@ end
 local function add_role(cell, role)
   if role then
     cell.roles[role] = true
+  end
+end
+
+local function add_color(cell, role, value)
+  if COLORABLE_ROLES[role] and type(value) == "string" then
+    cell.colors = cell.colors or {}
+    cell.colors[role] = value
   end
 end
 
@@ -155,6 +169,7 @@ local function add_visual(context, row, column, visual)
     cell.critical = true
   end
   add_role(cell, visual.role)
+  add_color(cell, visual.role, visual.color)
   if visual.ref then
     add_hit(cell, visual.ref, visual.hit_context)
   end
@@ -162,6 +177,7 @@ end
 
 local function add_refs_and_role(cell, primitive, hit_context)
   add_role(cell, primitive.role)
+  add_color(cell, primitive.role or (primitive.ref and default_role_for_ref(primitive.ref, hit_context)), primitive.color)
   if primitive.ref then
     add_hit(cell, primitive.ref, hit_context)
   end
@@ -400,6 +416,7 @@ local function draw_visual_axis(context, row1, column1, row2, column2, character
         char = character,
         layer = primitive.layer,
         role = primitive.role or "furniture",
+        color = primitive.color,
         ref = primitive.ref,
         hit_context = "edge",
         order = primitive.order,
@@ -415,6 +432,7 @@ local function draw_visual_axis(context, row1, column1, row2, column2, character
         char = character,
         layer = primitive.layer,
         role = primitive.role or "furniture",
+        color = primitive.color,
         ref = primitive.ref,
         hit_context = "edge",
         order = primitive.order,
@@ -442,6 +460,7 @@ local function draw_furniture_outline(context, primitive)
       char = context.glyphs.furniture_marker,
       layer = primitive.layer,
       role = primitive.role or "furniture",
+      color = primitive.color,
       ref = primitive.ref,
       hit_context = "edge",
       order = primitive.order,
@@ -468,6 +487,7 @@ local function draw_furniture_outline(context, primitive)
         char = corner[3],
         layer = primitive.layer,
         role = primitive.role or "furniture",
+        color = primitive.color,
         ref = primitive.ref,
         hit_context = "edge",
         order = primitive.order,
@@ -870,6 +890,7 @@ local function draw_label(context, primitive)
               char = displayed[index],
               layer = primitive.layer,
               role = primitive.role or (primitive.ref and default_role_for_ref(primitive.ref)) or "muted",
+              color = primitive.color,
               ref = primitive.ref,
               hit_context = "label",
               order = primitive.order,
@@ -952,11 +973,13 @@ local function resolve_cells(context)
   local offsets = {}
   local hit_map = {}
   local roles = {}
+  local colors = {}
   local resolved_cells = {}
   for row = 1, context.height do
     local characters = {}
     hit_map[row] = {}
     roles[row] = {}
+    colors[row] = {}
     resolved_cells[row] = {}
     for column = 1, context.width do
       local cell = context.grid[row][column]
@@ -981,11 +1004,14 @@ local function resolve_cells(context)
       -- Glyphs were validated up front; sanitized labels are one cell as well.
       characters[column] = character
       local role = best_role(cell, best_visual, wall_present)
+      local resolved_color = cell.colors and cell.colors[role] or nil
       roles[row][column] = role
+      colors[row][column] = resolved_color
       hit_map[row][column] = sorted_hits(cell)
       resolved_cells[row][column] = {
         char = character,
         role = role,
+        color = resolved_color,
         wall_mask = cell.wall_mask,
         critical = cell.critical,
         hits = hit_map[row][column],
@@ -994,17 +1020,19 @@ local function resolve_cells(context)
     lines[row] = table.concat(characters)
     offsets[row] = text.byte_offsets(characters)
   end
-  return lines, offsets, hit_map, roles, resolved_cells
+  return lines, offsets, hit_map, roles, colors, resolved_cells
 end
 
-local function highlight_spans(roles, offsets, width, height)
+local function highlight_spans(roles, colors, offsets, width, height)
   local spans = {}
   for row = 1, height do
     local start_column = 1
     local role = roles[row][1]
+    local color_value = colors[row][1]
     for column = 2, width + 1 do
       local next_role = column <= width and roles[row][column] or nil
-      if next_role ~= role then
+      local next_color = column <= width and colors[row][column] or nil
+      if next_role ~= role or next_color ~= color_value then
         if role then
           spans[#spans + 1] = {
             row = row,
@@ -1013,10 +1041,12 @@ local function highlight_spans(roles, offsets, width, height)
             start_col = offsets[row][start_column],
             end_col = offsets[row][column],
             role = role,
+            color = color_value,
           }
         end
         start_column = column
         role = next_role
+        color_value = next_color
       end
     end
   end
@@ -1122,7 +1152,7 @@ function M.rasterize(scene, viewport, opts)
     draw_label(context, labels_to_draw[i].primitive)
   end
 
-  local lines, byte_offsets, hit_map, roles, cells = resolve_cells(context)
+  local lines, byte_offsets, hit_map, roles, colors, cells = resolve_cells(context)
   return {
     width = width,
     height = height,
@@ -1130,8 +1160,9 @@ function M.rasterize(scene, viewport, opts)
     byte_offsets = byte_offsets,
     hit_map = hit_map,
     roles = roles,
+    colors = colors,
     cells = cells,
-    highlight_spans = highlight_spans(roles, byte_offsets, width, height),
+    highlight_spans = highlight_spans(roles, colors, byte_offsets, width, height),
     warnings = context.warnings,
     glyph_mode = glyphs.mode,
     glyphs = glyphs,

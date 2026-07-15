@@ -64,6 +64,11 @@ IDs begin with `room-`, `door-`, `window-`, `outlet-`, and `furniture-`;
 project template IDs begin with `custom:`. Template references may also use the
 reserved `builtin:` namespace.
 
+Rooms and furniture may contain an optional `color` value. It is either
+`"auto"`, which inherits the active colorscheme, or a canonical six-digit
+`#RRGGBB` color. Older v1 documents without this field remain valid, so this
+optional addition does not require a schema migration.
+
 Unknown object members are allowed and preserved semantically through
 normalization and deterministic encoding. Put namespaced integrations in
 `extensions` when possible. Schema v4 supports one floor, connected

@@ -66,6 +66,7 @@ function M.attach(controller)
       if revision and revision.code == "NORG_PLAN_MISSING" and interactive and not opts.noninteractive then
         vim.ui.select({ "Initialize RoomPlan block", "Cancel" }, {
           prompt = "No RoomPlan block exists in this Norg note.",
+          kind = "roomplan_confirmation",
         }, function(choice)
           if choice == "Initialize RoomPlan block" then
             controller.init_source(nil, {
@@ -202,6 +203,7 @@ function M.attach(controller)
         end
         vim.ui.select(headings, {
           prompt = "Insert RoomPlan under which Floor plan heading?",
+          kind = "roomplan_norg_heading",
           format_item = function(line) return "Floor plan heading at line " .. line end,
         }, function(line)
           if line then
@@ -232,6 +234,7 @@ function M.attach(controller)
         and interactive and not opts.noninteractive and not opts.allow_other_malformed_json then
         vim.ui.select({ "Initialize beside unrelated malformed JSON", "Cancel" }, {
           prompt = "This Norg note has malformed JSON blocks. Initialize RoomPlan anyway?",
+          kind = "roomplan_confirmation",
         }, function(choice)
           if choice and choice:match("^Initialize") then
             controller.init_source(nil, vim.tbl_extend("force", opts, {

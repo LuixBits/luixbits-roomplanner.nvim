@@ -155,6 +155,7 @@ function M.attach(controller)
       vim.ui.input({
         prompt = "RoomPlan terminal cell height/width ratio: ",
         default = string.format("%.3g", config.get().canvas.cell_aspect),
+        scope = "editor",
       }, function(value)
         if value == nil then
           finish(callback, nil, util.err("ASPECT_CANCELLED", "RoomPlan aspect calibration cancelled"))

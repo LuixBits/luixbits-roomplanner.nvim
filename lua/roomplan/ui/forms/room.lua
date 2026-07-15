@@ -1,4 +1,5 @@
 local alignment = require("roomplan.geometry.alignment")
+local color = require("roomplan.color")
 local config = require("roomplan.config")
 local model_helpers = require("roomplan.model")
 local room_footprints = require("roomplan.model.room_footprints")
@@ -166,6 +167,7 @@ function M.add(session, opts)
     context = context,
     initial = {
       name = opts.name or "Room",
+      color = opts.color or "auto",
       shape = opts.shape or "rectangle",
       width_mm = opts.width_mm or 4000,
       depth_mm = opts.depth_mm or 3000,
@@ -179,6 +181,10 @@ function M.add(session, opts)
     },
     fields = {
       { key = "name", label = "Name", type = "text", required = true, trim = true, max_length = 256 },
+      {
+        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        choices = function(_, draft) return color.choices(draft.color) end,
+      },
       {
         key = "shape", label = "Shape", type = "enum", required = true,
         choices = function(ctx)
@@ -242,6 +248,7 @@ function M.add(session, opts)
       id = id,
       name = draft.name,
       origin_mm = result.origin_mm,
+      color = color.resolve(draft.color),
     }
     if version >= 2 then fields.footprint = result.footprint
     else fields.size_mm = { draft.width_mm, draft.depth_mm } end
@@ -281,6 +288,7 @@ function M.edit(session, room, opts)
     context = context,
     initial = {
       name = room.name,
+      color = room.color or "auto",
       origin_x_mm = room.origin_mm[1],
       origin_y_mm = room.origin_mm[2],
       shape = preset and preset.shape or nil,
@@ -297,6 +305,10 @@ function M.edit(session, room, opts)
     },
     fields = {
       { key = "name", label = "Name", type = "text", required = true, trim = true, max_length = 256 },
+      {
+        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        choices = function(_, draft) return color.choices(draft.color) end,
+      },
       { key = "origin_x_mm", label = "World X", type = "measurement", allow_negative = true, allow_zero = true },
       { key = "origin_y_mm", label = "World Y", type = "measurement", allow_negative = true, allow_zero = true },
     },
@@ -335,7 +347,8 @@ function M.edit(session, room, opts)
   spec.preview = require("roomplan.ui.forms.room_preview").edit(resolve_footprint)
   function spec.build(draft, ctx)
     ctx = ctx or context
-    if not common.find(ctx, "room", ctx.room_id) then
+    local current = common.find(ctx, "room", ctx.room_id)
+    if not current then
       return nil, { code = "NOT_FOUND", message = "the room no longer exists" }
     end
     local patch = {
@@ -353,6 +366,7 @@ function M.edit(session, room, opts)
     else
       patch.footprint = room_sections.footprint(draft)
     end
+    if current.color ~= nil or draft.color ~= "auto" then patch.color = draft.color end
     return {
       type = "edit_room",
       id = ctx.room_id,

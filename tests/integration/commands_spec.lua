@@ -58,15 +58,17 @@ describe("commands", function()
     assert_equal(1.75, config.get().canvas.cell_aspect)
 
     local original_input = vim.ui.input
-    local prompt
+    local prompt, scope
     vim.ui.input = function(opts, done)
       prompt = opts.prompt
+      scope = opts.scope
       done("2.2")
     end
     local ok, err = xpcall(function() vim.cmd("RoomPlanAspect") end, debug.traceback)
     vim.ui.input = original_input
     if not ok then error(err, 0) end
     assert_true(prompt:match("height/width") ~= nil)
+    assert_equal(scope, "editor")
     assert_equal(2.2, config.get().canvas.cell_aspect)
 
     assert_equal(1.9, require("roomplan").set_aspect(1.9, { quiet = true }))
