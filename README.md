@@ -16,7 +16,8 @@ rounding can never corrupt the saved plan.
   panes, contextual actions, validation issues, semantic highlighting, and a
   north compass.
 - Structured forms for rooms, furniture, doors, alignment, plan settings, and
-  project furniture templates.
+  project furniture templates, including palette-based room and furniture
+  colors.
 - View-only 90-degree rotation and runtime terminal-cell aspect calibration;
   neither operation changes saved geometry.
 - Strict, deterministic JSON with preserved extension fields, plus marked Neorg
@@ -26,7 +27,7 @@ rounding can never corrupt the saved plan.
 - Dependency-free furniture catalogues from inline Lua definitions or JSON
   files.
 - No mandatory runtime dependency beyond Neovim 0.10 or newer. Standard
-  `vim.ui` providers such as Snacks and dressing.nvim work automatically.
+  `vim.ui` providers such as Snacks work automatically when configured.
 
 ## Install
 

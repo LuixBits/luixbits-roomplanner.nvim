@@ -1,6 +1,8 @@
 -- Pure presentation layer: canonical model/session state in, display-only view
 -- models out.  No returned table is part of the saved model.
 
+local color = require("roomplan.color")
+
 local M = {}
 
 local function model_of(value)
@@ -344,6 +346,11 @@ function M.properties(value, opts)
     local size = object.default_size_mm or {}
     groups[#groups + 1] = { id = "defaults", title = "Defaults", fields = {
       field("Category", object.category), metric("Width", size[1]), metric("Depth", size[2]), metric("Height", size[3]),
+    } }
+  end
+  if selection.kind == "room" or selection.kind == "furniture" then
+    groups[#groups + 1] = { id = "appearance", title = "Appearance", fields = {
+      field("Color", color.label(object.color), object.color),
     } }
   end
   groups[#groups + 1] = { id = "advanced", title = "Advanced", fields = { field("Stable ID", object.id) } }

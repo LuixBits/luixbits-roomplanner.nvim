@@ -3,6 +3,7 @@
 
 local walls = require("roomplan.scene.walls")
 local labels = require("roomplan.scene.labels")
+local color = require("roomplan.color")
 
 local M = {}
 
@@ -373,7 +374,9 @@ function M.build(model, validation, opts)
         ref = ref,
       }, roles)
       if opts.show_labels ~= false then
-        add_primitive(scene, labels.room(room, ref, i), roles)
+        local room_label = labels.room(room, ref, i)
+        room_label.color = color.resolve(room.color)
+        add_primitive(scene, room_label, roles)
       end
       if opts.show_dimensions then
         local dimensions = labels.room_dimensions(room, ref, i)
@@ -416,9 +419,12 @@ function M.build(model, validation, opts)
         right = bounds.right,
         top = bounds.top,
         ref = ref,
+        color = color.resolve(item.color),
       }, roles)
       if opts.show_labels ~= false then
-        add_primitive(scene, labels.furniture(item, bounds, ref, i), roles)
+        local furniture_label = labels.furniture(item, bounds, ref, i)
+        furniture_label.color = color.resolve(item.color)
+        add_primitive(scene, furniture_label, roles)
       end
     else
       scene.warnings[#scene.warnings + 1] = {

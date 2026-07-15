@@ -4,6 +4,7 @@
 
 local json = require("roomplan.codec.json")
 local ids = require("roomplan.ids")
+local color = require("roomplan.color")
 
 local M = {}
 
@@ -154,6 +155,15 @@ local function text(context, value, path, options)
     return add_error(context, "SCHEMA_STRING_CONTROL", path, "contains a disallowed control character", value)
   end
   return value
+end
+
+local function persisted_color(context, value, path)
+  local normalized, reason = color.normalize(value)
+  if not normalized then
+    return add_error(context, "SCHEMA_COLOR", path, reason, value)
+  end
+  if normalized ~= value then context.normalized = true end
+  return normalized
 end
 
 ---Validate a standalone value against the same text contract used by plan
@@ -322,6 +332,7 @@ local function normalize_room(context, source, path)
   result.size_mm = tuple(context, required(context, result, "size_mm", path), path .. ".size_mm", 2, function(value, item_path)
     return dimension(context, value, item_path)
   end)
+  if result.color ~= nil then result.color = persisted_color(context, result.color, path .. ".color") end
   return result
 end
 
@@ -355,6 +366,7 @@ local function normalize_furniture(context, source, path)
     rotation = nil
   end
   result.rotation_deg = rotation
+  if result.color ~= nil then result.color = persisted_color(context, result.color, path .. ".color") end
   return result
 end
 

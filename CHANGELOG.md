@@ -15,6 +15,9 @@ All notable changes to `roomplan.nvim` will be documented here.
 - Semantic colors and active-pane chrome, compact object/details presentation,
   bordered collapsible Details sections, and an explicit `[?] More` overflow
   count backed by a complete grouped action palette with disabled reasons.
+- Optional palette-based room and furniture colors, selected through standard
+  `vim.ui`, persisted compatibly in schema v1, and rendered without masking
+  selection or diagnostics.
 - Structured Room, Furniture, Door, Alignment, Plan, Custom Template, and
   geometry-edit forms with conditional fields, normalized measurements,
   inline validation, textual previews, stale-revision guards, atomic

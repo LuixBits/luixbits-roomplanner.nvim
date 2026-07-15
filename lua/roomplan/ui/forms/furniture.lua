@@ -1,4 +1,5 @@
 local catalog = require("roomplan.catalog")
+local color = require("roomplan.color")
 local config = require("roomplan.config")
 local model_helpers = require("roomplan.model")
 local common = require("roomplan.ui.forms.common")
@@ -76,6 +77,7 @@ function M.add(session, opts)
       room_id = room_id,
       template_id = template.id,
       name = opts.name or template.name,
+      color = opts.color or "auto",
       category = template.category,
       width_mm = opts.width_mm or template.default_size_mm[1],
       depth_mm = opts.depth_mm or template.default_size_mm[2],
@@ -92,6 +94,7 @@ function M.add(session, opts)
       { key = "room_id", label = "Room", type = "object_ref", required = true, choices = function(ctx) return common.rooms(ctx) end },
       {
         key = "template_id", label = "Template", type = "object_ref", required = true,
+        kind = "roomplan_furniture_template",
         choices = templates,
         on_change = function(value, _, ctx)
           local selected = resolved_template(ctx, value)
@@ -106,6 +109,10 @@ function M.add(session, opts)
         end,
       },
       { key = "name", label = "Label", type = "text", required = true, trim = true, max_length = 256 },
+      {
+        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        choices = function(_, draft) return color.choices(draft.color) end,
+      },
       {
         key = "category", label = "Category", type = "readonly",
         value = function(_, draft) return draft.category end,
@@ -201,6 +208,7 @@ function M.add(session, opts)
         room_id = draft.room_id,
         template_id = template_id,
         name = draft.name,
+        color = color.resolve(draft.color),
         category = category,
         center_mm = position,
         size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm },
@@ -230,6 +238,7 @@ function M.edit(session, furniture, opts)
       room_id = furniture.room_id,
       template_id = furniture.template_id,
       name = furniture.name,
+      color = furniture.color or "auto",
       category = furniture.category or (template and template.category) or "custom",
       width_mm = furniture.size_mm[1],
       depth_mm = furniture.size_mm[2],
@@ -242,6 +251,7 @@ function M.edit(session, furniture, opts)
       { key = "room_id", label = "Room", type = "object_ref", required = true, choices = function(ctx) return common.rooms(ctx) end },
       {
         key = "template_id", label = "Template", type = "object_ref", required = true, choices = templates,
+        kind = "roomplan_furniture_template",
         on_change = function(value, _, ctx)
           local selected = resolved_template(ctx, value)
           -- Editing a template association deliberately preserves explicit
@@ -250,6 +260,10 @@ function M.edit(session, furniture, opts)
         end,
       },
       { key = "name", label = "Label", type = "text", required = true, trim = true, max_length = 256 },
+      {
+        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        choices = function(_, draft) return color.choices(draft.color) end,
+      },
       { key = "category", label = "Category", type = "readonly", value = function(_, draft) return draft.category end },
       { key = "width_mm", label = "Width", type = "measurement", max = runtime.limits.max_dimension_mm },
       { key = "depth_mm", label = "Depth", type = "measurement", max = runtime.limits.max_dimension_mm },
@@ -293,23 +307,26 @@ function M.edit(session, furniture, opts)
   }
   function spec.build(draft, ctx)
     ctx = ctx or context
-    if not common.find(ctx, "furniture", ctx.furniture_id) then
+    local current = common.find(ctx, "furniture", ctx.furniture_id)
+    if not current then
       return nil, { code = "NOT_FOUND", message = "the furniture no longer exists" }
     end
     local selected = resolved_template(ctx, draft.template_id)
     if not selected then return nil, { code = "TEMPLATE_REQUIRED", message = "template no longer exists" } end
+    local patch = {
+      room_id = draft.room_id,
+      template_id = draft.template_id,
+      name = draft.name,
+      category = selected.category,
+      center_mm = { draft.local_x_mm, draft.local_y_mm },
+      size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm },
+      rotation_deg = draft.rotation_deg,
+    }
+    if current.color ~= nil or draft.color ~= "auto" then patch.color = draft.color end
     return {
       type = "edit_furniture",
       id = ctx.furniture_id,
-      patch = {
-        room_id = draft.room_id,
-        template_id = draft.template_id,
-        name = draft.name,
-        category = selected.category,
-        center_mm = { draft.local_x_mm, draft.local_y_mm },
-        size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm },
-        rotation_deg = draft.rotation_deg,
-      },
+      patch = patch,
     }
   end
   return spec

@@ -47,7 +47,7 @@ function M.confirm(session, kind, prompt, choices, callback)
   if not flow then
     return nil, err
   end
-  flow:select(choices, { prompt = prompt }, function(choice)
+  flow:select(choices, { prompt = prompt, kind = "roomplan_confirmation" }, function(choice)
     flow:finish()
     callback(choice)
   end)

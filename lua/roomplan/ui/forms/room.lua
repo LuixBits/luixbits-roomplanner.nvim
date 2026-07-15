@@ -1,4 +1,5 @@
 local alignment = require("roomplan.geometry.alignment")
+local color = require("roomplan.color")
 local config = require("roomplan.config")
 local model_helpers = require("roomplan.model")
 local common = require("roomplan.ui.forms.common")
@@ -69,6 +70,7 @@ function M.add(session, opts)
     context = context,
     initial = {
       name = opts.name or "Room",
+      color = opts.color or "auto",
       width_mm = opts.width_mm or 4000,
       depth_mm = opts.depth_mm or 3000,
       placement = opts.placement or "automatic",
@@ -78,6 +80,10 @@ function M.add(session, opts)
     },
     fields = {
       { key = "name", label = "Name", type = "text", required = true, trim = true, max_length = 256 },
+      {
+        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        choices = function(_, draft) return color.choices(draft.color) end,
+      },
       { key = "width_mm", label = "Width", type = "measurement", required = true, max = runtime.limits.max_dimension_mm },
       { key = "depth_mm", label = "Depth", type = "measurement", required = true, max = runtime.limits.max_dimension_mm },
       { key = "placement", label = "Placement", type = "enum", required = true, choices = placement_choices },
@@ -123,6 +129,7 @@ function M.add(session, opts)
         name = draft.name,
         origin_mm = result.origin_mm,
         size_mm = { draft.width_mm, draft.depth_mm },
+        color = color.resolve(draft.color),
       }),
       force = draft.force == true,
     }
@@ -145,6 +152,7 @@ function M.edit(session, room, opts)
     context = context,
     initial = {
       name = room.name,
+      color = room.color or "auto",
       origin_x_mm = room.origin_mm[1],
       origin_y_mm = room.origin_mm[2],
       width_mm = room.size_mm[1],
@@ -153,6 +161,10 @@ function M.edit(session, room, opts)
     },
     fields = {
       { key = "name", label = "Name", type = "text", required = true, trim = true, max_length = 256 },
+      {
+        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        choices = function(_, draft) return color.choices(draft.color) end,
+      },
       { key = "origin_x_mm", label = "World X", type = "measurement", allow_negative = true, allow_zero = true },
       { key = "origin_y_mm", label = "World Y", type = "measurement", allow_negative = true, allow_zero = true },
       { key = "width_mm", label = "Width", type = "measurement", max = runtime.limits.max_dimension_mm },
@@ -180,17 +192,20 @@ function M.edit(session, room, opts)
   }
   function spec.build(draft, ctx)
     ctx = ctx or context
-    if not common.find(ctx, "room", ctx.room_id) then
+    local current = common.find(ctx, "room", ctx.room_id)
+    if not current then
       return nil, { code = "NOT_FOUND", message = "the room no longer exists" }
     end
+    local patch = {
+      name = draft.name,
+      origin_mm = { draft.origin_x_mm, draft.origin_y_mm },
+      size_mm = { draft.width_mm, draft.depth_mm },
+    }
+    if current.color ~= nil or draft.color ~= "auto" then patch.color = draft.color end
     return {
       type = "edit_room",
       id = ctx.room_id,
-      patch = {
-        name = draft.name,
-        origin_mm = { draft.origin_x_mm, draft.origin_y_mm },
-        size_mm = { draft.width_mm, draft.depth_mm },
-      },
+      patch = patch,
       force = draft.force == true,
     }
   end

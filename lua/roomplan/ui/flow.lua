@@ -4,6 +4,10 @@ local M = {}
 local Flow = {}
 Flow.__index = Flow
 
+local function provider_options(opts, defaults)
+  return vim.tbl_extend("keep", {}, opts or {}, defaults)
+end
+
 function M.new(session, kind, opts)
   opts = opts or {}
   session.workflow = session.workflow or { generation = 0 }
@@ -63,7 +67,7 @@ function Flow:input(opts, callback)
   if not self:is_current() then
     return
   end
-  vim.ui.input(opts, function(value)
+  vim.ui.input(provider_options(opts, { scope = "window" }), function(value)
     if not self:is_current() then
       return
     end
@@ -79,7 +83,7 @@ function Flow:select(items, opts, callback)
   if not self:is_current() then
     return
   end
-  vim.ui.select(items, opts or {}, function(choice, index)
+  vim.ui.select(items, provider_options(opts, { kind = "roomplan_selection" }), function(choice, index)
     if not self:is_current() then
       return
     end

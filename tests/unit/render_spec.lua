@@ -337,6 +337,48 @@ describe("scene extraction and rendering", function()
     }, "\n"), table.concat(output.lines, "\n"))
   end)
 
+  it("applies object color accents while diagnostics retain priority", function()
+    local model = {
+      rooms = {
+        {
+          id = "room-a",
+          name = "A",
+          origin_mm = { 0, 0 },
+          size_mm = { 400, 400 },
+          color = "#61AFEF",
+        },
+      },
+      doors = {},
+      furniture = {},
+    }
+    local colored = raster.rasterize(
+      scene_builder.build(model),
+      fixed_view(-100, 500, 100, 100),
+      { width = 7, height = 7, glyph_mode = "ascii" }
+    )
+    local found_color = false
+    for _, span in ipairs(colored.highlight_spans) do
+      if span.color == "#61AFEF" then found_color = true end
+    end
+    assert_true(found_color)
+
+    local diagnosed = raster.rasterize(scene_builder.build(model, {
+      { severity = "error", object = { kind = "room", id = "room-a" } },
+    }), fixed_view(-100, 500, 100, 100), {
+      width = 7,
+      height = 7,
+      glyph_mode = "ascii",
+    })
+    local found_error = false
+    for _, span in ipairs(diagnosed.highlight_spans) do
+      if span.role == "error" then
+        found_error = true
+        assert_equal(nil, span.color)
+      end
+    end
+    assert_true(found_error)
+  end)
+
   it("merges only structural walls into junction glyphs", function()
     local ref = { type = "room", id = "room-a", order = 1 }
     local scene = {

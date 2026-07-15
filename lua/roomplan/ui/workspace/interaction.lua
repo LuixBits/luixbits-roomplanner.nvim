@@ -62,7 +62,11 @@ function M.filter_prompt(api, session, pane)
   local workspace = session and session.workspace
   if not workspace then return end
   local generation = workspace.generation
-  vim.ui.input({ prompt = "Filter RoomPlan " .. pane .. ": ", default = workspace.state.filters[pane] or "" }, function(value)
+  vim.ui.input({
+    prompt = "Filter RoomPlan " .. pane .. ": ",
+    default = workspace.state.filters[pane] or "",
+    scope = "window",
+  }, function(value)
     if value == nil or not session.workspace or session.workspace.generation ~= generation then return end
     api.set_filter(session, pane, value)
   end)

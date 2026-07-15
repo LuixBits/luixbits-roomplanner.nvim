@@ -12,7 +12,7 @@ local function fixture()
     metadata = { name = "Test flat", notes = "" },
     settings = { grid_mm = 100, fine_step_mm = 10 },
     rooms = {
-      { id = "room-living", name = "Living", origin_mm = { 0, 0 }, size_mm = { 5000, 4000 } },
+      { id = "room-living", name = "Living", origin_mm = { 0, 0 }, size_mm = { 5000, 4000 }, color = "#61AFEF" },
       { id = "room-bed", name = "Bedroom", origin_mm = { 5000, 0 }, size_mm = { 3000, 3000 } },
     },
     doors = {
@@ -230,6 +230,8 @@ describe("workspace UI", function()
     assert_equal("0 mm", view.groups[1].fields[1].value)
     assert_equal("5 m", view.groups[1].fields[3].value)
     assert_equal("20.00 m²", view.groups[1].fields[5].value)
+    assert_equal("Appearance", view.groups[2].title)
+    assert_equal("Blue #61AFEF", view.groups[2].fields[1].value)
     assert_equal("1.234 m", presenter.compact_mm(1234))
 
     local ctx = presenter.context({

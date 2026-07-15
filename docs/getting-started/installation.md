@@ -110,9 +110,33 @@ options.
 ## Snacks and other UI providers
 
 RoomPlan owns its workspace, forms, and action palette. Scalar editors and
-confirmation prompts use standard `vim.ui.input` and `vim.ui.select`, so
-Snacks, dressing.nvim, or another `vim.ui` provider can enhance those prompts
-without a RoomPlan-specific adapter.
+confirmation prompts use standard `vim.ui.input` and `vim.ui.select`. With no
+provider installed, Neovim may show scalar input on the command line. A
+provider can replace only those transient interactions without taking over
+RoomPlan's panels or becoming a RoomPlan dependency.
+
+For example, an existing Snacks installation can provide floating inputs,
+searchable choice lists, and notifications:
+
+```lua
+{
+  "folke/snacks.nvim",
+  priority = 1000,
+  lazy = false,
+  opts = {
+    input = { enabled = true },
+    picker = { enabled = true, ui_select = true },
+    notifier = { enabled = true },
+  },
+}
+```
+
+RoomPlan supplies standard input `scope` hints and stable selection `kind`
+hints, including `roomplan_form_choice`, `roomplan_furniture_template`,
+`roomplan_color`, `roomplan_confirmation`, `roomplan_conflict_resolution`, and
+`roomplan_norg_heading`; other RoomPlan choices use `roomplan_selection`.
+Providers may use or ignore those hints. If multiple plugins replace the same
+`vim.ui` function, the last provider loaded wins; use one input/select provider
+and load it before starting an interactive RoomPlan workflow.
 
 [← Documentation home](../README.md) · [Next: Quick start →](quick-start.md)
-

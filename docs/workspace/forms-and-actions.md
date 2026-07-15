@@ -20,6 +20,10 @@ Measurements accept exact `mm`, `cm`, and `m` input. A suffixless value means
 millimetres. Only values that resolve to whole millimetres are accepted, so
 `5m`, `500cm`, and `5000mm` are equivalent while `0.5mm` is rejected.
 
+Room and furniture Color fields use the same choice-list controls. Enhanced
+`vim.ui.select` providers may present the palette as a searchable popup; the
+form and saved data do not depend on a particular provider.
+
 The form draft is transient. Apply creates exactly one semantic history entry;
 cancel creates none. If the model changes while a form is open, the stale form
 refuses to apply rather than overwriting newer state.
