@@ -12,6 +12,8 @@ local ROLE_RANK = {
   error = 100,
   warning = 90,
   selected = 80,
+  outlet = 60,
+  window = 55,
   door = 50,
   furniture = 40,
   room_label = 35,
@@ -25,9 +27,11 @@ local ROLE_RANK = {
 
 local HIT_RANK = {
   door = 1,
-  furniture = 2,
-  room_wall = 3,
-  room = 4,
+  window = 2,
+  outlet = 3,
+  furniture = 4,
+  room_wall = 5,
+  room = 6,
 }
 
 local COLORABLE_ROLES = {
@@ -63,6 +67,7 @@ local function new_grid(width, height)
         hits_by_key = {},
         roles = {},
         critical = false,
+        label_reserved = false,
       }
     end
   end
@@ -99,6 +104,10 @@ local function default_role_for_ref(ref, context)
   end
   if ref.type == "door" then
     return "door"
+  elseif ref.type == "window" then
+    return "window"
+  elseif ref.type == "outlet" then
+    return "outlet"
   elseif ref.type == "furniture" then
     return "furniture"
   elseif ref.type == "room" then
@@ -110,6 +119,10 @@ end
 local function hit_priority(ref, context)
   if ref.type == "door" then
     return HIT_RANK.door
+  elseif ref.type == "window" then
+    return HIT_RANK.window
+  elseif ref.type == "outlet" then
+    return HIT_RANK.outlet
   elseif ref.type == "furniture" then
     return HIT_RANK.furniture
   elseif ref.type == "room" and context == "wall" then
@@ -546,6 +559,42 @@ local function draw_door_aperture(context, primitive)
   end
 end
 
+local function draw_window_aperture(context, primitive)
+  local x0, y0 = project(context.viewport, primitive.x1, primitive.y1)
+  local x1, y1 = project(context.viewport, primitive.x2, primitive.y2)
+  local span = math.max(math.abs(x1 - x0), math.abs(y1 - y0))
+  local character = math.abs(x1 - x0) >= math.abs(y1 - y0)
+      and context.glyphs.window_horizontal or context.glyphs.window_vertical
+  if span < 1.5 then character = context.glyphs.window_marker end
+  line_cells(context, x0, y0, x1, y1, function(row, column)
+    add_visual(context, row, column, {
+      char = character,
+      layer = primitive.layer,
+      role = primitive.role or "window",
+      ref = primitive.ref,
+      hit_context = "aperture",
+      order = primitive.order,
+      critical = true,
+    })
+  end)
+end
+
+local function draw_outlet_marker(context, primitive)
+  local x, y = project(context.viewport, primitive.x, primitive.y)
+  local row, column = round(y) + 1, round(x) + 1
+  if in_bounds(context, row, column) then
+    add_visual(context, row, column, {
+      char = context.glyphs.outlet_marker,
+      layer = primitive.layer,
+      role = primitive.role or "outlet",
+      ref = primitive.ref,
+      hit_context = "marker",
+      order = primitive.order,
+      critical = true,
+    })
+  end
+end
+
 local function draw_door_hinge(context, primitive)
   local x, y = project(context.viewport, primitive.x, primitive.y)
   local row, column = round(y) + 1, round(x) + 1
@@ -669,7 +718,7 @@ local function can_place_label(context, row, first_column, count)
     return false
   end
   for column = first_column, first_column + count - 1 do
-    if context.grid[row][column].critical then
+    if context.grid[row][column].critical or context.grid[row][column].label_reserved then
       return false
     end
   end
@@ -683,6 +732,61 @@ local function label_start(column, count, align)
     return column - count + 1
   end
   return column - math.floor((count - 1) / 2)
+end
+
+local function offsets(limit, include_zero)
+  local result = include_zero and { 0 } or {}
+  for distance = 1, limit do
+    result[#result + 1] = -distance
+    result[#result + 1] = distance
+  end
+  return result
+end
+
+local function abbreviated_cells(cells, length, force_marker, width_fn)
+  if length >= #cells and not force_marker then return cells end
+  local marker = width_fn("…") == 1 and "…" or "~"
+  if length <= 1 then return { marker } end
+  local available = length - 1
+  local prefix = math.ceil(available / 2)
+  local suffix = math.floor(available / 2)
+  local result = {}
+  for index = 1, prefix do result[#result + 1] = cells[index] end
+  result[#result + 1] = marker
+  for index = #cells - suffix + 1, #cells do result[#result + 1] = cells[index] end
+  return result
+end
+
+local function placement_positions(context, primitive, anchor_column, anchor_row, length)
+  local result = {}
+  local function add(row, first_column)
+    if row >= 1 and row <= context.height and first_column >= 1
+      and first_column + length - 1 <= context.width
+    then
+      result[#result + 1] = { row = row, first_column = first_column }
+    end
+  end
+
+  if primitive.placement == "vertical_edge" then
+    for _, row_offset in ipairs(offsets(math.min(4, context.height - 1), true)) do
+      add(anchor_row + row_offset, anchor_column - length - 1)
+      add(anchor_row + row_offset, anchor_column + 1)
+    end
+    return result
+  end
+
+  local row_offsets = primitive.placement == "horizontal_edge"
+      and offsets(math.min(4, context.height - 1), false)
+    or offsets(math.min(6, context.height - 1), true)
+  local maximum_start = context.width - length + 1
+  local desired = clamp(label_start(anchor_column, length, primitive.align), 1, maximum_start)
+  local column_offsets = offsets(math.min(6, math.max(0, maximum_start - 1)), true)
+  for _, row_offset in ipairs(row_offsets) do
+    for _, column_offset in ipairs(column_offsets) do
+      add(anchor_row + row_offset, desired + column_offset)
+    end
+  end
+  return result
 end
 
 local function draw_label(context, primitive)
@@ -705,20 +809,29 @@ local function draw_label(context, primitive)
     return
   end
 
+  if primitive.allow_truncate == false and metadata.truncated then
+    context.warnings[#context.warnings + 1] = {
+      code = "LABEL_NOT_RENDERED",
+      object_id = primitive.ref and primitive.ref.id,
+      message = "Dimension text exceeds the configured label width",
+    }
+    return
+  end
+
   local candidates = label_candidates(primitive)
-  local vertical_offsets = { 0, -1, 1, -2, 2 }
-  for length = #cells, 1, -1 do
+  local minimum_length = primitive.allow_truncate == false and #cells or 1
+  for length = #cells, minimum_length, -1 do
+    local displayed = abbreviated_cells(cells, length, metadata.truncated and length == #cells, context.width_fn)
     for candidate_index = 1, #candidates do
       local x, y = project(context.viewport, candidates[candidate_index][1], candidates[candidate_index][2])
       local anchor_column = round(x) + 1
       local anchor_row = round(y) + 1
-      local first_column = label_start(anchor_column, length, primitive.align)
-      for offset_index = 1, #vertical_offsets do
-        local row = anchor_row + vertical_offsets[offset_index]
-        if can_place_label(context, row, first_column, length) then
-          for index = 1, length do
-            add_visual(context, row, first_column + index - 1, {
-              char = cells[index],
+      for _, position in ipairs(placement_positions(context, primitive, anchor_column, anchor_row, #displayed)) do
+        if can_place_label(context, position.row, position.first_column, #displayed) then
+          for index = 1, #displayed do
+            local column = position.first_column + index - 1
+            add_visual(context, position.row, column, {
+              char = displayed[index],
               layer = primitive.layer,
               role = primitive.role or (primitive.ref and default_role_for_ref(primitive.ref)) or "muted",
               color = primitive.color,
@@ -727,8 +840,9 @@ local function draw_label(context, primitive)
               order = primitive.order,
               critical = false,
             })
+            context.grid[position.row][column].label_reserved = true
           end
-          if length < #cells or metadata.truncated or metadata.replaced > 0 then
+          if #displayed < #cells or metadata.truncated or metadata.replaced > 0 then
             context.warnings[#context.warnings + 1] = {
               code = "LABEL_ABBREVIATED",
               object_id = primitive.ref and primitive.ref.id,
@@ -943,6 +1057,10 @@ function M.rasterize(scene, viewport, opts)
         draw_wall(context, primitive)
       elseif primitive.kind == "door_aperture" then
         draw_door_aperture(context, primitive)
+      elseif primitive.kind == "window_aperture" then
+        draw_window_aperture(context, primitive)
+      elseif primitive.kind == "outlet_marker" then
+        draw_outlet_marker(context, primitive)
       elseif primitive.kind == "door_leaf" then
         draw_door_leaf(context, primitive)
       elseif primitive.kind == "door_hinge" then
@@ -950,15 +1068,28 @@ function M.rasterize(scene, viewport, opts)
       elseif primitive.kind == "annotation" then
         draw_annotation(context, primitive)
       elseif primitive.kind == "label" or primitive.kind == "dimension" then
-        labels_to_draw[#labels_to_draw + 1] = primitive
+        labels_to_draw[#labels_to_draw + 1] = { primitive = primitive, scene_index = i }
       end
     end
   end
 
-  -- Labels are always evaluated last so their free-cell policy sees every
-  -- structural/door/furniture critical cell regardless of scene input order.
+  -- Names reserve space before measurements, and higher-priority measurements
+  -- (doors/furniture) reserve before wall measurements. This prevents later
+  -- labels from overwriting earlier ones while keeping placement deterministic.
+  table.sort(labels_to_draw, function(left, right)
+    local left_kind = left.primitive.kind == "label" and 0 or 1
+    local right_kind = right.primitive.kind == "label" and 0 or 1
+    if left_kind ~= right_kind then return left_kind < right_kind end
+    local left_priority = left.primitive.priority or 0
+    local right_priority = right.primitive.priority or 0
+    if left_priority ~= right_priority then return left_priority > right_priority end
+    if (left.primitive.order or 0) ~= (right.primitive.order or 0) then
+      return (left.primitive.order or 0) < (right.primitive.order or 0)
+    end
+    return left.scene_index < right.scene_index
+  end)
   for i = 1, #labels_to_draw do
-    draw_label(context, labels_to_draw[i])
+    draw_label(context, labels_to_draw[i].primitive)
   end
 
   local lines, byte_offsets, hit_map, roles, colors, cells = resolve_cells(context)

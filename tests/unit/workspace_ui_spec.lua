@@ -190,7 +190,7 @@ describe("workspace UI", function()
         },
       },
     })
-    assert_equal("2 rooms · 1 doors · 1 items", view.summary)
+    assert_equal("2 rooms · 1 doors · 0 windows · 0 outlets · 1 items", view.summary)
     assert_equal("plan", view.rows[1].kind)
     assert_equal("room", view.rows[2].kind)
     assert_equal("door", view.rows[3].kind)
@@ -325,6 +325,13 @@ describe("workspace UI", function()
     assert_true(bar.overflow_count > 0)
     assert_true(#bar.shown_actions <= 5)
     assert_true(vim.fn.strdisplaywidth(bar.lines[1]) <= 72)
+
+    local nav_ctx = vim.deepcopy(ctx)
+    nav_ctx.mode = "NAV"
+    nav_ctx.form = nil
+    nav_ctx.detail_level = "middle"
+    local nav_bar = action_bar.render(nav_ctx, 100, { height = 1 })
+    assert_true(nav_bar.lines[1]:find("DETAIL MIDDLE", 1, true) ~= nil)
   end)
 
   it("keeps the workspace facade API stable", function()
@@ -383,6 +390,18 @@ describe("workspace UI", function()
       return vim.fn.maparg("<Tab>", "n", false, true)
     end)
     assert_equal(nil, next(side_tab))
+    local issue_next = vim.api.nvim_buf_call(shell.buffers.issues, function()
+      return vim.fn.maparg("<A-j>", "n", false, true)
+    end)
+    local issue_previous = vim.api.nvim_buf_call(shell.buffers.issues, function()
+      return vim.fn.maparg("<A-k>", "n", false, true)
+    end)
+    local detail = vim.api.nvim_buf_call(shell.buffers.issues, function()
+      return vim.fn.maparg("t", "n", false, true)
+    end)
+    assert_equal("RoomPlan next_issue", issue_next.desc)
+    assert_equal("RoomPlan previous_issue", issue_previous.desc)
+    assert_equal("RoomPlan cycle_detail_level", detail.desc)
 
     assert_true(workspace.focus(session, "properties"))
     assert_true(vim.api.nvim_win_is_valid(shell.windows.properties))

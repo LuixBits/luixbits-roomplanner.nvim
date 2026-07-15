@@ -5,7 +5,7 @@ source.
 
 ## Standalone JSON
 
-Files ending in `.roomplan.json` contain one deterministic schema-v1 document.
+Files ending in `.roomplan.json` contain one deterministic schema-v3 document.
 Initialization refuses to overwrite non-empty content. Saving updates a loaded
 source through Neovim's buffer and normal write hooks; a detached writer only
 creates a new path atomically and never replaces an existing one.
@@ -18,7 +18,7 @@ Files ending in `.norg` (or Norg buffers) store the same JSON in a marked block:
 * Floor plan
 
 @code json roomplan.nvim
-{ "format": "roomplan.nvim", "schema_version": 1, "units": "mm", ... }
+{ "format": "roomplan.nvim", "schema_version": 3, "units": "mm", ... }
 @end
 ```
 
@@ -31,6 +31,16 @@ instead of guessing. Legacy unmarked JSON is readable only when its top-level
 
 Neorg and Tree-sitter are optional. Multiple `* Floor plan` headings require an
 interactive choice before initialization.
+
+## Older schema migration
+
+Opening a valid schema-v1 or schema-v2 JSON/Norg payload migrates its in-memory
+model sequentially to schema v3. The v2-to-v3 step adds empty canonical
+`windows` and `outlets` collections. Loading does not modify the source buffer
+or disk file. The session remains protected and autosave stays paused until an
+explicit save accepts the schema rewrite; that save writes the deterministic
+v3 representation. Reload and conflict checks retain this protection instead
+of treating semantic equality as a durable savepoint.
 
 ## Session lifecycle
 

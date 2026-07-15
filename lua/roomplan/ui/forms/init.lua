@@ -3,6 +3,8 @@ return {
   room = require("roomplan.ui.forms.room"),
   furniture = require("roomplan.ui.forms.furniture"),
   door = require("roomplan.ui.forms.door"),
+  window = require("roomplan.ui.forms.window"),
+  outlet = require("roomplan.ui.forms.outlet"),
   alignment = require("roomplan.ui.forms.alignment"),
   template = require("roomplan.ui.forms.template"),
 }

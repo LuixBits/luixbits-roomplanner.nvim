@@ -24,6 +24,8 @@ end
 local HIGHLIGHTS = {
   wall = "RoomPlanWall",
   door = "RoomPlanDoor",
+  window = "RoomPlanWindow",
+  outlet = "RoomPlanOutlet",
   furniture = "RoomPlanFurniture",
   room = "RoomPlanMuted",
   room_label = "RoomPlanRoomLabel",
@@ -39,6 +41,8 @@ local HIGHLIGHTS = {
 local DEFAULT_LINKS = {
   RoomPlanWall = "Normal",
   RoomPlanDoor = "Special",
+  RoomPlanWindow = "Type",
+  RoomPlanOutlet = "Constant",
   RoomPlanFurniture = "Identifier",
   RoomPlanRoomLabel = "Title",
   RoomPlanFurnitureLabel = "Identifier",
@@ -103,6 +107,8 @@ local function selected_object(model, selection)
   end
   local collection = selection.kind == "room" and model.rooms
     or selection.kind == "door" and model.doors
+    or selection.kind == "window" and model.windows
+    or selection.kind == "outlet" and model.outlets
     or selection.kind == "furniture" and model.furniture
     or selection.kind == "template" and model.custom_templates
   for _, object in ipairs(collection or {}) do
@@ -138,6 +144,8 @@ local function session_header(session, canvas_config)
   local plan = current_model(session)
   local room_count = #(plan.rooms or {})
   local door_count = #(plan.doors or {})
+  local window_count = #(plan.windows or {})
+  local outlet_count = #(plan.outlets or {})
   local furniture_count = #(plan.furniture or {})
   local plan_name = plan.metadata and plan.metadata.name or "Untitled plan"
   local selected_text = plan_name
@@ -164,15 +172,18 @@ local function session_header(session, canvas_config)
   return {
     string.format("RoomPlan · %s%s%s", subject, context_status, issues),
     string.format(
-      "%s · %s · %s · %d rooms · %d doors · %d items · zoom %.2f · snap %s",
+      "%s · %s · %s · %d rooms · %d doors · %d windows · %d outlets · %d items · zoom %.2f · snap %s · detail %s",
       source,
       display_mode,
       status,
       room_count,
       door_count,
+      window_count,
+      outlet_count,
       furniture_count,
       zoom,
-      session.snap_enabled == false and "off" or "on"
+      session.snap_enabled == false and "off" or "on",
+      session.canvas_detail_level or canvas_config.detail_level
     ),
   }
 end
@@ -201,8 +212,12 @@ local function session_footer(session)
     return " FURNITURE | [e] Edit  [m] Move  [f] Fit  [r] Rotate  [y] Duplicate  [d] Delete "
   elseif kind == "door" then
     return " DOOR | [e] Edit  [m] Move  [f] Fit  [y] Duplicate  [d] Delete  [a] Add "
+  elseif kind == "window" then
+    return " WINDOW | [e] Edit  [m] Move  [f] Fit  [y] Duplicate  [d] Delete  [a] Add "
+  elseif kind == "outlet" then
+    return " OUTLET | [e] Edit  [m] Move  [f] Fit  [y] Duplicate  [d] Delete  [a] Add "
   end
-  return " NAV | [a] Add  [Enter] Select  [Tab] Next  [f] Fit  [v] Validate  [?] Help  [q] Hide "
+  return " NAV | [a] Add  [Enter] Select  [Tab] Next  [f] Fit  [t] Detail  [v] Validate  [?] Help  [q] Hide "
 end
 
 local function options_for_session(session, callbacks)
@@ -227,7 +242,7 @@ local function options_for_session(session, callbacks)
     return require("roomplan.scene.build").build(current_model(session), session.validation, {
       selected = session.selection,
       show_grid = canvas_config.show_grid,
-      show_dimensions = canvas_config.show_dimensions,
+      detail_level = session.canvas_detail_level or canvas_config.detail_level,
     })
   end
   options.get_viewport = function()
@@ -244,6 +259,8 @@ local function options_for_session(session, callbacks)
     return {
       rooms = #(plan.rooms or {}),
       doors = #(plan.doors or {}),
+      windows = #(plan.windows or {}),
+      outlets = #(plan.outlets or {}),
       furniture = #(plan.furniture or {}),
     }
   end
@@ -507,13 +524,17 @@ local function object_counts(handle)
   return {
     rooms = tonumber(counts.rooms) or 0,
     doors = tonumber(counts.doors) or 0,
+    windows = tonumber(counts.windows) or 0,
+    outlets = tonumber(counts.outlets) or 0,
     furniture = tonumber(counts.furniture) or 0,
   }
 end
 
 local function apply_canvas_chrome(handle, scene, output, fitted)
   local counts = object_counts(handle)
-  local model_object_count = counts and (counts.rooms + counts.doors + counts.furniture) or nil
+  local model_object_count = counts
+      and (counts.rooms + counts.doors + counts.windows + counts.outlets + counts.furniture)
+    or nil
   if model_object_count == 0 then
     empty_state(output)
     return

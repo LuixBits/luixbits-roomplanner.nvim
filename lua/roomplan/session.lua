@@ -52,6 +52,11 @@ function Session:model_dirty()
   return self.history:is_dirty()
 end
 
+function Session:schema_rewrite_pending()
+  local info = self.normalization_info
+  return info ~= nil and (info.normalized == true or info.migrated == true)
+end
+
 function Session:source_buffer_modified()
   return valid_buffer(self.source.bufnr) and vim.bo[self.source.bufnr].modified or false
 end
@@ -250,6 +255,7 @@ function Session:mark_saved(revision, locator)
   self.source_conflicted = false
   self.retained_model_at_risk = false
   self.source_needs_recheck = false
+  self.normalization_info = nil
   self:update_guard()
   return true
 end
@@ -316,6 +322,7 @@ function M.new(source, model, opts)
     selection = nil,
     selection_cycle = {},
     viewport = opts.viewport,
+    canvas_detail_level = config.get().canvas.detail_level,
     mode = "NAV",
     snap_enabled = config.get().snapping.enabled,
     canvas = { bufnr = nil, winid = nil },

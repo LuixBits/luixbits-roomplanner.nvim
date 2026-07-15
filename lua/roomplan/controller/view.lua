@@ -113,7 +113,7 @@ function M.attach(controller)
     local scene = require("roomplan.scene.build").build(resolved:model(), resolved.validation, {
       selected = resolved.selection,
       show_grid = options.show_grid,
-      show_dimensions = options.show_dimensions,
+      detail_level = resolved.canvas_detail_level or options.detail_level,
     })
     local current_viewport = ensure_viewport(resolved)
     resolved.viewport = require("roomplan.render.viewport").fit_scene(scene, width, height, {
@@ -180,6 +180,30 @@ function M.attach(controller)
       compat.notify(string.format("RoomPlan cell aspect set to %.3g (height / width)", updated))
     end
     return finish(callback, updated)
+  end
+
+  ---Set or cycle the per-session presentation detail. This never enters the
+  ---saved model or semantic history.
+  function controller.set_detail_level(session, value)
+    local opts = type(value) == "table" and value or {}
+    if type(value) == "table" then value = value.level or value.detail_level or value.args end
+    local resolved, err = resolve(session, opts)
+    if not resolved then return notify_error(err) end
+    local detail = require("roomplan.canvas_detail")
+    if value == nil or value == "" or value == "cycle" then
+      value = detail.next(resolved.canvas_detail_level)
+    else
+      value = detail.normalize(value)
+      if not value then
+        return notify_error(util.err("CANVAS_DETAIL_INVALID", "canvas detail must be high, middle, or none"))
+      end
+    end
+    resolved.canvas_detail_level = value
+    controller.refresh(resolved)
+    if not opts.quiet then
+      compat.notify(string.format("RoomPlan detail: %s (%s)", value, detail.description(value)))
+    end
+    return value
   end
 
   local rotation_labels = {
@@ -276,7 +300,10 @@ function M.attach(controller)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
     if mode == "MOVE" and not resolved.selection then
-      return notify_error(util.err("SELECTION_REQUIRED", "select a room, door, or furniture before entering MOVE mode"))
+      return notify_error(util.err(
+        "SELECTION_REQUIRED",
+        "select a room, door, window, outlet, or furniture before entering MOVE mode"
+      ))
     end
     if mode ~= "NAV" and mode ~= "MOVE" and mode ~= "PAN" then
       return notify_error(util.err("MODE_INVALID", "unsupported RoomPlan mode " .. tostring(mode)))
@@ -334,6 +361,17 @@ function M.attach(controller)
       if not door then return notify_error(util.err("SELECTION_STALE", "selected door no longer exists")) end
       local delta = (door.side == "north" or door.side == "south") and dx * step or dy * step
       action = { type = "edit_door", id = door.id, patch = { offset_mm = door.offset_mm + delta } }
+    elseif selection.kind == "window" or selection.kind == "outlet" then
+      local fixture = model.find(resolved:model(), selection.kind, selection.id)
+      if not fixture then
+        return notify_error(util.err("SELECTION_STALE", "selected wall object no longer exists"))
+      end
+      local delta = (fixture.side == "north" or fixture.side == "south") and dx * step or dy * step
+      action = {
+        type = selection.kind == "window" and "edit_window" or "edit_outlet",
+        id = fixture.id,
+        patch = { offset_mm = fixture.offset_mm + delta },
+      }
     else
       return notify_error(util.err("SELECTION_NOT_MOVABLE", "selected object cannot be moved"))
     end

@@ -1,0 +1,82 @@
+{
+  "format": "roomplan.nvim",
+  "schema_version": 1,
+  "units": "mm",
+  "metadata": {
+    "name": "Migration fixture",
+    "notes": "Odd dimensions exercise doubled local anchors.",
+    "vendor": {
+      "empty_object": {},
+      "empty_array": [],
+      "nothing": null,
+      "exact_decimal": 1.250
+    }
+  },
+  "settings": {
+    "grid_mm": 100,
+    "fine_step_mm": 10,
+    "normal_step_mm": 100,
+    "coarse_step_mm": 500,
+    "default_door_width_mm": 900,
+    "vendor_enabled": false
+  },
+  "rooms": [
+    {
+      "id": "room-migration",
+      "name": "Migration room",
+      "origin_mm": [-120, 75],
+      "size_mm": [3001, 1999],
+      "vendor": { "label": "keep-room" }
+    }
+  ],
+  "doors": [
+    {
+      "id": "door-migration",
+      "kind": "hinged",
+      "room_id": "room-migration",
+      "connects_to_room_id": null,
+      "side": "north",
+      "offset_mm": 101,
+      "width_mm": 901,
+      "hinge": "start",
+      "opens_into": "owner",
+      "open_angle_deg": 90,
+      "vendor": { "label": "keep-door" }
+    }
+  ],
+  "furniture": [
+    {
+      "id": "furniture-migration",
+      "room_id": "room-migration",
+      "template_id": "custom:migration-chair",
+      "name": "Odd chair",
+      "category": "seating",
+      "center_mm": [417, 503],
+      "size_mm": [501, 499, 777],
+      "rotation_deg": 90,
+      "vendor": { "label": "keep-furniture" }
+    }
+  ],
+  "custom_templates": [
+    {
+      "id": "custom:migration-chair",
+      "name": "Odd chair template",
+      "category": "seating",
+      "shape": "rectangle",
+      "default_size_mm": [701, 401, 733],
+      "vendor": { "label": "keep-template" }
+    }
+  ],
+  "extensions": {
+    "example.nvim": {
+      "empty_object": {},
+      "empty_array": [],
+      "nothing": null,
+      "exact_decimal": 2.500,
+      "enabled": false
+    }
+  },
+  "vendor-root": {
+    "nested": [false, { "value": 3.750 }]
+  }
+}

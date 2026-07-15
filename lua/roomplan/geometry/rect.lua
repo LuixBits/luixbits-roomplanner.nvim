@@ -1,3 +1,5 @@
+local footprint = require("roomplan.geometry.footprint")
+
 local M = {}
 
 local function unpack_rect(rect)
@@ -26,6 +28,8 @@ function M.new(left, bottom, width, depth)
 end
 
 function M.from_room(room)
+  local shape = footprint.from_room(room)
+  if shape then return M.from_rect2(footprint.bounds2(shape)) end
   return M.new(room.origin_mm[1], room.origin_mm[2], room.size_mm[1], room.size_mm[2])
 end
 
@@ -83,24 +87,33 @@ function M.union(rectangles)
 end
 
 function M.room_rect2(room)
-  local x = room.origin_mm[1]
-  local y = room.origin_mm[2]
-  local width = room.size_mm[1]
-  local depth = room.size_mm[2]
+  local shape = footprint.from_room(room)
+  if shape then
+    local bounds = footprint.bounds2(shape)
+    return { left2 = bounds.left2, bottom2 = bounds.bottom2, right2 = bounds.right2, top2 = bounds.top2 }
+  end
+  local x, y = room.origin_mm[1], room.origin_mm[2]
+  local width, depth = room.size_mm[1], room.size_mm[2]
   return { left2 = 2 * x, bottom2 = 2 * y, right2 = 2 * (x + width), top2 = 2 * (y + depth) }
 end
 
-local function effective_furniture_dimensions(furniture)
-  local width = furniture.size_mm[1]
-  local depth = furniture.size_mm[2]
-  if furniture.rotation_deg == 90 or furniture.rotation_deg == 270 then
-    return depth, width
-  end
-  return width, depth
-end
-
 function M.furniture_rect2(room, furniture)
-  local width, depth = effective_furniture_dimensions(furniture)
+  local shape = footprint.from_furniture(room, furniture)
+  if shape then
+    local bounds = footprint.bounds2(shape)
+    return {
+      left2 = bounds.left2,
+      right2 = bounds.right2,
+      bottom2 = bounds.bottom2,
+      top2 = bounds.top2,
+      center_x2 = bounds.center_x2,
+      center_y2 = bounds.center_y2,
+    }
+  end
+  local width, depth = furniture.size_mm[1], furniture.size_mm[2]
+  if furniture.rotation_deg == 90 or furniture.rotation_deg == 270 then
+    width, depth = depth, width
+  end
   local center_x = room.origin_mm[1] + furniture.center_mm[1]
   local center_y = room.origin_mm[2] + furniture.center_mm[2]
   return {

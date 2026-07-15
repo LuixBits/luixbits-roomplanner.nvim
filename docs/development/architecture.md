@@ -19,19 +19,29 @@ and raster logic deterministic and directly testable.
 
 ## Model and mutation
 
-`schema` is the persisted-data authority; the strict JSON codec preserves the
-difference between arrays, objects, null, and exact decimal input. `model`
-constructs immutable-by-convention snapshots. Every user-visible mutation goes
+`schema` is the persisted-data authority; its small facade dispatches to shared
+JSON-safe primitives and explicit version normalizers. Schema v3 is the active
+reader/writer; schema v1 and v2 enter through sequential migrations. Load
+records migration metadata without rewriting source bytes, and the first
+explicit save establishes the v3 durable revision. The strict JSON codec
+preserves the difference between arrays, objects, null, and exact decimal
+input. `model` constructs immutable-by-convention snapshots. Every user-visible
+mutation goes
 through `actions.apply`, which copies, applies, validates, and returns a whole
 new snapshot or no change at all. `history` owns revision/savepoint and memory
 budgets; `session` combines it with transient selection, viewport, validation,
 source state, and quit protection.
 
-Geometry is split by concept under `geometry/`: rectangles/intervals,
-adjacency, doors, sectors, alignment, and snapping. It uses integer or doubled
-integer predicates where possible. `validate` first defends structural
-invariants, then evaluates layout relationships and returns deterministic
-diagnostics.
+Geometry is split by concept under `geometry/`: runtime footprints,
+rectangles/intervals, adjacency, doors, sectors, alignment, and snapping. The
+footprint layer is the shared authority for both migrated one-part rectangles
+and current compound unions. It owns stable part identity, connected-union
+topology, exact-range-checked measurements, seam-free boundaries, containment,
+intersection, transforms, anchors, and hit provenance. Actions and forms
+preserve compound footprints; rectangle-only resizing is available only for a
+canonical one-part shape. Geometry uses integer or doubled-integer predicates
+where possible. `validate` first defends structural invariants, then evaluates
+layout relationships and returns deterministic diagnostics.
 
 ## Persistence
 
@@ -39,7 +49,9 @@ diagnostics.
 prepare, compare-before-mutate commit, and initialization. `storage.source`
 owns buffer/file text and durable revision snapshots; `storage.atomic` owns
 safe creation. Adapters never evaluate source content and never guess through
-malformed or ambiguous input.
+malformed or ambiguous input. Normalization and migration metadata participates
+in every durability reconciliation, so semantically equal source bytes cannot
+accidentally turn an unsaved normalized or migrated snapshot into a savepoint.
 
 `state` indexes live sessions, source ownership, and attached buffers. Only one
 session may write a source. The session guard represents protected in-memory
@@ -70,11 +82,14 @@ keys, availability, and handlers; the footer and full palette consume it.
 ## Rendering
 
 `scene/build` translates validated model concepts into semantic primitives.
-Walls are assembled with door apertures before rasterization. The viewport maps
-world millimetres to logical cells; rasterization remains bounded by visible
-cells and stores hit provenance separately from glyph text. `render.canvas`
-alone adapts the result to Neovim buffers, extmarks, cursor positions, and
-redraw scheduling.
+Compound room walls are derived from the union exterior, internal part seams
+are removed, and valid part-aware door/window apertures are applied before
+coincident room walls are grouped. Outlets remain non-cutting wall points. Room
+and furniture parts retain one logical object reference for selection and
+diagnostics. The viewport maps world millimetres to logical cells;
+rasterization remains bounded by visible cells and stores hit provenance
+separately from glyph text. `render.canvas` alone adapts the result to Neovim
+buffers, extmarks, cursor positions, and redraw scheduling.
 
 These boundaries are design constraints, not only folder organization: UI
 must never mutate nested model tables, storage must never bypass revisions, and

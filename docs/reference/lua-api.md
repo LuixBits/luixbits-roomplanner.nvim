@@ -45,10 +45,11 @@ end
 | --- | --- |
 | `validate(opts)` | `diagnostics, summary` for the resolved revision |
 | `set_aspect(ratio[, opts, callback])` | Set process-wide height/width ratio and refit live sessions |
+| `set_canvas_detail(level)` | Set resolved session detail to `high`, `middle`, or `none`; omit level to cycle |
 | `rotate_view(direction)` | Rotate resolved viewport; accepts `clockwise`, `counterclockwise`, or `reset` |
 
-`set_aspect` also accepts one options table containing `ratio`. Rotation and
-aspect are display operations and do not add model history.
+`set_aspect` also accepts one options table containing `ratio`. Canvas detail,
+rotation, and aspect are display operations and do not add model history.
 
 `roomplan.aspect` remains a compatibility alias for `set_aspect`; new
 configuration should use the canonical name above.

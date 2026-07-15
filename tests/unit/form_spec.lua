@@ -21,7 +21,7 @@ local function plan_session()
   })
   plan.furniture[1] = model.new_furniture({
     id = "furniture-sofa", room_id = "room-living", template_id = "builtin:sofa",
-    name = "Sofa", category = "seating", center_mm = { 2500, 2000 }, size_mm = { 2100, 900, 850 },
+    name = "Sofa", category = "seating", position_mm = { 2500, 2000 }, size_mm = { 2100, 900, 850 },
   })
   plan.doors[1] = model.new_door({
     id = "door-living-east", room_id = "room-living", connects_to_room_id = "room-bedroom",
@@ -126,7 +126,7 @@ describe("structured forms", function()
     h.eq("add_room", room_action.type)
     h.eq("room-office", room_action.room.id)
     h.eq("#98C379", room_action.room.color)
-    h.eq({ 2500, 2000 }, room_action.room.size_mm)
+    h.eq({ 2500, 2000 }, room_action.room.footprint.parts[1].size_mm)
     h.eq(true, room_action.force)
 
     local furniture_spec = forms.furniture.add(session, {
@@ -138,7 +138,7 @@ describe("structured forms", function()
     h.truthy(furniture_valid, vim.inspect(furniture_state.errors))
     local furniture_action = h.truthy(furniture_spec.build(furniture_state.draft, furniture_spec.context))
     h.eq("add_furniture", furniture_action.type)
-    h.eq({ 2500, 2000 }, furniture_action.furniture.center_mm)
+    h.eq({ 2500, 2000 }, furniture_action.furniture.position_mm)
     h.eq("builtin:sofa", furniture_action.furniture.template_id)
     h.eq("#C678DD", furniture_action.furniture.color)
 
@@ -195,7 +195,7 @@ describe("structured forms", function()
     h.eq("edit_room", room_action.type)
     h.eq("Living room", room_action.patch.name)
     h.eq("#56B6C2", room_action.patch.color)
-    h.eq({ 5200, 4000 }, room_action.patch.size_mm)
+    h.eq({ 5200, 4000 }, room_action.patch.footprint.parts[1].size_mm)
 
     local furniture_spec = forms.furniture.edit(session, plan.furniture[1])
     h.eq("FURNITURE EDIT", furniture_spec.mode)
@@ -209,7 +209,9 @@ describe("structured forms", function()
     h.eq("edit_furniture", furniture_action.type)
     h.eq("builtin:desk", furniture_action.patch.template_id)
     h.eq("#E06C75", furniture_action.patch.color)
-    h.eq({ 2100, 900, 850 }, furniture_action.patch.size_mm)
+    h.eq({ 2100, 900 }, furniture_action.patch.footprint.parts[1].size_mm)
+    h.eq({ 2100, 900 }, furniture_action.patch.anchor2_mm)
+    h.eq(850, furniture_action.patch.height_mm)
 
     local door_spec = forms.door.edit(session, plan.doors[1])
     h.eq("DOOR EDIT", door_spec.mode)
@@ -228,7 +230,9 @@ describe("structured forms", function()
     template_state = form_state.reduce(template_state, { type = "set_raw", key = "width_mm", value = "1.8m" })
     local template_action = h.truthy(template_spec.build(template_state.draft, template_spec.context))
     h.eq("edit_custom_template", template_action.type)
-    h.eq({ 1800, 800, 740 }, template_action.patch.default_size_mm)
+    h.eq({ 1800, 800 }, template_action.patch.default_footprint.parts[1].size_mm)
+    h.eq({ 1800, 800 }, template_action.patch.default_anchor2_mm)
+    h.eq(740, template_action.patch.default_height_mm)
   end)
 
   it("opens a complete float, anchors editors, applies, and cancels", function()

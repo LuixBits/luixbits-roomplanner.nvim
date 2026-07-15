@@ -2,8 +2,8 @@
 
 [← Installation](installation.md) · [Documentation home](../README.md) · [Next: Core concepts →](concepts.md)
 
-This walkthrough creates two rooms, connects them with a door, adds furniture,
-validates the result, and saves it.
+This walkthrough creates two rooms, connects them with a door, adds furniture
+and wall features, validates the result, and saves it.
 
 ## 1. Create a source
 
@@ -53,7 +53,15 @@ Press `F`, choose Living room and Sofa, then accept or edit its dimensions and
 placement. Press `m` to move the selected sofa, `r` to rotate it, and `Esc` to
 leave MOVE mode.
 
-## 6. Validate and save
+## 6. Add a window and outlet
+
+Press `W` to place a window on an exterior wall, then press `O` to place a
+typed outlet on a wall. The `a` Add palette offers the same choices with
+lowercase `w` and `o`. See
+[Windows and outlets](../planning/windows-and-outlets.md) for connections,
+offsets, types, and current vertical-data limits.
+
+## 7. Validate and save
 
 Press `v` to run validation and focus Issues. Repair any errors, then press `s`
 to save.
@@ -68,4 +76,3 @@ Use `:RoomPlanClose` only when you want to unload the live plan and its undo
 history.
 
 [← Installation](installation.md) · [Documentation home](../README.md) · [Next: Core concepts →](concepts.md)
-
