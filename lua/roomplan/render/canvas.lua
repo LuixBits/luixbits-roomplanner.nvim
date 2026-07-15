@@ -307,6 +307,13 @@ local function define_highlights()
   require("roomplan.highlights").setup()
 end
 
+local function color_highlight(value)
+  if type(value) ~= "string" or not value:match("^#%x%x%x%x%x%x$") then return nil end
+  local name = "RoomPlanColor" .. value:sub(2):upper()
+  vim.api.nvim_set_hl(0, name, { fg = value })
+  return name
+end
+
 local function set_buffer_options(buffer)
   local options = {
     buftype = "nofile",
@@ -579,9 +586,17 @@ local function apply_highlights(handle, output, header_count, footer_count)
     return
   end
   vim.api.nvim_buf_clear_namespace(handle.buf, handle.namespace, 0, -1)
+  local color_groups = {}
   for i = 1, #output.highlight_spans do
     local span = output.highlight_spans[i]
-    local group = (handle.opts.highlights and handle.opts.highlights[span.role]) or HIGHLIGHTS[span.role]
+    local colored_group = span.color and color_groups[span.color] or nil
+    if span.color and not colored_group then
+      colored_group = color_highlight(span.color)
+      color_groups[span.color] = colored_group
+    end
+    local group = (handle.opts.highlights and handle.opts.highlights[span.role])
+      or colored_group
+      or HIGHLIGHTS[span.role]
     if group then
       vim.api.nvim_buf_set_extmark(handle.buf, handle.namespace, header_count + span.row - 1, span.start_col, {
         end_col = span.end_col,
@@ -733,7 +748,10 @@ local function install_autocommands(handle)
   })
   vim.api.nvim_create_autocmd("ColorScheme", {
     group = handle.augroup,
-    callback = define_highlights,
+    callback = function()
+      define_highlights()
+      if not handle.cleaned then M.redraw(handle, { reason = "colorscheme" }) end
+    end,
   })
 end
 

@@ -23,7 +23,7 @@ return {
     "coarse_step_mm",
     "default_door_width_mm",
   },
-  ["$.rooms[]"] = { "id", "name", "origin_mm", "footprint" },
+  ["$.rooms[]"] = { "id", "name", "color", "origin_mm", "footprint" },
   ["$.rooms[].footprint"] = { "kind", "parts" },
   ["$.rooms[].footprint.parts[]"] = { "id", "origin_mm", "size_mm" },
   ["$.doors[]"] = {
@@ -62,6 +62,7 @@ return {
     "room_id",
     "template_id",
     "name",
+    "color",
     "category",
     "position_mm",
     "anchor2_mm",

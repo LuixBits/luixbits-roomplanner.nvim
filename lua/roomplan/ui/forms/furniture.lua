@@ -1,4 +1,5 @@
 local catalog = require("roomplan.catalog")
+local color = require("roomplan.color")
 local config = require("roomplan.config")
 local footprint = require("roomplan.geometry.footprint")
 local number = require("roomplan.geometry.number")
@@ -134,6 +135,7 @@ function M.add(session, opts)
       room_id = room_id,
       template_id = template.id,
       name = opts.name or template.name,
+      color = opts.color or "auto",
       category = template.category,
       width_mm = opts.width_mm or template_size[1],
       depth_mm = opts.depth_mm or template_size[2],
@@ -150,6 +152,7 @@ function M.add(session, opts)
       { key = "room_id", label = "Room", type = "object_ref", required = true, choices = function(ctx) return common.rooms(ctx) end },
       {
         key = "template_id", label = "Template", type = "object_ref", required = true,
+        kind = "roomplan_furniture_template",
         choices = templates,
         on_change = function(value, _, ctx)
           local selected = resolved_template(ctx, value)
@@ -165,6 +168,10 @@ function M.add(session, opts)
         end,
       },
       { key = "name", label = "Label", type = "text", required = true, trim = true, max_length = 256 },
+      {
+        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        choices = function(_, draft) return color.choices(draft.color) end,
+      },
       {
         key = "category", label = "Category", type = "readonly",
         value = function(_, draft) return draft.category end,
@@ -289,6 +296,7 @@ function M.add(session, opts)
       room_id = draft.room_id,
       template_id = template_id,
       name = draft.name,
+      color = color.resolve(draft.color),
       category = category,
       rotation_deg = draft.rotation_deg,
     }
@@ -341,6 +349,7 @@ function M.edit(session, furniture, opts)
       room_id = furniture.room_id,
       template_id = furniture.template_id,
       name = furniture.name,
+      color = furniture.color or "auto",
       category = furniture.category or (template and template.category) or "custom",
       width_mm = size[1],
       depth_mm = size[2],
@@ -353,6 +362,7 @@ function M.edit(session, furniture, opts)
       { key = "room_id", label = "Room", type = "object_ref", required = true, choices = function(ctx) return common.rooms(ctx) end },
       {
         key = "template_id", label = "Template", type = "object_ref", required = true, choices = templates,
+        kind = "roomplan_furniture_template",
         on_change = function(value, _, ctx)
           local selected = resolved_template(ctx, value)
           -- Editing a template association deliberately preserves explicit
@@ -361,6 +371,10 @@ function M.edit(session, furniture, opts)
         end,
       },
       { key = "name", label = "Label", type = "text", required = true, trim = true, max_length = 256 },
+      {
+        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        choices = function(_, draft) return color.choices(draft.color) end,
+      },
       { key = "category", label = "Category", type = "readonly", value = function(_, draft) return draft.category end },
     },
     validate = function(draft, ctx)
@@ -423,7 +437,8 @@ function M.edit(session, furniture, opts)
   end
   function spec.build(draft, ctx)
     ctx = ctx or context
-    if not common.find(ctx, "furniture", ctx.furniture_id) then
+    local current = common.find(ctx, "furniture", ctx.furniture_id)
+    if not current then
       return nil, { code = "NOT_FOUND", message = "the furniture no longer exists" }
     end
     local selected = resolved_template(ctx, draft.template_id)
@@ -446,6 +461,7 @@ function M.edit(session, furniture, opts)
       patch.center_mm = { draft.local_x_mm, draft.local_y_mm }
       patch.size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm }
     end
+    if current.color ~= nil or draft.color ~= "auto" then patch.color = draft.color end
     return {
       type = "edit_furniture",
       id = ctx.furniture_id,

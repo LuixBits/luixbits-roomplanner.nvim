@@ -1,6 +1,7 @@
 -- Pure presentation layer: canonical model/session state in, display-only view
 -- models out.  No returned table is part of the saved model.
 
+local color = require("roomplan.color")
 local footprint = require("roomplan.geometry.footprint")
 local canvas_detail = require("roomplan.canvas_detail")
 local outlet_types = require("roomplan.outlet_types")
@@ -468,6 +469,11 @@ function M.properties(value, opts)
     if compound then
       groups[#groups].fields[#groups[#groups].fields + 1] = field("Parts", compound.parts)
     end
+  end
+  if selection.kind == "room" or selection.kind == "furniture" then
+    groups[#groups + 1] = { id = "appearance", title = "Appearance", fields = {
+      field("Color", color.label(object.color), object.color),
+    } }
   end
   groups[#groups + 1] = { id = "advanced", title = "Advanced", fields = { field("Stable ID", object.id) } }
 

@@ -18,7 +18,8 @@ rounding can never corrupt the saved plan.
   north compass. Three transient detail levels keep labels and measurements
   as sparse or complete as the current task needs.
 - Structured forms for rooms, furniture, doors, windows, outlets, alignment,
-  plan settings, and project furniture templates.
+  plan settings, and project furniture templates, including palette-based room
+  and furniture colors.
 - Compound footprints for L-, T-, and U-shaped rooms and furniture, with
   seam-free walls and one logical selection per object. The room form creates
   configurable L shapes; direct canvas resizing can add, resize, and remove
@@ -32,7 +33,7 @@ rounding can never corrupt the saved plan.
 - Dependency-free furniture catalogues from inline Lua definitions or JSON
   files.
 - No mandatory runtime dependency beyond Neovim 0.10 or newer. Standard
-  `vim.ui` providers such as Snacks and dressing.nvim work automatically.
+  `vim.ui` providers such as Snacks work automatically when configured.
 
 ## Install
 

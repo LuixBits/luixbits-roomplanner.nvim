@@ -4,6 +4,7 @@
 local footprint = require("roomplan.geometry.footprint")
 local walls = require("roomplan.scene.walls")
 local labels = require("roomplan.scene.labels")
+local color = require("roomplan.color")
 local canvas_detail = require("roomplan.canvas_detail")
 
 local M = {}
@@ -469,11 +470,13 @@ function M.build(model, validation, opts)
         }, roles)
       end
       if show_labels then
-        add_primitive(scene, labels.room(room, ref, i, room.footprint ~= nil and {
+        local room_label = labels.room(room, ref, i, room.footprint ~= nil and {
           bounds = bounds,
           anchor = anchor,
           rectangles = rectangles,
-        } or nil), roles)
+        } or nil)
+        room_label.color = color.resolve(room.color)
+        add_primitive(scene, room_label, roles)
       end
       if show_labels then
         for _, edge in ipairs(walls.room_edges(room, i)) do
@@ -531,10 +534,13 @@ function M.build(model, validation, opts)
             part_id = rectangle.part_id,
             part_index = item.footprint ~= nil and part_index or nil,
             ref = ref,
+            color = color.resolve(item.color),
           }, roles)
         end
         if show_labels then
-          add_primitive(scene, labels.furniture(item, bounds, ref, i, anchor), roles)
+          local furniture_label = labels.furniture(item, bounds, ref, i, anchor)
+          furniture_label.color = color.resolve(item.color)
+          add_primitive(scene, furniture_label, roles)
         end
         if high_detail then
           local dimensions = labels.furniture_dimensions(bounds, ref, i)

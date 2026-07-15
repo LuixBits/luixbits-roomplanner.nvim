@@ -3,6 +3,7 @@
 
 local json = require("roomplan.codec.json")
 local ids = require("roomplan.ids")
+local color = require("roomplan.color")
 
 local M = {}
 
@@ -156,6 +157,15 @@ function M.text(context, value, path, options)
     return M.add_error(context, "SCHEMA_STRING_CONTROL", path, "contains a disallowed control character", value)
   end
   return value
+end
+
+function M.persisted_color(context, value, path)
+  local normalized, reason = color.normalize(value)
+  if not normalized then
+    return M.add_error(context, "SCHEMA_COLOR", path, reason, value)
+  end
+  if normalized ~= value then context.normalized = true end
+  return normalized
 end
 
 ---Validate a standalone value against the same text contract used by plan
