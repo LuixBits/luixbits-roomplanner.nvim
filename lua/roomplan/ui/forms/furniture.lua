@@ -1,19 +1,70 @@
 local catalog = require("roomplan.catalog")
 local config = require("roomplan.config")
+local footprint = require("roomplan.geometry.footprint")
+local number = require("roomplan.geometry.number")
 local model_helpers = require("roomplan.model")
 local common = require("roomplan.ui.forms.common")
 
 local M = {}
+
+local function schema_version(context)
+  local plan = common.model(context)
+  return plan and plan.schema_version or 1
+end
+
+local function footprint_dimensions(value)
+  local shape = value and footprint.from_persisted(value) or nil
+  local bounds = shape and footprint.bounds(shape) or nil
+  return bounds and { bounds.width, bounds.depth } or nil
+end
+
+local function template_dimensions(template)
+  if not template then return nil end
+  if template.default_size_mm then return template.default_size_mm end
+  local size = footprint_dimensions(template.default_footprint)
+  return size and { size[1], size[2], template.default_height_mm } or nil
+end
+
+local function simple_footprint(value, anchor2)
+  local parts = value and value.parts
+  local part = parts and #parts == 1 and parts[1] or nil
+  if not part or part.id ~= "part-main" or not part.origin_mm or not part.size_mm
+    or part.origin_mm[1] ~= 0 or part.origin_mm[2] ~= 0
+  then
+    return nil
+  end
+  if anchor2 and (anchor2[1] ~= part.size_mm[1] or anchor2[2] ~= part.size_mm[2]) then return nil end
+  return part.size_mm
+end
+
+local function template_is_simple(template)
+  return template.default_size_mm ~= nil
+    or simple_footprint(template.default_footprint, template.default_anchor2_mm) ~= nil
+end
+
+local function room_centre(room)
+  if room.size_mm then
+    return { math.floor(room.size_mm[1] / 2 + 0.5), math.floor(room.size_mm[2] / 2 + 0.5) }
+  end
+  local shape = footprint.local_from_room(room)
+  local anchor = shape and footprint.label_anchor2(shape) or nil
+  if not anchor then return nil end
+  local x = number.from_doubled(anchor.x2)
+  local y = number.from_doubled(anchor.y2)
+  return { x, y }
+end
 
 local function templates(context)
   local result = {}
   local seen = {}
   local plan = common.model(context)
   for _, template in ipairs(catalog.all(plan)) do
+    local size = template_dimensions(template)
     seen[template.id] = true
     result[#result + 1] = {
       value = template.id,
-      label = string.format("%s (%d x %d x %d mm)", template.name, unpack(template.default_size_mm)),
+      label = size and string.format("%s (%d x %d x %d mm)", template.name, unpack(size))
+        or template.name,
       raw = template,
     }
   end
@@ -22,9 +73,11 @@ local function templates(context)
   local furniture = context.furniture_id and common.find(context, "furniture", context.furniture_id) or nil
   local current = furniture and not seen[furniture.template_id] and catalog.resolve(plan, furniture.template_id) or nil
   if current then
+    local size = template_dimensions(current)
     result[#result + 1] = {
       value = current.id,
-      label = string.format("%s (%d x %d x %d mm)", current.name, unpack(current.default_size_mm)),
+      label = size and string.format("%s (%d x %d x %d mm)", current.name, unpack(size))
+        or current.name,
       raw = current,
     }
   end
@@ -48,7 +101,9 @@ local function centre(draft, context)
     if not cursor then return nil, { code = "CURSOR_UNAVAILABLE", message = "the canvas cursor position is unavailable" } end
     return { cursor[1] - room.origin_mm[1], cursor[2] - room.origin_mm[2] }
   end
-  return { math.floor(room.size_mm[1] / 2 + 0.5), math.floor(room.size_mm[2] / 2 + 0.5) }
+  local position = room_centre(room)
+  if not position then return nil, { code = "ROOM_GEOMETRY", message = "the room footprint is unavailable" } end
+  return position
 end
 
 function M.add(session, opts)
@@ -65,11 +120,14 @@ function M.add(session, opts)
   assert(template, "RoomPlan furniture catalogue has no visible templates")
   local room_id = opts.room_id or common.selected_room(context)
   local room = room_id and common.find(context, "room", room_id) or nil
+  local template_size = assert(template_dimensions(template), "RoomPlan furniture template has no usable dimensions")
+  local initial_position = room and room_centre(room) or { 0, 0 }
   local spec = {
     id = "add-furniture",
     title = "Add furniture",
     mode = "FURNITURE CREATE",
-    description = "Template dimensions are editable before placement.",
+    description = template_is_simple(template) and "Template dimensions are editable before placement."
+      or "The compound template footprint is preserved during placement.",
     apply_label = "Place furniture",
     context = context,
     initial = {
@@ -77,12 +135,12 @@ function M.add(session, opts)
       template_id = template.id,
       name = opts.name or template.name,
       category = template.category,
-      width_mm = opts.width_mm or template.default_size_mm[1],
-      depth_mm = opts.depth_mm or template.default_size_mm[2],
-      height_mm = opts.height_mm or template.default_size_mm[3],
+      width_mm = opts.width_mm or template_size[1],
+      depth_mm = opts.depth_mm or template_size[2],
+      height_mm = opts.height_mm or template_size[3],
       placement = opts.placement or "centre",
-      local_x_mm = opts.local_x_mm or (room and math.floor(room.size_mm[1] / 2 + 0.5) or 0),
-      local_y_mm = opts.local_y_mm or (room and math.floor(room.size_mm[2] / 2 + 0.5) or 0),
+      local_x_mm = opts.local_x_mm or initial_position[1],
+      local_y_mm = opts.local_y_mm or initial_position[2],
       rotation_deg = opts.rotation_deg or 0,
       save_template = opts.save_template == true,
       custom_template_name = opts.custom_template_name or (opts.name or template.name),
@@ -96,12 +154,13 @@ function M.add(session, opts)
         on_change = function(value, _, ctx)
           local selected = resolved_template(ctx, value)
           if not selected then return nil end
+          local size = template_dimensions(selected)
           return {
             name = selected.name,
             category = selected.category,
-            width_mm = selected.default_size_mm[1],
-            depth_mm = selected.default_size_mm[2],
-            height_mm = selected.default_size_mm[3],
+            width_mm = size[1],
+            depth_mm = size[2],
+            height_mm = size[3],
           }
         end,
       },
@@ -110,8 +169,22 @@ function M.add(session, opts)
         key = "category", label = "Category", type = "readonly",
         value = function(_, draft) return draft.category end,
       },
-      { key = "width_mm", label = "Width", type = "measurement", required = true, max = runtime.limits.max_dimension_mm },
-      { key = "depth_mm", label = "Depth", type = "measurement", required = true, max = runtime.limits.max_dimension_mm },
+      {
+        key = "width_mm", label = "Width", type = "measurement", required = true,
+        max = runtime.limits.max_dimension_mm,
+        visible = function(ctx, draft)
+          local selected = resolved_template(ctx, draft.template_id)
+          return selected and template_is_simple(selected) or false
+        end,
+      },
+      {
+        key = "depth_mm", label = "Depth", type = "measurement", required = true,
+        max = runtime.limits.max_dimension_mm,
+        visible = function(ctx, draft)
+          local selected = resolved_template(ctx, draft.template_id)
+          return selected and template_is_simple(selected) or false
+        end,
+      },
       { key = "height_mm", label = "Height", type = "measurement", required = true, max = runtime.limits.max_dimension_mm },
       {
         key = "rotation_deg", label = "Rotation", type = "enum", required = true,
@@ -155,11 +228,15 @@ function M.add(session, opts)
       local position, err = centre(draft, ctx)
       if not position then return nil, err end
       local selected_room = common.find(ctx, "room", draft.room_id)
+      local selected = resolved_template(ctx, draft.template_id)
+      local geometry = selected and template_is_simple(selected)
+          and string.format("Footprint: %d x %d mm", draft.width_mm, draft.depth_mm)
+        or string.format("Footprint: %d parts (preserved)",
+          selected and #(selected.default_footprint.parts or {}) or 0)
       return {
         lines = {
           string.format("%s in %s at %s", draft.name, selected_room.name or selected_room.id, common.point_text(position)),
-          string.format("Footprint: %d x %d mm; height %d mm; rotation %d degrees",
-            draft.width_mm, draft.depth_mm, draft.height_mm, draft.rotation_deg),
+          string.format("%s; height %d mm; rotation %d degrees", geometry, draft.height_mm, draft.rotation_deg),
         },
       }
     end,
@@ -180,32 +257,53 @@ function M.add(session, opts)
     if not id then return nil, id_err end
     local template_id = draft.template_id
     local category = selected.category
+    local version = schema_version(ctx)
+    local selected_simple = template_is_simple(selected)
+    local selected_footprint = selected_simple and model_helpers.rectangle_footprint({ draft.width_mm, draft.depth_mm })
+      or model_helpers.deep_copy(selected.default_footprint)
+    local selected_anchor = selected_simple and { draft.width_mm, draft.depth_mm }
+      or model_helpers.deep_copy(selected.default_anchor2_mm)
     local custom_template
     if draft.save_template then
       local custom_id, custom_err = common.generate_id(ctx, "custom_template", draft.custom_template_name)
       if not custom_id then return nil, custom_err end
       template_id = custom_id
       category = draft.custom_template_category
-      custom_template = model_helpers.new_custom_template({
+      local custom_fields = {
         id = custom_id,
         name = draft.custom_template_name,
         category = draft.custom_template_category,
-        shape = "rectangle",
-        default_size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm },
-      })
+      }
+      if version >= 2 then
+        custom_fields.default_footprint = selected_footprint
+        custom_fields.default_anchor2_mm = selected_anchor
+        custom_fields.default_height_mm = draft.height_mm
+      else
+        custom_fields.shape = "rectangle"
+        custom_fields.default_size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm }
+      end
+      custom_template = model_helpers.new_custom_template(custom_fields, { schema_version = version })
+    end
+    local furniture_fields = {
+      id = id,
+      room_id = draft.room_id,
+      template_id = template_id,
+      name = draft.name,
+      category = category,
+      rotation_deg = draft.rotation_deg,
+    }
+    if version >= 2 then
+      furniture_fields.position_mm = position
+      furniture_fields.footprint = selected_footprint
+      furniture_fields.anchor2_mm = selected_anchor
+      furniture_fields.height_mm = draft.height_mm
+    else
+      furniture_fields.center_mm = position
+      furniture_fields.size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm }
     end
     return {
       type = "add_furniture",
-      furniture = model_helpers.new_furniture({
-        id = id,
-        room_id = draft.room_id,
-        template_id = template_id,
-        name = draft.name,
-        category = category,
-        center_mm = position,
-        size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm },
-        rotation_deg = draft.rotation_deg,
-      }),
+      furniture = model_helpers.new_furniture(furniture_fields, { schema_version = version }),
       custom_template = custom_template,
     }
   end
@@ -218,12 +316,25 @@ function M.edit(session, furniture, opts)
   assert(type(furniture) == "table" and type(furniture.id) == "string", "furniture.edit requires furniture")
   local runtime = config.get()
   local context = { session = session, furniture_id = furniture.id }
+  local version = schema_version(context)
   local template = resolved_template(context, furniture.template_id)
+  local size
+  local can_resize = version < 2
+  if version >= 2 then
+    local rectangle_size = simple_footprint(furniture.footprint, furniture.anchor2_mm)
+    can_resize = rectangle_size ~= nil
+    size = rectangle_size and { rectangle_size[1], rectangle_size[2], furniture.height_mm }
+      or { nil, nil, furniture.height_mm }
+  else
+    size = furniture.size_mm
+  end
+  local position = version >= 2 and furniture.position_mm or furniture.center_mm
   local spec = {
     id = "edit-furniture",
     title = "Edit furniture",
     mode = "FURNITURE EDIT",
-    description = "Position, footprint, template and rotation apply as one edit.",
+    description = can_resize and "Position, footprint, template and rotation apply as one edit."
+      or "Compound geometry is preserved; position, height, rotation and metadata remain editable.",
     apply_label = "Apply furniture changes",
     context = context,
     initial = {
@@ -231,11 +342,11 @@ function M.edit(session, furniture, opts)
       template_id = furniture.template_id,
       name = furniture.name,
       category = furniture.category or (template and template.category) or "custom",
-      width_mm = furniture.size_mm[1],
-      depth_mm = furniture.size_mm[2],
-      height_mm = furniture.size_mm[3],
-      local_x_mm = furniture.center_mm[1],
-      local_y_mm = furniture.center_mm[2],
+      width_mm = size[1],
+      depth_mm = size[2],
+      height_mm = size[3],
+      local_x_mm = position[1],
+      local_y_mm = position[2],
       rotation_deg = furniture.rotation_deg,
     },
     fields = {
@@ -251,25 +362,6 @@ function M.edit(session, furniture, opts)
       },
       { key = "name", label = "Label", type = "text", required = true, trim = true, max_length = 256 },
       { key = "category", label = "Category", type = "readonly", value = function(_, draft) return draft.category end },
-      { key = "width_mm", label = "Width", type = "measurement", max = runtime.limits.max_dimension_mm },
-      { key = "depth_mm", label = "Depth", type = "measurement", max = runtime.limits.max_dimension_mm },
-      { key = "height_mm", label = "Height", type = "measurement", max = runtime.limits.max_dimension_mm },
-      { key = "local_x_mm", label = "Room-local X", type = "measurement", allow_negative = true, allow_zero = true },
-      { key = "local_y_mm", label = "Room-local Y", type = "measurement", allow_negative = true, allow_zero = true },
-      {
-        key = "rotation_deg", label = "Rotation", type = "enum", required = true,
-        choices = {
-          { value = 0, label = "0 degrees" }, { value = 90, label = "90 degrees" },
-          { value = 180, label = "180 degrees" }, { value = 270, label = "270 degrees" },
-        },
-      },
-      {
-        key = "summary", label = "Result", type = "readonly",
-        value = function(_, draft)
-          return string.format("%s at (%d, %d), %d x %d x %d mm", draft.name, draft.local_x_mm,
-            draft.local_y_mm, draft.width_mm, draft.depth_mm, draft.height_mm)
-        end,
-      },
     },
     validate = function(draft, ctx)
       local errors = {}
@@ -278,19 +370,57 @@ function M.edit(session, furniture, opts)
       if not resolved_template(ctx, draft.template_id) then errors.template_id = "template no longer exists" end
       return errors
     end,
-    preview = function(draft, ctx)
-      local room = common.find(ctx, "room", draft.room_id)
-      if not room then return nil, { code = "ROOM_REQUIRED", message = "choose a room" } end
-      return {
-        lines = {
-          string.format("%s in %s at %s", draft.name, room.name or room.id,
-            common.point_text({ draft.local_x_mm, draft.local_y_mm })),
-          string.format("%d x %d x %d mm; rotation %d degrees",
-            draft.width_mm, draft.depth_mm, draft.height_mm, draft.rotation_deg),
-        },
-      }
+  }
+  if can_resize then
+    spec.fields[#spec.fields + 1] = {
+      key = "width_mm", label = "Width", type = "measurement", max = runtime.limits.max_dimension_mm,
+    }
+    spec.fields[#spec.fields + 1] = {
+      key = "depth_mm", label = "Depth", type = "measurement", max = runtime.limits.max_dimension_mm,
+    }
+  else
+    spec.fields[#spec.fields + 1] = {
+      key = "footprint", label = "Footprint", type = "readonly",
+      value = function() return string.format("%d parts (preserved)", #(furniture.footprint.parts or {})) end,
+    }
+  end
+  spec.fields[#spec.fields + 1] = {
+    key = "height_mm", label = "Height", type = "measurement", max = runtime.limits.max_dimension_mm,
+  }
+  spec.fields[#spec.fields + 1] = {
+    key = "local_x_mm", label = "Room-local X", type = "measurement", allow_negative = true, allow_zero = true,
+  }
+  spec.fields[#spec.fields + 1] = {
+    key = "local_y_mm", label = "Room-local Y", type = "measurement", allow_negative = true, allow_zero = true,
+  }
+  spec.fields[#spec.fields + 1] = {
+    key = "rotation_deg", label = "Rotation", type = "enum", required = true,
+    choices = {
+      { value = 0, label = "0 degrees" }, { value = 90, label = "90 degrees" },
+      { value = 180, label = "180 degrees" }, { value = 270, label = "270 degrees" },
+    },
+  }
+  spec.fields[#spec.fields + 1] = {
+    key = "summary", label = "Result", type = "readonly",
+    value = function(_, draft)
+      local geometry = can_resize and string.format("%d x %d x %d mm", draft.width_mm,
+        draft.depth_mm, draft.height_mm)
+        or string.format("%d-part footprint, %d mm high", #(furniture.footprint.parts or {}), draft.height_mm)
+      return string.format("%s at (%d, %d), %s", draft.name, draft.local_x_mm, draft.local_y_mm, geometry)
     end,
   }
+  spec.preview = function(draft, ctx)
+    local room = common.find(ctx, "room", draft.room_id)
+    if not room then return nil, { code = "ROOM_REQUIRED", message = "choose a room" } end
+    local geometry = can_resize and string.format("%d x %d x %d mm", draft.width_mm,
+      draft.depth_mm, draft.height_mm)
+      or string.format("%d-part footprint preserved; height %d mm", #(furniture.footprint.parts or {}), draft.height_mm)
+    return { lines = {
+      string.format("%s in %s at %s", draft.name, room.name or room.id,
+        common.point_text({ draft.local_x_mm, draft.local_y_mm })),
+      string.format("%s; rotation %d degrees", geometry, draft.rotation_deg),
+    } }
+  end
   function spec.build(draft, ctx)
     ctx = ctx or context
     if not common.find(ctx, "furniture", ctx.furniture_id) then
@@ -298,18 +428,28 @@ function M.edit(session, furniture, opts)
     end
     local selected = resolved_template(ctx, draft.template_id)
     if not selected then return nil, { code = "TEMPLATE_REQUIRED", message = "template no longer exists" } end
+    local patch = {
+      room_id = draft.room_id,
+      template_id = draft.template_id,
+      name = draft.name,
+      category = selected.category,
+      rotation_deg = draft.rotation_deg,
+    }
+    if version >= 2 then
+      patch.position_mm = { draft.local_x_mm, draft.local_y_mm }
+      patch.height_mm = draft.height_mm
+      if can_resize then
+        patch.footprint = model_helpers.rectangle_footprint({ draft.width_mm, draft.depth_mm })
+        patch.anchor2_mm = { draft.width_mm, draft.depth_mm }
+      end
+    else
+      patch.center_mm = { draft.local_x_mm, draft.local_y_mm }
+      patch.size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm }
+    end
     return {
       type = "edit_furniture",
       id = ctx.furniture_id,
-      patch = {
-        room_id = draft.room_id,
-        template_id = draft.template_id,
-        name = draft.name,
-        category = selected.category,
-        center_mm = { draft.local_x_mm, draft.local_y_mm },
-        size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm },
-        rotation_deg = draft.rotation_deg,
-      },
+      patch = patch,
     }
   end
   return spec

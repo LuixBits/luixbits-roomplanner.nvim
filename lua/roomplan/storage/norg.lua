@@ -6,6 +6,10 @@ local util = require("roomplan.util")
 
 local M = { name = "norg" }
 
+local function unchanged_by_schema(info)
+  return not (info and (info.normalized or info.migrated))
+end
+
 local function decode_document(text)
   local document, err = codec.decode(text)
   if document == nil then
@@ -47,8 +51,14 @@ function M.load(context)
   if not revision then return nil, disk_err end
   if revision.disk and revision.disk.exists and revision.disk.type == "file" then
     local disk_found = discover(source.logical_text(revision.disk.text, context))
-    local disk_model = disk_found and disk_found.kind == "found" and schema.load(disk_found.block.document) or nil
-    revision.durable_model_matches = disk_model ~= nil and codec.deep_equal(disk_model, model)
+    local disk_model, disk_info
+    if disk_found and disk_found.kind == "found" then
+      disk_model, disk_info = schema.load(disk_found.block.document)
+    end
+    revision.durable_model_matches = disk_model ~= nil
+      and unchanged_by_schema(info)
+      and unchanged_by_schema(disk_info)
+      and codec.deep_equal(disk_model, model)
   else
     revision.durable_model_matches = false
   end

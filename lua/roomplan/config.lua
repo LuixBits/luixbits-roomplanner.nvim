@@ -1,6 +1,7 @@
 local util = require("roomplan.util")
 local schema = require("roomplan.schema")
 local workspace_defaults = require("roomplan.ui.workspace_defaults")
+local canvas_detail = require("roomplan.canvas_detail")
 
 local M = {}
 
@@ -38,7 +39,7 @@ local defaults = {
     pan_step_cells = 5,
     pan_coarse_step_cells = 20,
     show_grid = false,
-    show_dimensions = true,
+    detail_level = canvas_detail.default,
     show_compass = true,
   },
   snapping = {
@@ -154,6 +155,9 @@ function M.setup(opts)
   end
   if candidate.canvas.unicode ~= "auto" and candidate.canvas.unicode ~= "unicode" and candidate.canvas.unicode ~= "ascii" then
     errors[#errors + 1] = "canvas.unicode: expected auto, unicode, or ascii"
+  end
+  if not canvas_detail.valid(candidate.canvas.detail_level) then
+    errors[#errors + 1] = "canvas.detail_level: expected high, middle, or none"
   end
   if candidate.ui.workspace.layout ~= "auto" and candidate.ui.workspace.layout ~= "wide"
     and candidate.ui.workspace.layout ~= "medium" and candidate.ui.workspace.layout ~= "compact" then

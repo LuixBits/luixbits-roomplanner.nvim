@@ -22,6 +22,7 @@ interactive terminal view.
 
 - [Rooms and alignment](planning/rooms.md)
 - [Doors and shared walls](planning/doors.md)
+- [Windows and outlets](planning/windows-and-outlets.md)
 - [Furniture and project templates](planning/furniture.md)
 - [Personal and team furniture catalogues](planning/furniture-catalogs.md)
 
@@ -47,4 +48,3 @@ interactive terminal view.
 
 The complete chapter order is maintained in [SUMMARY.md](SUMMARY.md). Every
 chapter links back here and to its neighbouring chapters.
-

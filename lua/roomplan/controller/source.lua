@@ -26,9 +26,13 @@ function M.attach(controller)
     return source_context.reattach_existing(controller, context, existing)
   end
 
-  local function attach_loaded(context, adapter, loaded_model, revision, locator, info)
-    local durable = revision.durable_model_matches ~= false
+  local function load_is_durable(revision, info)
+    return revision.durable_model_matches == true
       and not (info and (info.normalized or info.migrated))
+  end
+
+  local function attach_loaded(context, adapter, loaded_model, revision, locator, info)
+    local durable = load_is_durable(revision, info)
     local session, err = require("roomplan.session").new(
       session_source(context, adapter, revision, locator),
       loaded_model,
@@ -256,7 +260,7 @@ function M.attach(controller)
     if not is_session(session) or session.closed then return end
     session.source_needs_recheck = false
     local adapter = storage.adapter(session.source.adapter)
-    local loaded, revision, locator = adapter.load(session.source)
+    local loaded, revision, locator, info = adapter.load(session.source)
     if not loaded then
       session.durable_source_matches_savepoint = false
       session.source_conflicted = true
@@ -274,7 +278,8 @@ function M.attach(controller)
       session.source.revision = revision
       session.source.locator = locator
       session.source_conflicted = false
-      session.durable_source_matches_savepoint = revision.durable_model_matches == true
+      session.durable_source_matches_savepoint = load_is_durable(revision, info)
+      session.normalization_info = info
       session.source_error = nil
       session.retained_model_at_risk = false
       session:update_guard()
@@ -284,7 +289,8 @@ function M.attach(controller)
       session.source.revision = revision
       session.source.locator = locator
       session.source_conflicted = false
-      session.durable_source_matches_savepoint = revision.durable_model_matches == true
+      session.durable_source_matches_savepoint = load_is_durable(revision, info)
+      session.normalization_info = info
       session.retained_model_at_risk = false
       session:update_guard()
       return true
@@ -292,7 +298,7 @@ function M.attach(controller)
     session.source_conflicted = true
     session.durable_source_matches_savepoint = false
     session.retained_model_at_risk = not model.deep_equal(loaded, session:model())
-      or revision.durable_model_matches == false
+      or not load_is_durable(revision, info)
     session.source_external_model = loaded
     session.source_external_revision = revision
     session:update_guard()
@@ -303,7 +309,7 @@ function M.attach(controller)
   function controller.source_written(session)
     if not is_session(session) or session.closed then return end
     local adapter = storage.adapter(session.source.adapter)
-    local loaded, revision, locator = adapter.load(session.source)
+    local loaded, revision, locator, info = adapter.load(session.source)
     if not loaded then
       session.source_conflicted = true
       session.durable_source_matches_savepoint = false
@@ -316,11 +322,12 @@ function M.attach(controller)
     local staged_model = staged_id and session.history:model_at_revision(staged_id) or nil
     local expected = session.source.revision
     if not staged_id and expected and expected.hash == revision.hash
-      and revision.durable_model_matches and not session:source_buffer_modified() then
+      and load_is_durable(revision, info) and not session:source_buffer_modified() then
       session.source.revision = revision
       session.source.locator = locator
       session.source_conflicted = false
       session.durable_source_matches_savepoint = true
+      session.normalization_info = info
       session.retained_model_at_risk = false
       session.source_error = nil
       session:update_guard()
@@ -328,13 +335,14 @@ function M.attach(controller)
       return true
     end
     if staged_model and model.deep_equal(loaded, staged_model)
-      and revision.durable_model_matches and not session:source_buffer_modified() then
+      and load_is_durable(revision, info) and not session:source_buffer_modified() then
       local marked = session.history:mark_saved_revision(staged_id)
       session.source.revision = revision
       session.source.locator = locator
       session.pending_disk_write = false
       session.source_conflicted = false
       session.durable_source_matches_savepoint = true
+      session.normalization_info = info
       session.retained_model_at_risk = false
       session.source_error = nil
       if staged_id == session:revision_id() then session.buffer_payload_revision_id = nil end
@@ -418,9 +426,9 @@ function M.attach(controller)
       if not opts.noninteractive then notify_error(revision) end
       return finish(callback, nil, revision)
     end
-    local durable = revision.durable_model_matches ~= false
-      and not (info and (info.normalized or info.migrated))
+    local durable = load_is_durable(revision, info)
     resolved:reset(loaded, revision, locator, { durable = durable })
+    resolved.normalization_info = info
     controller.validate(resolved)
     controller.refresh(resolved)
     return finish(callback, resolved)

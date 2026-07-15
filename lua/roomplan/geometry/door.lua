@@ -1,8 +1,8 @@
 local adjacency = require("roomplan.geometry.adjacency")
-local interval = require("roomplan.geometry.interval")
 local number = require("roomplan.geometry.number")
 local sector_geometry = require("roomplan.geometry.sector")
 local segment = require("roomplan.geometry.segment")
+local wall_attachment = require("roomplan.geometry.wall_attachment")
 
 local M = {}
 
@@ -14,45 +14,16 @@ local function xy(value)
   return value.x or value[1], value.y or value[2]
 end
 
-function M.edge_length(room, side)
-  if side == "north" or side == "south" then return room.size_mm[1] end
-  if side == "east" or side == "west" then return room.size_mm[2] end
-  return nil
+function M.edge_length(room, side, part_id)
+  return wall_attachment.edge_length(room, side, part_id)
 end
 
 function M.aperture(room, door)
-  local edge, err = adjacency.edge(room, door.side)
-  if not edge then return nil, err end
-  local start_mm = edge.start_mm + door.offset_mm
-  local finish_mm = start_mm + door.width_mm
-  local p0, p1
-  if edge.axis == "x" then
-    p0, p1 = point(start_mm, edge.fixed_mm), point(finish_mm, edge.fixed_mm)
-  else
-    p0, p1 = point(edge.fixed_mm, start_mm), point(edge.fixed_mm, finish_mm)
-  end
-  return {
-    id = door.id,
-    room_id = door.room_id,
-    side = door.side,
-    axis = edge.axis,
-    fixed_mm = edge.fixed_mm,
-    start_mm = start_mm,
-    finish_mm = finish_mm,
-    edge_start_mm = edge.start_mm,
-    edge_finish_mm = edge.finish_mm,
-    p0 = p0,
-    p1 = p1,
-    within_edge = interval.contains_interval(edge.start_mm, edge.finish_mm, start_mm, finish_mm),
-  }
-end
-
-local function same_wall(a, b)
-  return a.axis == b.axis and a.fixed_mm == b.fixed_mm
+  return wall_attachment.aperture(room, door)
 end
 
 function M.apertures_overlap(a, b)
-  return same_wall(a, b) and interval.overlaps_positive(a.start_mm, a.finish_mm, b.start_mm, b.finish_mm)
+  return wall_attachment.apertures_overlap(a, b)
 end
 
 local function rotated_endpoint(hinge, vector_x, vector_y, radians)
@@ -88,14 +59,7 @@ function M.swing(room, door)
 end
 
 function M.connection(room, other_room, door)
-  local aperture = M.aperture(room, door)
-  if not aperture then return nil end
-  local record = adjacency.between(room, other_room)
-  if not record or record.a_side ~= door.side then return nil end
-  if not interval.contains_interval(record.start_mm, record.finish_mm, aperture.start_mm, aperture.finish_mm) then
-    return nil
-  end
-  return record
+  return wall_attachment.connection(room, other_room, door)
 end
 
 function M.interferes(room_a, door_a, room_b, door_b)

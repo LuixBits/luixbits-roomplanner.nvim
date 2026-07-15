@@ -1,7 +1,27 @@
 -- Pure presentation layer: canonical model/session state in, display-only view
 -- models out.  No returned table is part of the saved model.
 
+local footprint = require("roomplan.geometry.footprint")
+local canvas_detail = require("roomplan.canvas_detail")
+local outlet_types = require("roomplan.outlet_types")
+
 local M = {}
+
+local function footprint_info(value)
+  local shape = value and footprint.from_persisted(value) or nil
+  if not shape then return nil end
+  local bounds = footprint.bounds(shape)
+  local area = footprint.area(shape)
+  local perimeter = footprint.perimeter(shape)
+  if not bounds or not area or not perimeter then return nil end
+  return {
+    width = bounds.width,
+    depth = bounds.depth,
+    area = area,
+    perimeter = perimeter,
+    parts = #(value.parts or {}),
+  }
+end
 
 local function model_of(value)
   if type(value) ~= "table" then return {} end
@@ -92,11 +112,12 @@ local function room_lookup(model)
   return result
 end
 
----Build hierarchical object rows. Rooms retain model order; their doors are
----listed before furniture, also in canonical model order.
+---Build hierarchical object rows. Rooms retain model order; wall attachments
+---are listed before furniture, also in canonical model order.
 function M.objects(value, opts)
   opts = opts or {}
   local model = model_of(value)
+  local compound_geometry = model.schema_version >= 2
   local selection = selection_of(value, opts)
   local diagnostics = diagnostics_of(value, opts)
   local indexed = issue_index(diagnostics)
@@ -128,15 +149,43 @@ function M.objects(value, opts)
       object = door,
     })
   end
+  for _, window in ipairs(model.windows or {}) do
+    local destination = rooms[window.connects_to_room_id]
+    local destination_name = destination and destination.name or "outside"
+    child(window.room_id, {
+      kind = "window",
+      id = window.id,
+      name = window.id,
+      room_name = rooms[window.room_id] and rooms[window.room_id].name or window.room_id,
+      label = string.format("%s window → %s", window.side or "Wall", destination_name),
+      detail = short_mm(window.width_mm),
+      object = window,
+    })
+  end
+  for _, outlet in ipairs(model.outlets or {}) do
+    local outlet_name = outlet_types.label(outlet.outlet_type) or outlet.outlet_type or "Outlet"
+    child(outlet.room_id, {
+      kind = "outlet",
+      id = outlet.id,
+      name = outlet_name .. " outlet",
+      room_name = rooms[outlet.room_id] and rooms[outlet.room_id].name or outlet.room_id,
+      label = outlet_name .. " outlet",
+      detail = string.format("%d slot%s · %s", outlet.slots or 0,
+        outlet.slots == 1 and "" or "s", outlet.side or "wall"),
+      object = outlet,
+    })
+  end
   for _, furniture in ipairs(model.furniture or {}) do
-    local size = furniture.size_mm or {}
+    local geometry = compound_geometry and footprint_info(furniture.footprint) or nil
+    local size = furniture.size_mm or { geometry and geometry.width, geometry and geometry.depth, furniture.height_mm }
     child(furniture.room_id, {
       kind = "furniture",
       id = furniture.id,
       name = furniture.name or furniture.id,
       room_name = rooms[furniture.room_id] and rooms[furniture.room_id].name or furniture.room_id,
       label = furniture.name or furniture.id or "Furniture",
-      detail = string.format("%s × %s", short_mm(size[1]), short_mm(size[2])),
+      detail = string.format("%s × %s%s", short_mm(size[1]), short_mm(size[2]),
+        geometry and geometry.parts > 1 and string.format(" · %d parts", geometry.parts) or ""),
       object = furniture,
     })
   end
@@ -153,13 +202,15 @@ function M.objects(value, opts)
   }
 
   for _, room in ipairs(model.rooms or {}) do
-    local size = room.size_mm or {}
+    local geometry = compound_geometry and footprint_info(room.footprint) or nil
+    local size = room.size_mm or { geometry and geometry.width, geometry and geometry.depth }
     local room_row = {
       kind = "room",
       id = room.id,
       name = room.name or room.id,
       label = room.name or room.id or "Room",
-      detail = string.format("%s × %s", short_mm(size[1]), short_mm(size[2])),
+      detail = string.format("%s × %s%s", short_mm(size[1]), short_mm(size[2]),
+        geometry and geometry.parts > 1 and string.format(" · %d parts", geometry.parts) or ""),
       object = room,
       depth = 0,
       expandable = #(children[room.id] or {}) > 0,
@@ -183,13 +234,16 @@ function M.objects(value, opts)
   end
 
   for _, template in ipairs(model.custom_templates or {}) do
-    local size = template.default_size_mm or {}
+    local geometry = compound_geometry and footprint_info(template.default_footprint) or nil
+    local size = template.default_size_mm
+      or { geometry and geometry.width, geometry and geometry.depth, template.default_height_mm }
     local row = {
       kind = "template",
       id = template.id,
       name = template.name or template.id,
       label = template.name or template.id or "Custom",
-      detail = string.format("%s × %s × %s", short_mm(size[1]), short_mm(size[2]), short_mm(size[3])),
+      detail = string.format("%s × %s × %s%s", short_mm(size[1]), short_mm(size[2]), short_mm(size[3]),
+        geometry and geometry.parts > 1 and string.format(" · %d parts", geometry.parts) or ""),
       object = template,
       depth = 0,
       selected = selected(selection, "template", template.id),
@@ -206,8 +260,9 @@ function M.objects(value, opts)
     if matches_filter(row, query) then rows[#rows + 1] = row end
   end
 
-  local summary = string.format("%d rooms · %d doors · %d items",
-    #(model.rooms or {}), #(model.doors or {}), #(model.furniture or {}))
+  local summary = string.format("%d rooms · %d doors · %d windows · %d outlets · %d items",
+    #(model.rooms or {}), #(model.doors or {}), #(model.windows or {}),
+    #(model.outlets or {}), #(model.furniture or {}))
   if #(model.custom_templates or {}) > 0 then
     summary = summary .. string.format(" · %d templates", #model.custom_templates)
   end
@@ -217,6 +272,8 @@ function M.objects(value, opts)
     counts = {
       rooms = #(model.rooms or {}),
       doors = #(model.doors or {}),
+      windows = #(model.windows or {}),
+      outlets = #(model.outlets or {}),
       furniture = #(model.furniture or {}),
       templates = #(model.custom_templates or {}),
     },
@@ -256,6 +313,8 @@ local function find(model, selection)
   if not selection then return nil end
   local collection = selection.kind == "room" and model.rooms
     or selection.kind == "door" and model.doors
+    or selection.kind == "window" and model.windows
+    or selection.kind == "outlet" and model.outlets
     or selection.kind == "furniture" and model.furniture
     or selection.kind == "template" and model.custom_templates
   for _, object in ipairs(collection or {}) do
@@ -284,6 +343,7 @@ end
 function M.properties(value, opts)
   opts = opts or {}
   local model = model_of(value)
+  local compound_geometry = model.schema_version >= 2
   local selection = selection_of(value, opts)
   local diagnostics = diagnostics_of(value, opts)
   local object = find(model, selection)
@@ -295,6 +355,7 @@ function M.properties(value, opts)
     groups = {
       { id = "summary", title = "Summary", default_expanded = true, fields = {
         field("Rooms", #(model.rooms or {})), field("Doors", #(model.doors or {})),
+        field("Windows", #(model.windows or {})), field("Outlets", #(model.outlets or {})),
         field("Furniture", #(model.furniture or {})), field("Units", model.units or "mm"),
       } },
       { id = "grid", title = "Grid", fields = {
@@ -317,39 +378,83 @@ function M.properties(value, opts)
   end
 
   if selection.kind == "room" then
-    local origin, size = object.origin_mm or {}, object.size_mm or {}
+    local origin = object.origin_mm or {}
+    local compound = compound_geometry and footprint_info(object.footprint) or nil
+    local size = object.size_mm or { compound and compound.width, compound and compound.depth }
     groups[#groups + 1] = { id = "geometry", title = "Geometry", fields = {
       metric("X", origin[1]), metric("Y", origin[2]),
       metric("Width", size[1]), metric("Depth", size[2]),
-      field("Area", size[1] and size[2] and string.format("%.2f m²", size[1] * size[2] / 1000000) or "-"),
+      field("Area", compound and string.format("%.2f m²", compound.area / 1000000)
+        or (size[1] and size[2] and string.format("%.2f m²", size[1] * size[2] / 1000000) or "-")),
+      metric("Perimeter", compound and compound.perimeter
+        or (size[1] and size[2] and 2 * (size[1] + size[2]) or nil)),
     } }
+    if compound then
+      groups[#groups].fields[#groups[#groups].fields + 1] = field("Parts", compound.parts)
+    end
   elseif selection.kind == "furniture" then
-    local center, size = object.center_mm or {}, object.size_mm or {}
+    local center = object.center_mm or object.position_mm or {}
+    local position_label = object.position_mm and "Position" or "Centre"
+    local compound = compound_geometry and footprint_info(object.footprint) or nil
+    local size = object.size_mm
+      or { compound and compound.width, compound and compound.depth, object.height_mm }
     groups[#groups + 1] = { id = "geometry", title = "Geometry", fields = {
-      field("Room", object.room_id), metric("Centre X", center[1]), metric("Centre Y", center[2]),
+      field("Room", object.room_id), metric(position_label .. " X", center[1]), metric(position_label .. " Y", center[2]),
       field("Rotation", tostring(object.rotation_deg or 0) .. "°"),
       metric("Width", size[1]), metric("Depth", size[2]), metric("Height", size[3]),
     } }
+    if compound then
+      groups[#groups].fields[#groups[#groups].fields + 1] = field("Parts", compound.parts)
+    end
   elseif selection.kind == "door" then
     local destination = type(object.connects_to_room_id) == "string" and object.connects_to_room_id or "outside"
     groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
       field("Room", object.room_id), field("Wall", object.side),
       metric("Offset", object.offset_mm), metric("Width", object.width_mm),
     } }
+    if compound_geometry and object.part_id then
+      table.insert(groups[#groups].fields, 2, field("Part", object.part_id))
+    end
     groups[#groups + 1] = { id = "connection", title = "Connection", fields = {
       field("Destination", destination), field("Hinge", object.hinge),
       field("Opens into", object.opens_into), field("Angle", tostring(object.open_angle_deg or 90) .. "°"),
     } }
+  elseif selection.kind == "window" then
+    local destination = type(object.connects_to_room_id) == "string" and object.connects_to_room_id or "outside"
+    groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
+      field("Room", object.room_id), field("Wall", object.side),
+      metric("Offset", object.offset_mm), metric("Width", object.width_mm),
+    } }
+    if object.part_id then table.insert(groups[#groups].fields, 2, field("Part", object.part_id)) end
+    groups[#groups + 1] = { id = "connection", title = "Connection", fields = {
+      field("Destination", destination),
+    } }
+  elseif selection.kind == "outlet" then
+    groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
+      field("Room", object.room_id), field("Wall", object.side), metric("Offset", object.offset_mm),
+    } }
+    if object.part_id then table.insert(groups[#groups].fields, 2, field("Part", object.part_id)) end
+    groups[#groups + 1] = { id = "specification", title = "Specification", fields = {
+      field("Type", outlet_types.label(object.outlet_type) or object.outlet_type), field("Slots", object.slots),
+    } }
   elseif selection.kind == "template" then
-    local size = object.default_size_mm or {}
+    local compound = compound_geometry and footprint_info(object.default_footprint) or nil
+    local size = object.default_size_mm
+      or { compound and compound.width, compound and compound.depth, object.default_height_mm }
     groups[#groups + 1] = { id = "defaults", title = "Defaults", fields = {
       field("Category", object.category), metric("Width", size[1]), metric("Depth", size[2]), metric("Height", size[3]),
     } }
+    if compound then
+      groups[#groups].fields[#groups[#groups].fields + 1] = field("Parts", compound.parts)
+    end
   end
   groups[#groups + 1] = { id = "advanced", title = "Advanced", fields = { field("Stable ID", object.id) } }
 
   return {
-    title = object.name or object.id,
+    title = object.name
+      or (selection.kind == "window" and "Window")
+      or (selection.kind == "outlet" and ((outlet_types.label(object.outlet_type) or "Outlet") .. " outlet"))
+      or object.id,
     subtitle = selection.kind,
     kind = selection.kind,
     id = object.id,
@@ -388,6 +493,7 @@ function M.context(value, ui_state)
     dirty = type(value) == "table" and type(value.model_dirty) == "function" and value:model_dirty() or false,
     conflicted = type(value) == "table" and value.source_conflicted == true or false,
     snap_enabled = type(value) ~= "table" or value.snap_enabled ~= false,
+    detail_level = type(value) == "table" and value.canvas_detail_level or canvas_detail.default,
     cursor_world = ui_state and ui_state.cursor_world or nil,
     zoom = zoom,
     view_rotation = viewport and (tonumber(viewport.rotation_quarters) or 0) % 4 or 0,

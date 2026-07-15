@@ -4,6 +4,23 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Activated schema v3 with first-class wall windows and typed 1–32-slot
+  outlets, sequential v1/v2 migration, wall-aware forms/actions/validation,
+  canvas representation, direct `W`/`O` keys, and Add-palette `w`/`o` choices.
+- Replaced bracket-based view rotation and issue navigation defaults with
+  reachable `Alt-h/l` and `Alt-k/j` directional mappings.
+- Added session-local `high`, `middle`, and `none` canvas detail levels for
+  exterior-wall, furniture, door, and window dimensions, with `t`, an Ex
+  command, a Lua API, and a `middle` default.
+- Added direct L-shaped room creation and editing with configurable leg
+  dimensions, all four missing-corner orientations, and compact room area,
+  perimeter, bounds, and part-count details.
+- Activated schema v2 with connected rectangular-union footprints for compound
+  rooms, furniture, and project templates; added exact seam-free geometry,
+  part-aware doors, migration fixtures, and safe compound rendering/actions.
+- Schema-v1/v2 JSON and Norg plans now migrate in memory without changing
+  source bytes; the first schema-v3 rewrite requires an explicit save and
+  remains protected from autosave and reconciliation shortcuts.
 - Initial strict schema-v1 model, JSON codec, metric parser, semantic actions,
   bounded history, geometry, snapping, door swing calculations, and validation.
 - Interactive Unicode/ASCII canvas with hit testing, viewport controls,

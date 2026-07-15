@@ -8,20 +8,26 @@ coordinates, positive dimensions, supported rotations/enums, and required
 fields. Structurally invalid JSON does not become an editable model, and
 structural model errors can never be force-saved.
 
+For schema-v3 wall features this includes the required owner/part/side fields,
+positive window widths, supported outlet types, and outlet `slots` from 1
+through 32.
+
 Layout validation runs on a safely loaded model and reports:
 
-- missing room references and unavailable furniture templates;
+- missing room/part/connection references and unavailable furniture templates;
 - configured dimension, coordinate, and plan-span limits;
 - room and furniture overlap, and furniture outside its owner room;
-- door apertures outside walls, invalid/missing connections, obstructed
-  exterior openings, and overlapping openings;
+- door/window apertures outside exterior walls, invalid/missing connections,
+  obstructed openings, and overlapping door/window apertures;
+- outlets outside their exterior wall, on an internal seam, or at an ambiguous
+  edge endpoint;
 - door swing intersections with furniture, walls, and other doors.
 
 Broken layout invariants are errors. An unavailable imported template and door
 swing interference are warnings; warnings do not block saving.
 
 Run `:RoomPlanValidate` or press `v` to recompute diagnostics and focus Issues.
-Use `[e` / `]e` to move through them, or select an Issues row to focus its
+Use `Alt-k` / `Alt-j` to move through them, or select an Issues row to focus its
 object. Details shows diagnostics for the current selection.
 
 ## Invalid repair drafts

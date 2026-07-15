@@ -1,8 +1,26 @@
 local actions = require("roomplan.actions")
 local geometry = require("roomplan.geometry")
 local json = require("roomplan.codec.json")
-local model = require("roomplan.model")
+local current_model = require("roomplan.model")
+local schema = require("roomplan.schema")
 local validate = require("roomplan.validate")
+
+-- This file is the schema-v1 geometry compatibility suite. Compound/current-
+-- schema behavior lives in the focused compound specs, so keep these fixtures
+-- explicitly on v1 instead of making them follow CURRENT_VERSION implicitly.
+local V1 = { schema_version = 1 }
+local model = setmetatable({
+  new = function(options)
+    local value, err = current_model.new(options)
+    if not value then return nil, err end
+    value.schema_version = 1
+    return schema.normalize_versioned(value)
+  end,
+  new_room = function(fields) return current_model.new_room(fields, V1) end,
+  new_door = function(fields) return current_model.new_door(fields, V1) end,
+  new_furniture = function(fields) return current_model.new_furniture(fields, V1) end,
+  new_custom_template = function(fields) return current_model.new_custom_template(fields, V1) end,
+}, { __index = current_model })
 
 local function base_model()
   return assert(model.new({ name = "Geometry test" }))
@@ -30,6 +48,90 @@ local function approximate(actual, expected, epsilon)
 end
 
 describe("pure geometry", function()
+  it("normalizes v1 rectangles into exact one-part footprints", function()
+    local owner = room("room-owner", -100, 25, 301, 199)
+    local room_shape = assert(geometry.footprint.from_room(owner))
+    assert_equal("rect_union", room_shape.kind)
+    assert_equal(1, #room_shape.parts)
+    assert_equal({
+      id = "part-main", left2 = -200, bottom2 = 50, right2 = 402, top2 = 448,
+    }, room_shape.parts[1])
+    assert_equal({
+      left2 = -200,
+      bottom2 = 50,
+      right2 = 402,
+      top2 = 448,
+      width2 = 602,
+      depth2 = 398,
+      center_x2 = 101,
+      center_y2 = 249,
+    }, assert(geometry.footprint.bounds2(room_shape)))
+
+    local item = model.new_furniture({
+      id = "furniture-odd",
+      room_id = owner.id,
+      name = "Odd",
+      category = "test",
+      center_mm = { -10, 11 },
+      size_mm = { 5, 7, 99 },
+      rotation_deg = 0,
+    })
+    local expected_sizes = {
+      [0] = { 10, 14 },
+      [90] = { 14, 10 },
+      [180] = { 10, 14 },
+      [270] = { 14, 10 },
+    }
+    for _, rotation in ipairs({ 0, 90, 180, 270 }) do
+      item.rotation_deg = rotation
+      local shape = assert(geometry.footprint.from_furniture(owner, item))
+      local bounds = assert(geometry.footprint.bounds2(shape))
+      assert_equal(expected_sizes[rotation][1], bounds.width2)
+      assert_equal(expected_sizes[rotation][2], bounds.depth2)
+      assert_equal(2 * (owner.origin_mm[1] + item.center_mm[1]), bounds.center_x2)
+      assert_equal(2 * (owner.origin_mm[2] + item.center_mm[2]), bounds.center_y2)
+      local legacy = geometry.rect.furniture_rect2(owner, item)
+      assert_equal(bounds.left2, legacy.left2)
+      assert_equal(bounds.right2, legacy.right2)
+      assert_equal(bounds.bottom2, legacy.bottom2)
+      assert_equal(bounds.top2, legacy.top2)
+      assert_equal(bounds.center_x2, legacy.center_x2)
+      assert_equal(bounds.center_y2, legacy.center_y2)
+    end
+
+    local asymmetric = assert(geometry.footprint.rectangle2(0, 0, 8, 4))
+    local rotated = assert(geometry.footprint.rotate_quarter(asymmetric, 90, 0, 0))
+    assert_equal({ left2 = -4, bottom2 = 0, right2 = 0, top2 = 8 }, rotated.parts[1])
+    local translated = assert(geometry.footprint.translate2(rotated, 10, -6))
+    assert_equal({ left2 = 6, bottom2 = -6, right2 = 10, top2 = 2 }, translated.parts[1])
+  end)
+
+  it("applies exact rect-union containment and contact semantics", function()
+    local outer = assert(geometry.footprint.normalize({
+      kind = "rect_union",
+      parts = {
+        { left2 = 0, bottom2 = 0, right2 = 10, top2 = 20 },
+        { left2 = 10, bottom2 = 0, right2 = 20, top2 = 20 },
+      },
+    }))
+    local across_seam = assert(geometry.footprint.rectangle2(5, 5, 15, 15))
+    local touching = assert(geometry.footprint.rectangle2(20, 5, 24, 15))
+    local overlapping = assert(geometry.footprint.rectangle2(19, 5, 24, 15))
+    assert_true(geometry.footprint.contains(outer, across_seam))
+    assert_equal(false, geometry.footprint.overlaps_positive(outer, touching))
+    assert_true(geometry.footprint.overlaps_positive(outer, overlapping))
+
+    local invalid, err = geometry.footprint.normalize({
+      kind = "rect_union",
+      parts = {
+        { left2 = 0, bottom2 = 0, right2 = 10, top2 = 10 },
+        { left2 = 5, bottom2 = 5, right2 = 15, top2 = 15 },
+      },
+    })
+    assert_equal(nil, invalid)
+    assert_equal("FOOTPRINT_PART_OVERLAP", err.code)
+  end)
+
   it("distinguishes boundary contact from positive overlap", function()
     local a = geometry.rect.new(0, 0, 100, 100)
     local touching = geometry.rect.new(100, 0, 50, 50)
@@ -55,6 +157,35 @@ describe("pure geometry", function()
     bounds = geometry.rect.furniture_rect2(owner, item)
     assert_equal(bounds.right2 - bounds.left2, 14)
     assert_equal(bounds.top2 - bounds.bottom2, 10)
+  end)
+
+  it("keeps the rectangle facade tolerant for repair geometry", function()
+    local owner = {
+      id = "room-repair",
+      origin_mm = { 0.25, -0.5 },
+      size_mm = { 10.5, 20.25 },
+    }
+    assert_equal({
+      left = 0.25,
+      bottom = -0.5,
+      right = 10.75,
+      top = 19.75,
+      width = 10.5,
+      depth = 20.25,
+    }, geometry.rect.from_room(owner))
+    local item = {
+      center_mm = { 5, 6 },
+      size_mm = { 7, 9, 10 },
+      rotation_deg = 45,
+    }
+    assert_equal({
+      left2 = 3.5,
+      right2 = 17.5,
+      bottom2 = 2,
+      top2 = 20,
+      center_x2 = 10.5,
+      center_y2 = 11,
+    }, geometry.rect.furniture_rect2(owner, item))
   end)
 
   it("rounds parity-mismatched centre alignment away from zero", function()
@@ -317,6 +448,30 @@ describe("structured validation", function()
     assert_true((codes(diagnostics).PLAN_LIMIT_EXCEEDED or 0) >= 3)
     assert_equal(summary.structural_errors, 0)
   end)
+
+  it("reports exact geometry range failures without crashing", function()
+    local limit = 2 ^ 50 - 1
+    local value = base_model()
+    add(value, "rooms", room("room-a", limit, 0, 100, 100))
+    add(value, "furniture", model.new_furniture({
+      id = "furniture-a", room_id = "room-a", template_id = "builtin:chair",
+      name = "Chair", category = "seating", center_mm = { limit, 50 },
+      size_mm = { 100, 100, 100 }, rotation_deg = 0,
+    }))
+
+    assert_true(schema.validate_versioned(value))
+    local diagnostics, summary = validate.run(value)
+    assert_equal(codes(diagnostics).GEOMETRY_RANGE, 1)
+    assert_equal(summary.structural_errors, 0)
+    assert_true(summary.errors >= 1)
+
+    local snapped = geometry.snapping.snap_furniture(value.rooms[1], value.furniture[1], {}, {}, {
+      tolerance_mm = 100,
+    })
+    assert_equal(false, snapped.snapped)
+    assert_equal(limit, snapped.center_mm[1])
+    assert_equal("FOOTPRINT_RANGE", snapped.geometry_error.code)
+  end)
 end)
 
 describe("atomic actions", function()
@@ -366,7 +521,7 @@ describe("atomic actions", function()
     assert_true(json.is_object(changed.rooms[1].vendor))
     assert_true(json.is_array(changed.rooms[1].vendor.flags))
     assert_true(json.is_object(changed.rooms[1].vendor.empty))
-    assert_true(model.encode(changed) ~= nil)
+    assert_true(json.encode(changed) ~= nil)
   end)
 
   it("does not mutate input and blocks or records forced room overlap", function()
@@ -488,6 +643,6 @@ describe("atomic actions", function()
     assert_equal(75, value.settings.grid_mm)
     assert_equal(150, value.settings.normal_step_mm)
     assert_true(json.is_decimal(value.settings.default_wall_thickness_mm))
-    assert_true(model.encode(value) ~= nil)
+    assert_true(json.encode(value) ~= nil)
   end)
 end)

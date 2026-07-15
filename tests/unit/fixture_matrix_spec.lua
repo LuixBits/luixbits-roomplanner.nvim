@@ -20,17 +20,27 @@ end
 
 describe("release fixture matrix", function()
   it("loads the valid standalone fixtures", function()
-    for _, name in ipairs({ "empty.roomplan.json", "acceptance.roomplan.json" }) do
-      local plan, err = model.decode(fixture(name))
-      assert_true(plan ~= nil, name .. ": " .. vim.inspect(err))
+    local cases = {
+      { name = "empty.roomplan.json", migrated = true },
+      { name = "acceptance.roomplan.json", migrated = true },
+      { name = "compound-v2.roomplan.json", migrated = true },
+      { name = "windows-outlets-v3.roomplan.json", migrated = false },
+    }
+    for _, case in ipairs(cases) do
+      local plan, info = model.decode(fixture(case.name))
+      assert_true(plan ~= nil, case.name .. ": " .. vim.inspect(info))
+      assert_equal(3, plan.schema_version)
+      assert_equal(case.migrated, info.migrated)
       local _, summary = validate.run(plan)
-      assert_true(summary.valid, name)
+      assert_true(summary.valid, case.name)
     end
   end)
 
   it("keeps repair drafts structurally loadable while reporting layout errors", function()
-    local plan, err = model.decode(fixture("invalid-layout.roomplan.json"))
-    assert_true(plan ~= nil, vim.inspect(err))
+    local plan, info = model.decode(fixture("invalid-layout.roomplan.json"))
+    assert_true(plan ~= nil, vim.inspect(info))
+    assert_equal(3, plan.schema_version)
+    assert_true(info.migrated)
     local diagnostics, summary = validate.run(plan)
     local codes = diagnostic_codes(diagnostics)
     assert_true(codes.ROOM_OVERLAP)
@@ -50,8 +60,10 @@ describe("release fixture matrix", function()
   end)
 
   it("round-trips unknown fields and every tagged extension type", function()
-    local plan, err = model.decode(fixture("extension-fields.roomplan.json"))
-    assert_true(plan ~= nil, vim.inspect(err))
+    local plan, info = model.decode(fixture("extension-fields.roomplan.json"))
+    assert_true(plan ~= nil, vim.inspect(info))
+    assert_equal(3, plan.schema_version)
+    assert_true(info.migrated)
     local extension = plan.extensions["example.nvim"]
     assert_true(json.is_object(extension.empty_object))
     assert_true(json.is_array(extension.empty_array))
@@ -72,5 +84,6 @@ describe("release fixture matrix", function()
     assert_true(found ~= nil, vim.inspect(err))
     assert_equal("found", found.kind)
     assert_equal(false, found.block.marked)
+    assert_equal(3, found.block.document.schema_version)
   end)
 end)
