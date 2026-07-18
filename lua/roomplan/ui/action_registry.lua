@@ -68,6 +68,22 @@ local definitions = {
     key = "L", mapping = "sun_study", label = "Sun study",
     handler = "sun_study", priority = 58,
   },
+  sun_previous = {
+    key = "h", literal = true, label = "Previous step",
+    handler = "sun_step", args = { -1 }, priority = 92,
+  },
+  sun_next = {
+    key = "l", literal = true, label = "Next step",
+    handler = "sun_step", args = { 1 }, priority = 90,
+  },
+  sun_toggle_playback = {
+    key = "<Space>", literal = true, label = "Play",
+    handler = "sun_toggle", priority = 100,
+  },
+  sun_close = {
+    key = "<Esc>", mapping = "escape", label = "Close study",
+    handler = "close_sun_study", priority = 95,
+  },
   validate = { key = "v", mapping = "validate", label = "Validate", handler = "validate", args = { true }, priority = 60 },
   next_issue = { key = "<A-j>", mapping = "next_issue", label = "Next issue", handler = "next_issue", args = { 1 }, priority = 30 },
   previous_issue = { key = "<A-k>", mapping = "previous_issue", label = "Previous issue", handler = "next_issue", args = { -1 }, priority = 30 },
@@ -168,7 +184,10 @@ local group_members = {
   session = { "reload", "close" },
   workspace = { "help", "hide", "objects", "canvas", "properties", "issues" },
   form = { "previous_field", "next_field", "edit_field", "apply", "reset", "cancel" },
-  mode = { "shape_apply", "shape_previous", "shape_next", "leave_mode" },
+  mode = {
+    "shape_apply", "shape_previous", "shape_next", "leave_mode",
+    "sun_previous", "sun_next", "sun_toggle_playback", "sun_close",
+  },
   pane = {
     "activate_focused",
     "toggle_mark", "collapse_focused", "expand_focused", "filter_focused",
@@ -213,6 +232,10 @@ local friendly_keys = {
   ["<Esc>"] = "Esc",
   ["<C-s>"] = "Ctrl-s",
   ["<C-r>"] = "Ctrl-r",
+  ["<C-h>"] = "Ctrl-h",
+  ["<C-j>"] = "Ctrl-j",
+  ["<C-k>"] = "Ctrl-k",
+  ["<C-l>"] = "Ctrl-l",
   ["<Space>"] = "Space",
   ["<Tab>"] = "Tab",
   ["<S-Tab>"] = "S-Tab",
@@ -302,6 +325,8 @@ local function availability(id, ctx)
     return false, "View is already plan-up"
   elseif id == "sun_study" and ctx.mode ~= nil and ctx.mode ~= "NAV" and ctx.mode ~= "SUN STUDY" then
     return false, "Finish the current interaction first"
+  elseif id == "sun_previous" or id == "sun_next" or id == "sun_toggle_playback" or id == "sun_close" then
+    if ctx.mode ~= "SUN STUDY" then return false, "Start the sunlight study first" end
   elseif id == "activate_focused" then
     local row = ctx.focused_row
     local selectable_object = row and (row.kind == "plan" or row.id ~= nil)
@@ -326,7 +351,7 @@ function M.get(id, ctx)
   local result = clone(definition)
   result.id = id
   result.default_key = result.key
-  result.key = mappings.resolve(result.default_key, result.mapping or id, ctx.keymaps)
+  result.key = mappings.resolve(result.default_key, result.literal and nil or (result.mapping or id), ctx.keymaps)
   result.key_label = M.display_key(result.key)
   result.mapped = result.key ~= nil
   result.enabled, result.reason = availability(id, ctx)
@@ -349,12 +374,18 @@ function M.get(id, ctx)
       string.format("%s %d marked object%s", verb, ctx.marked_count or 0, ctx.marked_count == 1 and "" or "s")
   elseif id == "toggle_mark" then
     result.label = ctx.focused_row and ctx.focused_row.marked and "Unmark" or "Mark"
+  elseif id == "sun_toggle_playback" then
+    result.label = ctx.sun_study and ctx.sun_study.playing and "Pause" or "Play"
+  elseif id == "sun_study" and ctx.mode == "SUN STUDY" then
+    result.label = "Settings"
+  elseif id == "leave_mode" then
+    if ctx.mode == "RESIZE" then result.label = "Cancel resize"
+    elseif ctx.mode == "MOVE" then result.label = "Finish moving"
+    elseif ctx.mode == "PAN" then result.label = "Finish panning" end
   elseif ctx.mode == "RESIZE" then
     if id == "select" then result.label = "Select section"
     elseif id == "add" then result.label = "Add section"
     elseif id == "delete" then result.label = "Remove section" end
-  elseif id == "leave_mode" and ctx.mode == "RESIZE" then
-    result.label = "Cancel resize"
   end
   return result
 end
@@ -366,6 +397,9 @@ end
 local function ids_for(ctx)
   if ctx.form then
     return { "previous_field", "next_field", "edit_field", "apply", "reset", "cancel" }
+  end
+  if ctx.mode == "SUN STUDY" then
+    return { "sun_previous", "sun_next", "sun_toggle_playback", "sun_study", "sun_close", "help" }
   end
   if ctx.mode == "MOVE" then return { "leave_mode", "undo", "redo", "save", "help" } end
   if ctx.mode == "PAN" then return { "leave_mode", "fit", "help" } end
@@ -438,6 +472,9 @@ end
 local function primary_ids_for(ctx)
   if is_form(ctx) then
     return { "edit_field", "apply", "cancel", "help" }
+  end
+  if ctx.mode == "SUN STUDY" then
+    return { "sun_toggle_playback", "sun_close", "sun_previous", "sun_next", "sun_study", "help" }
   end
   if ctx.mode == "MOVE" then return { "leave_mode", "undo", "redo", "help" } end
   if ctx.mode == "PAN" then return { "leave_mode", "fit", "help" } end
@@ -517,6 +554,115 @@ function M.primary(ctx, opts)
     if action.id == "help" then action.count = M.more_count(ctx) end
   end
   return result
+end
+
+local function append(result, value)
+  if value then result[#result + 1] = value end
+end
+
+local function grouped_keys(ctx, entries)
+  local labels = {}
+  for _, entry in ipairs(entries) do
+    local default_key = type(entry) == "table" and entry[1] or entry
+    local semantic = type(entry) == "table" and entry[2] or nil
+    local key = mappings.resolve(default_key, semantic, ctx.keymaps)
+    if key then labels[#labels + 1] = M.display_key(key) end
+  end
+  if #labels == 0 then return nil end
+  return table.concat(labels, "/")
+end
+
+local function information(ctx, id, entries, label, priority, description)
+  local key_label = grouped_keys(ctx, entries)
+  if not key_label then return nil end
+  return {
+    id = id,
+    key = key_label,
+    key_label = key_label,
+    label = label,
+    description = description,
+    priority = priority or 50,
+    enabled = true,
+    mapped = true,
+    informational = true,
+    group = "mode",
+    group_label = groups.mode.label,
+  }
+end
+
+---Return the compact command set shared by Details and the persistent footer.
+---Composite directional hints remain informational; executable actions retain
+---their canonical registry definitions, labels, and configured mappings.
+function M.context_controls(ctx)
+  ctx = ctx or {}
+  if ctx.form then return M.primary(ctx) end
+  local mode = tostring(ctx.mode or "NAV"):gsub("_", " ")
+  if mode == "NAV" then return M.primary(ctx) end
+
+  local result = {}
+  local normal = { "h", "j", "k", "l" }
+  local coarse = { "H", "J", "K", { "L", "coarse_right" } }
+  local fine = { "<C-h>", "<C-j>", "<C-k>", "<C-l>" }
+  if mode == "SUN STUDY" then
+    for _, id in ipairs({ "sun_previous", "sun_next", "sun_toggle_playback", "sun_study", "sun_close" }) do
+      append(result, M.get(id, ctx))
+    end
+    return result
+  elseif mode == "MOVE" then
+    append(result, information(ctx, "move_normal", normal, "Move", 95,
+      "Move the selection in visible plan directions"))
+    append(result, information(ctx, "move_coarse", coarse, "Move coarsely", 90,
+      "Move by the configured coarse grid step"))
+    append(result, information(ctx, "move_fine", fine, "Move finely", 85,
+      "Move by the configured fine step"))
+    append(result, M.get("toggle_snap", ctx))
+    append(result, M.get("save", ctx))
+    append(result, M.get("leave_mode", ctx))
+    return result
+  elseif mode == "PAN" then
+    append(result, information(ctx, "pan_normal", normal, "Pan view", 95))
+    append(result, information(ctx, "pan_coarse", coarse, "Pan view coarsely", 90))
+    append(result, information(ctx, "pan_fine", fine, "Pan view finely", 85))
+    append(result, M.get("fit", ctx))
+    append(result, M.get("leave_mode", ctx))
+    return result
+  elseif mode == "RESIZE" then
+    append(result, information(ctx, "resize_normal", normal, "Choose or move edge", 95))
+    append(result, information(ctx, "resize_coarse", coarse, "Resize coarsely", 90))
+    append(result, information(ctx, "resize_fine", fine, "Resize finely", 85))
+    append(result, information(ctx, "resize_sections", { "<Tab>", "<S-Tab>" }, "Change section", 75))
+    append(result, information(ctx, "resize_parts", { "a", "d" }, "Add or remove section", 70))
+    append(result, M.get("toggle_snap", ctx))
+    append(result, M.get("shape_apply", ctx))
+    append(result, M.get("leave_mode", ctx))
+    return result
+  end
+  return M.primary(ctx)
+end
+
+function M.informational_controls(ctx)
+  local result = {}
+  for _, control in ipairs(M.context_controls(ctx)) do
+    if control.informational then result[#result + 1] = control end
+  end
+  return result
+end
+
+function M.context_title(ctx)
+  ctx = ctx or {}
+  local mode = tostring(ctx.mode or "NAV"):gsub("_", " ")
+  if mode == "SUN STUDY" then
+    local study = ctx.sun_study or {}
+    local time = study.time and (" · " .. study.time) or ""
+    return "SUN STUDY" .. time .. (study.playing and " · PLAYING" or " · PAUSED")
+  elseif mode == "RESIZE" then
+    return string.format("RESIZE · SECTION %d/%d · %s EDGE",
+      ctx.shape_section_index or 0, ctx.shape_section_count or 0,
+      tostring(ctx.shape_edge or "CHOOSE"):upper())
+  elseif mode == "MOVE" and ctx.move_feedback then
+    return "MOVE · " .. tostring(ctx.move_feedback):upper()
+  end
+  return mode
 end
 
 local function full_ids_for(ctx)

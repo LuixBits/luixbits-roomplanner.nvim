@@ -25,9 +25,10 @@ function M.configure_window(workspace, winid, role, fixed)
     "FloatBorder:" .. border,
     "CursorLine:RoomPlanWorkspaceCursorLine",
   }, ",")
-  if util.pane_titles[role] and not floating then
+  local pane_title = workspace and workspace.pane_titles and workspace.pane_titles[role] or util.pane_titles[role]
+  if pane_title and not floating then
     local title_group = active and "RoomPlanWorkspaceActiveTitle" or "RoomPlanWorkspaceInactiveTitle"
-    vim.wo[winid].winbar = string.format("%%#%s# %s %%*", title_group, util.pane_titles[role])
+    vim.wo[winid].winbar = string.format("%%#%s# %s %%*", title_group, pane_title)
   else
     vim.wo[winid].winbar = ""
   end
@@ -261,7 +262,9 @@ local function open_drawer(session, role)
     relative = "editor",
     style = "minimal",
     border = workspace.opts.border or "rounded",
-    title = " RoomPlan · " .. (util.pane_titles[role] or role:gsub("^%l", string.upper)) .. " ",
+    title = " RoomPlan · "
+      .. (workspace.pane_titles and workspace.pane_titles[role]
+        or util.pane_titles[role] or role:gsub("^%l", string.upper)) .. " ",
     title_pos = "center",
     width = pane.width,
     height = pane.height,

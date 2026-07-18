@@ -42,6 +42,13 @@ furniture position and size, or project-template defaults. Stable IDs and
 source details live in collapsed sections rather than the primary view.
 Validation messages for the selection get their own section.
 
+The heading follows the active NAV, MOVE, PAN, RESIZE, form, or SUN STUDY
+context. An always-expanded **Canvas controls** section lists the commands for
+that context, including **Finish moving**, **Finish panning**, **Cancel resize**,
+or **Close study**. These are the same resolved keys shown in the footer and
+`?`; no separate Details-only mapping table exists. When Details itself has
+focus, its first row reminds you to press `2` before using Canvas controls.
+
 Sections use drawn borders and behave like accordions: `Enter` or `Space`
 toggles the focused heading, while `h` and `l` explicitly collapse and expand.
 Use `e` when you want to edit the selected plan or object; Details itself is

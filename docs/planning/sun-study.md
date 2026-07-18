@@ -29,6 +29,9 @@ While viewing the canvas, `h` and `l` step backward and forward, `Space` pauses
 or resumes, `L` pauses and reopens the same settings, and `Esc` closes the
 study. Playback advances only across the calculated daylight interval and
 stops at sunset. These contextual controls do not add more setup keys.
+Press `3` to keep them visible in the dynamic Details pane, or `?` to see the
+same commands under **Current mode**. Details also shows the current local time
+and whether playback is running or paused.
 
 The default step is 60 minutes and each frame remains visible for 700 ms. Both
 are editable for the current popup and configurable for later studies:

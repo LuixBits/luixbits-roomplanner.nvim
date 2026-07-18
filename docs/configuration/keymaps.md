@@ -77,7 +77,9 @@ uppercase `L` coarse movement from editing modes.
 After a study moves to the canvas, contextual `h`/`l` step through time,
 `Space` plays or pauses, `L` reopens its popup, and `Esc` closes it. They reuse
 existing canvas keys only for the lifetime of the visible study and add no
-configuration entries.
+configuration entries. The dynamic Details controls, footer, and `?` all use
+this same resolved mapping data, so an existing override is displayed wherever
+the command is documented at runtime.
 
 ## Direct compound-shape resizing
 

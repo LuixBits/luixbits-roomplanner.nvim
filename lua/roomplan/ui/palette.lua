@@ -29,7 +29,10 @@ local function display_key(key)
 end
 
 local function item_line(item)
-  local key = item.palette_shortcut and ("[" .. display_key(item.palette_shortcut) .. "] ") or ""
+  local shown_key = item.informational and item.key_label
+    or item.palette_shortcut
+    or item.show_key and item.key_label
+  local key = shown_key and ("[" .. display_key(shown_key) .. "] ") or ""
   local reason = not item.enabled and ("  × " .. tostring(item.reason or "Unavailable")) or ""
   return "  " .. key .. tostring(item.label or item.id or "Action") .. reason
 end
@@ -59,6 +62,7 @@ end
 local function choose(handle, item)
   item = item or selected_item(handle)
   if not item or not handle.visible[item] then return false end
+  if item.informational then return false end
   if item.enabled == false then notify_disabled(item); return false end
   local callback = item.callback or handle.on_choice
   close(handle, "chosen")
@@ -96,7 +100,7 @@ end
 
 local function document(handle)
   local lines = { handle.title, string.rep("-", math.max(16, text_width(handle.title))), "" }
-  local row_map, item_rows, group_rows, disabled_rows, visible = {}, {}, {}, {}, {}
+  local row_map, item_rows, group_rows, disabled_rows, information_rows, visible = {}, {}, {}, {}, {}, {}
   local maximum = text_width(handle.title)
   local search_row
   if handle.searchable then
@@ -120,9 +124,13 @@ local function document(handle)
       end
       local line = item_line(item)
       lines[#lines + 1] = line
-      row_map[#lines] = item
-      item_rows[#item_rows + 1] = #lines
-      if not item.enabled then disabled_rows[#disabled_rows + 1] = #lines end
+      if item.informational then
+        information_rows[#information_rows + 1] = #lines
+      else
+        row_map[#lines] = item
+        item_rows[#item_rows + 1] = #lines
+        if not item.enabled then disabled_rows[#disabled_rows + 1] = #lines end
+      end
       maximum = math.max(maximum, text_width(line))
       if item.description and item.description ~= "" then
         local detail = "      " .. tostring(item.description)
@@ -131,7 +139,7 @@ local function document(handle)
       end
     end
   end
-  if #item_rows == 0 then
+  if #item_rows == 0 and #information_rows == 0 then
     lines[#lines + 1] = handle.query == "" and "  No actions available."
       or ("  No actions match “" .. handle.query .. "”.")
     maximum = math.max(maximum, text_width(lines[#lines]))
@@ -151,7 +159,8 @@ local function document(handle)
   maximum = math.max(maximum, text_width(footer))
   return {
     lines = lines, row_map = row_map, item_rows = item_rows, group_rows = group_rows,
-    disabled_rows = disabled_rows, visible = visible, maximum = maximum, search_row = search_row,
+    disabled_rows = disabled_rows, information_rows = information_rows,
+    visible = visible, maximum = maximum, search_row = search_row,
   }
 end
 
@@ -179,7 +188,13 @@ local function render(handle)
   for _, row in ipairs(view.disabled_rows) do
     vim.api.nvim_buf_add_highlight(handle.bufnr, highlight_namespace, "Comment", row - 1, 0, -1)
   end
-  for _, row in ipairs(view.item_rows) do
+  for _, row in ipairs(view.information_rows) do
+    vim.api.nvim_buf_add_highlight(handle.bufnr, highlight_namespace, "Comment", row - 1, 0, -1)
+  end
+  local key_rows = {}
+  for _, row in ipairs(view.item_rows) do key_rows[#key_rows + 1] = row end
+  for _, row in ipairs(view.information_rows) do key_rows[#key_rows + 1] = row end
+  for _, row in ipairs(key_rows) do
     local first, last = view.lines[row]:find("%b[]")
     if first then
       vim.api.nvim_buf_add_highlight(handle.bufnr, highlight_namespace, "Special", row - 1, first - 1, last)
@@ -253,7 +268,7 @@ local function resolved_items(items, opts, keys)
     if opts.resolve_keys ~= false then
       item.key = item.default_key and mappings.resolve(item.default_key, item.mapping, opts.keymaps) or nil
     end
-    if item.key and not reserved[item.key] and not claimed[item.key] then
+    if item.key and not item.informational and not reserved[item.key] and not claimed[item.key] then
       item.palette_shortcut = item.key
       claimed[item.key] = true
     end

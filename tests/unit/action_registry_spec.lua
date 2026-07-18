@@ -78,6 +78,44 @@ describe("action registry", function()
     assert_true(registry.mode_label(ctx):find("up 200 mm", 1, true) ~= nil)
   end)
 
+  it("shares exact contextual controls across modes and always exposes their exit", function()
+    local move = context("canvas", { kind = "furniture", id = "chair-1" })
+    move.mode = "MOVE"
+    local move_controls = registry.context_controls(move)
+    assert_equal({
+      "move_normal", "move_coarse", "move_fine", "toggle_snap", "save", "leave_mode",
+    }, ids(move_controls))
+    assert_equal("h/j/k/l", move_controls[1].key_label)
+    assert_equal("Finish moving", move_controls[#move_controls].label)
+    assert_equal("Esc", move_controls[#move_controls].key_label)
+
+    local resize = context("canvas", { kind = "room", id = "room-1" })
+    resize.mode = "RESIZE"
+    resize.shape_section_index = 2
+    resize.shape_section_count = 3
+    resize.shape_edge = "west"
+    assert_equal("RESIZE · SECTION 2/3 · WEST EDGE", registry.context_title(resize))
+    assert_equal("Cancel resize", registry.context_controls(resize)[8].label)
+
+    local sun = context("canvas", { kind = "room", id = "room-1" })
+    sun.mode = "SUN STUDY"
+    sun.sun_study = { time = "14:00", playing = true }
+    assert_equal({
+      "sun_previous", "sun_next", "sun_toggle_playback", "sun_study", "sun_close",
+    }, ids(registry.context_controls(sun)))
+    assert_equal("Pause", registry.get("sun_toggle_playback", sun).label)
+    assert_equal("SUN STUDY · 14:00 · PLAYING", registry.context_title(sun))
+    assert_equal("Close study", registry.context_controls(sun)[5].label)
+
+    sun.keymaps = {
+      enabled = true,
+      mappings = { h = "gH", sun_study = "gL", escape = "Q" },
+    }
+    assert_equal("gH", registry.get("sun_previous", sun).key)
+    assert_equal("gL", registry.get("sun_study", sun).key)
+    assert_equal("Q", registry.get("sun_close", sun).key)
+  end)
+
   it("returns a complete grouped action set with disabled reasons", function()
     local ctx = context("objects", { kind = "room", id = "room-1" })
     ctx.can_redo = false
@@ -249,5 +287,28 @@ describe("action registry", function()
     end
     assert_true(require("roomplan.ui.palette").choose(handle, edit))
     assert_true(vim.wait(200, function() return chosen == "edit" end, 10))
+  end)
+
+  it("shows grouped mode controls in More without treating composite hints as actions", function()
+    local session = {
+      id = "registry-mode-help-test",
+      model = context("canvas").model,
+      selection = { kind = "room", id = "room-1" },
+      validation = {},
+      mode = "MOVE",
+      snap_enabled = true,
+      workspace = {
+        state = { focused_pane = "canvas", interaction = "MOVE" },
+        opts = { border = "single" },
+      },
+      current_model = function(self) return self.model end,
+      model_dirty = function() return false end,
+    }
+    local handle = assert(require("roomplan.ui.help").open(session))
+    local lines = table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
+    assert_true(lines:find("[h/j/k/l] Move", 1, true) ~= nil)
+    assert_true(lines:find("[Esc] Finish moving", 1, true) ~= nil)
+    for _, action in pairs(handle.row_map) do assert_true(action.id ~= "move_normal") end
+    require("roomplan.ui.palette").close(handle, "test cleanup")
   end)
 end)

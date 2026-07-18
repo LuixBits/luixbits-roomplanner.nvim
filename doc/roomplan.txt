@@ -225,10 +225,17 @@ Details pane, and a one-line contextual footer. The Navigator starts visible;
 Details starts hidden. Both retain their selection and can be toggled to give
 the canvas more room.
 
+The Details title follows NAV, MOVE, PAN, RESIZE, forms, and SUN STUDY. Its
+always-expanded Canvas controls section uses the same command registry as the
+footer and `?`, including Finish moving, Finish panning, Cancel resize, or
+Close study. When Details has focus, press `2` to return to the canvas before
+using those controls; Enter/Space/h/l remain local section controls.
+
 The one-line footer adds a concise room/object breadcrumb for a useful
 selection. MOVE extends it with direction, distance, and snap target; RESIZE
-adds section, edge, step, and snap target. It adds no mapping or pane and clips
-to the available width without displacing action hints that already fit.
+adds section, edge, step, and snap target. When Details is visible the footer
+keeps status and feedback without duplicating its command list. With Details
+hidden it again shows the compact contextual actions.
 
 Wide terminals use side panes. Medium layouts retain only the panes that fit.
 Compact layouts open bordered drawers. Manually closing a pane keeps it closed
@@ -237,7 +244,8 @@ until explicitly toggled again.
 Navigator shows rooms with nested doors, windows, outlets, and furniture.
 Issues filters and selects diagnostics. Details presents compact, collapsible
 sections whose contents change with the selection. `?` always exposes the full
-action set, including disabled actions and their reasons. In Navigator, Space
+action set, including disabled actions, their reasons, literal current-mode
+controls, and the command that leaves the mode. In Navigator, Space
 marks an object; atomic move, duplicate, delete, and clear actions for the
 marked set live in `?` and create one history entry.
 

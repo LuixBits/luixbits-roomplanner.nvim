@@ -14,7 +14,7 @@ rounding can never corrupt the saved plan.
 ## Highlights
 
 - Canvas-first responsive workspace with toggleable Navigator and Details
-  panes, contextual actions, a compact selection/MOVE/RESIZE breadcrumb,
+  panes, registry-backed contextual controls, a compact selection/MOVE/RESIZE breadcrumb,
   validation issues, semantic highlighting, and a plan/geographic compass. Three
   transient detail levels keep labels and measurements as sparse or complete
   as the current task needs.

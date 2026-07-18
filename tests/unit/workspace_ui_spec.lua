@@ -2,6 +2,7 @@ local workspace_state = require("roomplan.ui.workspace_state")
 local presenter = require("roomplan.ui.presenter")
 local registry = require("roomplan.ui.action_registry")
 local objects_panel = require("roomplan.ui.panels.objects")
+local properties_panel = require("roomplan.ui.panels.properties")
 local action_bar = require("roomplan.ui.panels.action_bar")
 
 local function fixture()
@@ -250,10 +251,13 @@ describe("workspace UI", function()
     assert_equal("plan", ctx.selection.kind)
     assert_equal("edit_plan", registry.get("edit", ctx).handler)
     assert_equal(2, ctx.zoom)
-    assert_equal("SUN STUDY", presenter.context({
+    local sun_context = presenter.context({
       model = fixture(),
-      sun_study = { viewing = true },
-    }).mode)
+      sun_study = { viewing = true, playing = true, date = "2026-07-19", time = "14:00", step_minutes = 60 },
+    })
+    assert_equal("SUN STUDY", sun_context.mode)
+    assert_equal("14:00", sun_context.sun_study.time)
+    assert_equal(true, sun_context.sun_study.playing)
     assert_equal(true, registry.get("sun_study", { mode = "SUN STUDY" }).enabled)
   end)
 
@@ -526,6 +530,32 @@ describe("workspace UI", function()
     assert_true(nav_bar.lines[1]:find("DETAIL MIDDLE", 1, true) ~= nil)
   end)
 
+  it("renders dynamic canvas controls in Details and leaves only status in the footer", function()
+    local ctx = {
+      model = fixture(), selection = { kind = "furniture", id = "sofa-1" },
+      mode = "SUN STUDY", focus = "properties", dirty = false, snap_enabled = true,
+      detail_level = "middle", sun_study = { time = "14:00", playing = true },
+    }
+    local view = presenter.properties({ model = fixture(), selection = ctx.selection, validation = {} })
+    view.context_title = registry.context_title(ctx)
+    view.controls = registry.context_controls(ctx)
+    view.controls_note = "Press 2 to use canvas controls · Enter toggles sections"
+    local panel = properties_panel.render(view, 38, 24)
+    local text = table.concat(panel.lines, "\n")
+    assert_true(text:find("SUN STUDY · 14:00 · PLAYING", 1, true) ~= nil)
+    assert_true(text:find("Canvas controls", 1, true) ~= nil)
+    assert_true(text:find("Previous step", 1, true) ~= nil)
+    assert_true(text:find("Close study", 1, true) ~= nil)
+    assert_equal("Details · SUN STUDY · 14:00 · PLAYING", panel.pane_title)
+
+    ctx.details_visible = true
+    local footer = action_bar.render(ctx, 100, { height = 1 })
+    assert_equal(0, #footer.shown_actions)
+    assert_true(footer.lines[1]:find("SUN STUDY · 14:00 · PLAYING", 1, true) ~= nil)
+    assert_true(footer.lines[1]:find("Previous step", 1, true) == nil)
+    assert_equal(true, footer.details_visible)
+  end)
+
   it("keeps contextual breadcrumbs useful in wide, medium, and compact action bars", function()
     local session = {
       model = fixture(),
@@ -674,6 +704,9 @@ describe("workspace UI", function()
     -- Contextual modes entered from a side pane must transfer control to the
     -- canvas, where their directional mappings actually operate.
     assert_true(workspace.focus(session, "properties"))
+    assert_equal("Details · NAV", shell.rendered.properties.pane_title)
+    assert_true(table.concat(shell.rendered.properties.lines, "\n"):find("Canvas controls", 1, true) ~= nil)
+    assert_equal(0, #shell.rendered.action_bar.shown_actions)
     local geometry_row
     for line, row in pairs(shell.rendered.properties.row_map) do
       if row.kind == "section" and row.section == "geometry" then geometry_row = line; break end
@@ -688,6 +721,8 @@ describe("workspace UI", function()
     assert_equal("MOVE", session.mode)
     assert_equal("MOVE", shell.state.interaction)
     assert_equal(canvas_window, vim.api.nvim_get_current_win())
+    assert_true(shell.rendered.properties.pane_title:find("Details · MOVE", 1, true) ~= nil)
+    assert_true(table.concat(shell.rendered.properties.lines, "\n"):find("Finish moving", 1, true) ~= nil)
     require("roomplan.controller").escape(session)
     assert_equal("NAV", shell.state.interaction)
 
