@@ -247,6 +247,22 @@ describe("pure geometry", function()
     assert_true(not bypass.snapped)
   end)
 
+  it("retains every coincident wall segment after one snap correction", function()
+    local moving = room("room-moving", 993, 1000, 1000, 1000)
+    local lower = room("room-lower", 2000, 1000, 500, 500)
+    local upper = room("room-upper", 2000, 1500, 500, 500)
+    local snapped = geometry.snapping.snap_room(moving, { lower, upper }, {
+      tolerance_mm = { x = 10, y = 0 },
+      priority = { "room_edge", "grid" },
+    })
+    assert_equal({ 1000, 1000 }, snapped.origin_mm)
+    local guides = geometry.snapping.guides(snapped)
+    assert_equal(2, #guides)
+    assert_equal({ 1000, 1500 }, { guides[1].overlap_start_mm, guides[1].overlap_finish_mm })
+    assert_equal({ 1500, 2000 }, { guides[2].overlap_start_mm, guides[2].overlap_finish_mm })
+    assert_true(guides[1].target_label ~= guides[2].target_label)
+  end)
+
   it("computes aperture and handed swing for every side and hinge", function()
     local owner = room("room-owner", 100, 200, 1000, 800)
     local sides = { "north", "east", "south", "west" }
@@ -645,4 +661,48 @@ describe("atomic actions", function()
     assert_true(json.is_decimal(value.settings.default_wall_thickness_mm))
     assert_true(json.encode(value) ~= nil)
   end)
+
+  it("applies batch mutations atomically as one semantic result", function()
+    local value = base_model()
+    add(value, "rooms", room("room-a", 0, 0, 3000, 3000))
+    for index, id in ipairs({ "furniture-a", "furniture-b" }) do
+      add(
+        value,
+        "furniture",
+        model.new_furniture({
+          id = id,
+          room_id = "room-a",
+          template_id = "builtin:chair",
+          name = id,
+          category = "seating",
+          center_mm = { index * 500, 1000 },
+          size_mm = { 100, 100, 100 },
+          rotation_deg = 0,
+        })
+      )
+    end
+    local changed, result = actions.apply(value, {
+      type = "batch",
+      label = "Move two chairs",
+      actions = {
+        { type = "move_furniture", id = "furniture-a", delta_mm = { 100, 0 }, exact = true },
+        { type = "move_furniture", id = "furniture-b", delta_mm = { 100, 0 }, exact = true },
+      },
+    })
+    assert_equal(600, changed.furniture[1].center_mm[1])
+    assert_equal(1100, changed.furniture[2].center_mm[1])
+    assert_equal("Move two chairs", result.label)
+    assert_equal(2, #result.touched)
+
+    local rejected, err = actions.apply(value, {
+      type = "batch",
+      actions = {
+        { type = "move_furniture", id = "furniture-a", delta_mm = { 100, 0 }, exact = true },
+        { type = "move_furniture", id = "missing", delta_mm = { 100, 0 }, exact = true },
+      },
+    })
+    assert_equal(nil, rejected)
+    assert_equal("NOT_FOUND", err.code)
+    assert_equal(500, value.furniture[1].center_mm[1])
+end)
 end)

@@ -229,6 +229,8 @@ function Session:undo()
   if not snapshot then return nil, node end
   self.validation_revision_id = nil
   if node.touched and node.touched[1] then self.selection = node.touched[1] end
+  self.marked_objects = {}
+  self.batch_move = nil
   self:update_guard()
   require("roomplan.controller").refresh(self)
   return snapshot, node
@@ -239,6 +241,23 @@ function Session:redo()
   if not snapshot then return nil, node end
   self.validation_revision_id = nil
   if node.touched and node.touched[1] then self.selection = node.touched[1] end
+  self.marked_objects = {}
+  self.batch_move = nil
+  self:update_guard()
+  require("roomplan.controller").refresh(self)
+  return snapshot, node
+end
+
+function Session:restore_revision(revision_id)
+  local snapshot, node = self.history:checkout(revision_id)
+  if not snapshot then
+    return nil, node
+  end
+  self.validation_revision_id = nil
+  self.selection = node.touched and node.touched[1] or nil
+  self.marked_objects = {}
+  self.batch_move = nil
+  self.measurement = nil
   self:update_guard()
   require("roomplan.controller").refresh(self)
   return snapshot, node
@@ -274,6 +293,9 @@ function Session:reset(snapshot, revision, locator, opts)
   self.validation = {}
   self.validation_revision_id = nil
   self.selection = nil
+  self.marked_objects = {}
+  self.batch_move = nil
+  self.measurement = nil
   self.mode = "NAV"
   self.shape_edit = nil
   self.preview_model = nil
@@ -327,6 +349,9 @@ function M.new(source, model, opts)
     validation = {},
     selection = nil,
     selection_cycle = {},
+    marked_objects = {},
+    batch_move = nil,
+    measurement = nil,
     viewport = opts.viewport,
     canvas_detail_level = config.get().canvas.detail_level,
     mode = "NAV",

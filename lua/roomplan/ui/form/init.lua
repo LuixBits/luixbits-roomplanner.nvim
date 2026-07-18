@@ -256,6 +256,9 @@ function M.set_value(handle, key, value, opts)
     trusted = opts and opts.trusted == true,
   })
   M.render(handle)
+  if type(handle.callbacks.on_change) == "function" then
+    handle.callbacks.on_change(util.deepcopy(handle.state.draft), handle.state, handle)
+  end
   if handle.state.errors[key] then return nil, util.err("FORM_FIELD_INVALID", handle.state.errors[key], { field = key }) end
   return handle.state.draft[key]
 end

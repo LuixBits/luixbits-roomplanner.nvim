@@ -52,14 +52,15 @@ pure model and geometry, validation, scene/raster representation, structured
 forms, fixtures, and recovery documentation.
 
 Palette-based room and furniture colors, compound footprints, wall-anchored
-windows, wall outlets, and the contextual selection/MOVE/RESIZE breadcrumb are
-implemented. Likely next candidates include a transient companion cat that is
+windows, wall outlets, the contextual selection/MOVE/RESIZE breadcrumb, exact
+clearance measurement, wall placement, marked-object batch actions, and named
+history restore are implemented. Likely next candidates include a transient companion cat that is
 never saved in the plan or undo history, and an approximate sunlight preview
 based on plan north, location, date, time, and windows.
 
 Related UX candidates are layer toggles, recent furniture and colors,
 duplicate-and-place-again actions, live placement previews, diagnostic object
-focus, and clearance overlays. Longer-term candidates already on the roadmap
+focus, and reusable analysis overlays. Longer-term candidates already on the roadmap
 remain additional opening types, stable physical wall construction, vertical
 wall-feature data, multiple floors, richer annotations, and a stable tagged
 LuaRock release.

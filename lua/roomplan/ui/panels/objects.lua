@@ -46,7 +46,8 @@ end
 local function add_header(document, view, opts)
   local objects = opts.active == "issues" and "Objects" or "[Objects]"
   local issues = opts.active == "issues" and "[Issues]" or "Issues"
-  local line = string.format("%s  %s · %s", objects, issues, summary(view))
+  local marked = (view.marked_count or 0) > 0 and string.format(" · %d marked", view.marked_count) or ""
+  local line = string.format("%s  %s · %s%s", objects, issues, summary(view), marked)
   local active = opts.active == "issues" and issues or objects
   local active_at = assert(line:find(active, 1, true)) - 1
   common.line(document, line, {
@@ -69,7 +70,7 @@ local function row_text(row, width, ascii, show_details)
   elseif (row.depth or 0) > 0 then
     branch = ascii and "-" or "└"
   end
-  local marker = row.selected and (ascii and ">" or "›") or " "
+  local marker = row.marked and (ascii and "*" or "●") or row.selected and (ascii and ">" or "›") or " "
   local indent = string.rep("  ", row.depth or 0)
   local icon = kind_icons[row.kind] or "•"
   local orphan = row.orphan and "! " or ""
@@ -93,7 +94,7 @@ function M.render(view, width, height, opts)
     local line, prefix, icon, badge = row_text(row, width, opts.ascii == true, opts.show_details == true)
     local spans = {}
     local counts = row.counts or {}
-    if row.selected then
+    if row.selected or row.marked then
       spans[#spans + 1] = { start_col = 0, end_col = -1, hl_group = "RoomPlanWorkspaceSelected" }
     else
       local icon_at = #prefix - #icon - 1

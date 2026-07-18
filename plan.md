@@ -43,6 +43,13 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   and ergonomic keyboards. Both remain configurable by semantic mapping name.
 - Native packages, lazy.nvim, snacks, rocks, Nix flake, and nvf compatibility
   without optional integrations becoming hard dependencies.
+- Exact silhouette snapping and resize feedback retain every simultaneous
+  positive-length wall contact. The existing fine step becomes a bounded
+  deep-zoom magnetic floor, removing tiny millimetre residuals without another
+  configuration key.
+- Popup-first wall placement and exact two-object measurement, Navigator
+  marking with atomic batch move/duplicate/delete, and a named retained-history
+  browser with confirmed revision restore.
 
 Schema v1, v2, and v3 stay readable compatibility formats; schema v4 is the only
 writer. Compound footprints are connected, hole-free unions of at most 256
@@ -67,8 +74,8 @@ outside the current model.
   diagnostics, legends, and compact controls.
 - Keep authored annotations separate from transient derived analysis.
 - Add visibility, opacity, and focus without overloading the main workspace.
-- Ship one complete measurement or clearance overlay before treating the
-  framework as stable.
+- Generalize the shipped exact measurement path into reusable overlay controls
+  before treating the analysis framework as stable.
 
 ## Sunlight, circulation, and spatial studies
 
@@ -96,9 +103,8 @@ outside the current model.
 
 - Further room/furniture presets only when they reduce common editing work
   without creating parallel geometry representations.
-- Equal-spacing constraints.
 - Minimap drawer and named view presets.
-- Undo-history drawer, grouping, locking, and layer visibility.
+- History grouping, locking, and layer visibility.
 - Line-of-sight, window-view, robot-vacuum reachability, and egress studies.
 - SVG export after compound silhouettes and annotations are stable. DXF and
   multi-floor planning remain separately scoped later projects.

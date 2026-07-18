@@ -219,7 +219,7 @@ describe("pure model foundation", function()
   it("accepts the current schema, migrates v2, and rejects missing, zero, and future versions", function()
     local function document(version_member, wall_collections)
       return '{"format":"roomplan.nvim"' .. version_member .. ',"units":"mm","rooms":[],"doors":[]'
-        .. (wall_collections and ',"windows":[],"outlets":[]' or '')
+        .. (wall_collections and ',"windows":[],"outlets":[]' or "")
         .. ',"furniture":[],"custom_templates":[]}'
     end
     local value, err = schema.decode(document(""))
@@ -310,6 +310,29 @@ describe("pure model foundation", function()
     assert_true(snapshots:is_dirty())
     assert(snapshots:redo())
     assert_equal(false, snapshots:is_dirty())
+    snapshots:dispose()
+  end)
+
+  it("lists and checks out named retained revisions without exposing snapshots", function()
+    local initial = assert(model.new({ name = "History browser" }))
+    local snapshots = history.new(initial)
+    local changed = model.deep_copy(initial)
+    changed.metadata.name = "First edit"
+    local first = assert(snapshots:push(changed, {
+      label = "Rename plan",
+      touched = { { kind = "plan", id = "roomplan.nvim" } },
+    }))
+    changed = model.deep_copy(changed)
+    changed.metadata.notes = "Second edit"
+    local second = assert(snapshots:push(changed, { label = "Edit notes" }))
+    local entries = snapshots:entries()
+    assert_equal(second.revision_id, entries[1].revision_id)
+    assert_true(entries[1].current)
+    assert_equal(nil, entries[1].model)
+    local restored, node = snapshots:checkout(first.revision_id)
+    assert_equal("First edit", restored.metadata.name)
+    assert_equal(first.revision_id, node.revision_id)
+    assert_true(snapshots:can_redo())
     snapshots:dispose()
   end)
 

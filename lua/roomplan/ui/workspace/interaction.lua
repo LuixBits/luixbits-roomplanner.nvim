@@ -28,6 +28,33 @@ function M.select_focused(api, session)
   return selection
 end
 
+function M.toggle_mark_focused(_, session)
+  local workspace = session and session.workspace
+  if not workspace or workspace.state.focused_pane ~= "objects" then
+    return false
+  end
+  local row = render.selected_row(session, "objects")
+  if not row or row.kind == "plan" or not row.id then
+    return false
+  end
+  local selection_set = require("roomplan.selection_set")
+  local reference = { kind = row.kind, id = row.id }
+  local key = selection_set.key(reference)
+  session.marked_objects = session.marked_objects or {}
+  if session.marked_objects[key] then
+    session.marked_objects[key] = nil
+  else
+    session.marked_objects[key] = reference
+  end
+  session.selection = reference
+  render.refresh(session, { "objects", "properties", "action_bar" })
+  local canvas_ok, canvas = pcall(require, "roomplan.render.canvas")
+  if canvas_ok and canvas.schedule_redraw then
+    canvas.schedule_redraw(session, "workspace-mark")
+  end
+  return session.marked_objects[key] ~= nil
+end
+
 function M.set_filter(_, session, pane, value)
   local workspace = session and session.workspace
   if not workspace then return false end
@@ -239,6 +266,9 @@ function M.map_common(api, session, buffer, role)
     map("/", function() api.filter_prompt(session, role) end, "Filter RoomPlan rows", "workspace_filter_focused")
   end
   if role == "objects" then
+    map("<Space>", function()
+      api.toggle_mark_focused(session)
+    end, "Mark or unmark RoomPlan object", "workspace_toggle_mark_focused")
     map("h", function() api.expand_focused(session, false) end,
       "Collapse RoomPlan room", "workspace_collapse_focused")
     map("l", function() api.expand_focused(session, true) end,

@@ -58,6 +58,12 @@ Commands normally resolve the session attached to the current source or
 workspace buffer, then fall back when exactly one session exists. With several
 unattached sessions, `:RoomPlan` lets you choose.
 
+Undo and redo retain named semantic revisions within the configured history
+limits. **Browse undo history** in `?` lists those retained entries newest-first,
+distinguishes the current and durable saved revisions, and confirms before
+moving to an older or newer snapshot. Restoring is transient until saved;
+making a new edit from an older revision discards the newer redo branch.
+
 ## Conflicts and recovery
 
 RoomPlan records expected buffer and disk revisions. If the source changes

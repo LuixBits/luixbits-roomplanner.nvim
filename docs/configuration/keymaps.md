@@ -30,6 +30,7 @@ commands or your own buffer mappings in that case.
 | `Tab` / `Shift-Tab` | `workspace_next_pane` / `workspace_previous_pane` | Cycle panes |
 | `1`, `2`, `3`, `!` | `focus_objects`, `focus_canvas`, `focus_properties`, `focus_issues` | Toggle/focus a workspace area |
 | `Enter` | `workspace_activate_focused` | Select focused Objects/Issues row |
+| `Space` | `workspace_toggle_mark_focused` | Mark/unmark an Objects row for atomic batch actions |
 | `/` | `workspace_filter_focused` | Filter Objects or Issues |
 | `h` / `l` | `workspace_collapse_focused` / `workspace_expand_focused` | Collapse/expand an Objects room |
 | `Enter` | `workspace_toggle_details_section` | Toggle a Details section |
@@ -59,6 +60,12 @@ ordinary `e`, `m`, `y`, and `d` edit/move/duplicate/delete mappings.
 | `Alt-h`, `Alt-l`, `g0` | `rotate_view_counterclockwise`, `rotate_view_clockwise`, `reset_view` | Rotate projection |
 | `gs`, `g!` | `toggle_snap`, `bypass_snap` | Snapping controls |
 | `s`, `S` | `save`, `save_as` | Save / Save As |
+
+Exact measurement, selected-furniture wall placement, marked-object batch
+actions, and named history browsing have no default mapping. They remain
+searchable in `?`, and can still receive a semantic override through
+`keymaps.mappings` (`measure`, `place_furniture`, `move_marked`,
+`duplicate_marked`, `delete_marked`, `clear_marks`, and `history_list`).
 
 Canvas direction keys (`h j k l`, uppercase variants, and Ctrl variants) can be
 overridden by their literal default left-hand sides. PAN uses the same keys in

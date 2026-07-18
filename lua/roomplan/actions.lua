@@ -472,6 +472,9 @@ function handlers.duplicate_furniture(model, action)
   if type(action.new_id) ~= "string" then return nil, failure("INVALID_ACTION", "duplicate_furniture requires new_id") end
   local clone = deep_copy(source)
   clone.id = action.new_id
+  if action.room_id ~= nil then
+    clone.room_id = action.room_id
+  end
   clone.name = action.name or (source.name .. " copy")
   local step = action.step_mm or (model.settings and model.settings.normal_step_mm) or 100
   local position_field = furniture_position_field(model)
@@ -626,6 +629,12 @@ function handlers.duplicate_window(model, action)
   end
   local clone = deep_copy(source)
   clone.id = action.new_id
+  if action.room_id ~= nil then
+    clone.room_id = action.room_id
+  end
+  if action.connects_to_room_id ~= nil then
+    clone.connects_to_room_id = action_json_value(action.connects_to_room_id)
+  end
   clone.offset_mm = action.offset_mm or (source.offset_mm + source.width_mm)
   windows[#windows + 1] = clone
   return {
@@ -681,7 +690,10 @@ function handlers.duplicate_outlet(model, action)
   end
   local clone = deep_copy(source)
   clone.id = action.new_id
-  local step = model.settings and model.settings.normal_step_mm or 100
+  if action.room_id ~= nil then
+    clone.room_id = action.room_id
+  end
+  local step = action.step_mm ~= nil and action.step_mm or model.settings and model.settings.normal_step_mm or 100
   if (source.placement or "wall") == "floor" then
     clone.position_mm = action.position_mm and action_json_value(action.position_mm, "array")
       or action_json_value({ source.position_mm[1] + step, source.position_mm[2] + step }, "array")
@@ -774,6 +786,53 @@ function handlers.edit_plan(model, action)
   }
 end
 
+function handlers.batch(model, action, context)
+  if type(action.actions) ~= "table" or #action.actions == 0 then
+    return nil, failure("INVALID_ACTION", "batch requires at least one child action")
+  end
+  if #action.actions > 256 then
+    return nil, failure("INVALID_ACTION", "batch contains too many child actions")
+  end
+  local result_touched, seen_touched, summaries = {}, {}, {}
+  for index, child in ipairs(action.actions) do
+    local name = action_type(child)
+    if name == "batch" or type(handlers[name]) ~= "function" then
+      return nil,
+        failure("INVALID_ACTION", "batch child uses an unsupported action", {
+          index = index,
+          action = name,
+        })
+    end
+    local child_result, child_error = handlers[name](model, child, context)
+    if not child_result then
+      if type(child_error) ~= "table" then
+        child_error = failure("BATCH_CHILD_FAILED", tostring(child_error or "batch child failed"))
+      end
+      child_error.details = child_error.details or {}
+      child_error.details.batch_index = index
+      child_error.details.batch_action = name
+      return nil, child_error
+    end
+    summaries[#summaries + 1] = {
+      type = name,
+      label = child_result.label,
+      metadata = child_result.metadata,
+    }
+    for _, reference in ipairs(child_result.touched or {}) do
+      local key = tostring(reference.kind) .. "\31" .. tostring(reference.id)
+      if not seen_touched[key] then
+        seen_touched[key] = true
+        result_touched[#result_touched + 1] = deep_copy(reference)
+      end
+    end
+  end
+  return {
+    label = action.label or string.format("Batch edit %d objects", #action.actions),
+    touched = result_touched,
+    metadata = { batch = summaries },
+  }
+end
+
 local room_actions = {
   add_room = true, edit_room = true, move_room = true, resize_room = true,
   align_room = true, duplicate_room = true,
@@ -786,6 +845,16 @@ local wall_fixture_actions = {
   add_window = true, edit_window = true, duplicate_window = true,
   add_outlet = true, edit_outlet = true, duplicate_outlet = true,
 }
+
+local function batch_must_block(action)
+  for _, child in ipairs(action.actions or {}) do
+    local child_name = action_type(child)
+    if room_actions[child_name] or door_actions[child_name] or wall_fixture_actions[child_name] then
+      return true
+    end
+  end
+  return false
+end
 
 local function diagnostic_signature(value)
   local related = {}
@@ -825,7 +894,13 @@ function M.apply(model, action, context)
   local name = action_type(action)
   local handler = handlers[name]
   if not handler then return nil, failure("UNKNOWN_ACTION", "unsupported action " .. tostring(name)) end
-  local must_block = room_actions[name] or door_actions[name] or wall_fixture_actions[name]
+  -- A batch keeps each child's validation policy. For example, ordinary
+  -- furniture movement/duplication may temporarily overlap while the user is
+  -- arranging it, whereas room and wall-feature edits still reject newly
+  -- introduced layout errors. Atomicity comes from mutating only `copy`, not
+  -- from making every batch stricter than its standalone actions.
+  local must_block = name == "batch" and batch_must_block(action)
+    or room_actions[name] or door_actions[name] or wall_fixture_actions[name]
 
   local structurally_valid, structural = validate.is_structurally_valid(model)
   if not structurally_valid then

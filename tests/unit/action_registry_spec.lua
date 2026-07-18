@@ -35,7 +35,8 @@ describe("action registry", function()
 
     local objects = registry.primary(context("objects", furniture))
     assert_equal({
-      "activate_focused", "collapse_focused", "filter_focused", "help",
+      "activate_focused",
+      "toggle_mark", "collapse_focused", "filter_focused", "help",
     }, ids(objects))
     assert_equal("select_focused", objects[1].workspace_action)
     assert_equal("objects", objects[1].scopes[1])
@@ -96,6 +97,8 @@ describe("action registry", function()
       "add", "add_door", "add_window", "add_outlet", "add_furniture", "pan", "align", "rotate",
       "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
       "toggle_snap", "bypass_snap", "save_as", "next_issue", "previous_issue",
+      "measure",
+      "history_list",
       "aspect", "reload", "close",
     }) do
       assert_true(present[id] ~= nil, "missing full action " .. id)

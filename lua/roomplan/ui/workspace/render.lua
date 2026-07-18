@@ -114,6 +114,21 @@ function M.context(session, workspace)
     ctx.can_undo = type(session.history.can_undo) == "function" and session.history:can_undo() or nil
     ctx.can_redo = type(session.history.can_redo) == "function" and session.history:can_redo() or nil
   end
+  local selection_set = require("roomplan.selection_set")
+  local plan = type(session.current_model) == "function" and session:current_model()
+    or type(session.model) == "function" and session:model()
+    or session.model
+  ctx.marked = selection_set.list(plan, session.marked_objects)
+  ctx.marked_count = #ctx.marked
+  local movable, unsupported = selection_set.move_refs(plan, session.marked_objects)
+  ctx.marked_move_count = #movable
+  ctx.marked_move_unsupported = #unsupported
+  ctx.marked_duplicate_unsupported = 0
+  for _, reference in ipairs(ctx.marked) do
+    if reference.kind == "door" then
+      ctx.marked_duplicate_unsupported = ctx.marked_duplicate_unsupported + 1
+    end
+  end
   ctx.keymaps = require("roomplan.config").get().keymaps
   ctx.form = workspace and workspace.state.form or nil
   if ctx.form then ctx.focus = "form" end
@@ -135,6 +150,7 @@ local function render_one(session, workspace, role)
   if role == "objects" then
     local view = presenter.objects(session, {
       selection = session.selection,
+      marked = session.marked_objects,
       expanded = workspace.state.expanded,
       filter = workspace.state.filters.objects,
     })

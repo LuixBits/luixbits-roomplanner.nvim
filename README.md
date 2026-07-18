@@ -19,8 +19,9 @@ rounding can never corrupt the saved plan.
   transient detail levels keep labels and measurements as sparse or complete
   as the current task needs.
 - Structured forms for rooms, furniture, doors, windows, outlets, alignment,
-  plan settings, and project furniture templates, including palette-based room
-  and furniture colors.
+  plan settings, project furniture templates, exact two-object measurement,
+  and furniture-to-wall placement, including palette-based room and furniture
+  colors.
 - Compound footprints for L-, T-, and U-shaped rooms and furniture, with
   seam-free walls and one logical selection per object. The room form creates
   configurable L shapes; direct canvas editing can add, resize, and remove
@@ -31,8 +32,12 @@ rounding can never corrupt the saved plan.
   neither operation changes saved geometry.
 - Strict, deterministic JSON with preserved extension fields, plus marked Neorg
   embedding and conflict-safe writes.
-- Undo/redo, snapping, validation, bounded resources, multiple concurrent
-  plans, and dirty-session protection.
+- Named undo history with confirmed revision restore; Navigator marking for
+  atomic group move, duplicate, and delete operations.
+- Exact silhouette snapping highlights every touched wall segment, cleans up
+  fine-step millimetre residuals, and remains bounded by the existing snap cap.
+  Validation, bounded resources, multiple concurrent plans, and dirty-session
+  protection remain part of the same workflow.
 - Dependency-free furniture catalogues from inline Lua definitions or JSON
   files.
 - No mandatory runtime dependency beyond Neovim 0.10 or newer. Standard
@@ -81,6 +86,9 @@ properties. Save with `s`. Press
 `t` to cycle canvas detail, `1` to focus or toggle the
 Navigator, and `3` to do the same for Details. `?` opens every currently
 available action; press `/` there and type to filter it live inside the popup.
+That action window also contains exact measurement, wall placement for selected
+furniture, and named undo-history browsing. In Navigator, press `Space` to mark
+objects, then use `?` for atomic group move, duplicate, delete, or clear.
 For a room, furniture item, or project template, `e` also exposes an
 **Edit footprint** row that opens direct compound-section editing on the canvas.
 `,` and `.` zoom out and in.

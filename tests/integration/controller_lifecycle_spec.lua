@@ -147,6 +147,110 @@ describe("controller lifecycle", function()
     cleanup()
   end)
 
+  it("places and measures in popups, then moves and duplicates marked furniture atomically", function()
+    cleanup()
+    local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-tools",
+        name = "Tools",
+        origin_mm = { 0, 0 },
+        size_mm = { 4000, 3000 },
+      }),
+    }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-reference",
+        name = "Reference",
+        origin_mm = { 4500, 0 },
+        size_mm = { 2000, 3000 },
+      }),
+    }))
+    for index, position in ipairs({ { 2000, 1000 }, { 2000, 2000 } }) do
+      h.truthy(controller.dispatch(session, {
+        type = "add_furniture",
+        furniture = model.new_furniture({
+          id = "furniture-tools-" .. index,
+          room_id = "room-tools",
+          template_id = "builtin:chair",
+          name = "Chair " .. index,
+          category = "seating",
+          position_mm = position,
+          size_mm = { 500, 500, 800 },
+        }),
+      }))
+    end
+
+    local form = require("roomplan.ui.form")
+    session.selection = { kind = "furniture", id = "furniture-tools-1" }
+    local placement = h.truthy(controller.place_furniture(session))
+    local west
+    for _, wall in ipairs(placement.spec.context.walls) do
+      if wall.side == "west" then
+        west = wall
+        break
+      end
+    end
+    h.truthy(form.set_value(placement, "wall_id", h.truthy(west).id, { raw = false }))
+    h.truthy(form.set_value(placement, "alignment", "center", { raw = false }))
+    h.truthy(form.set_value(placement, "clearance_mm", 100, { raw = false }))
+    h.truthy(form.apply(placement))
+    h.eq({ 350, 1500 }, model.find(session:model(), "furniture", "furniture-tools-1").position_mm)
+
+    local measurement = h.truthy(controller.measure(session))
+    h.truthy(session.measurement)
+    h.truthy(
+      form.set_value(
+        measurement,
+        "to_ref",
+        require("roomplan.ui.forms.measurement").encode("room", "room-reference"),
+        { raw = false }
+      )
+    )
+    h.truthy(session.measurement.nearest_mm > 0)
+    h.truthy(form.cancel(measurement, "test complete"))
+    h.eq(nil, session.measurement)
+
+    local selection_set = require("roomplan.selection_set")
+    session.marked_objects = {}
+    for index = 1, 2 do
+      local reference = { kind = "furniture", id = "furniture-tools-" .. index }
+      session.marked_objects[selection_set.key(reference)] = reference
+    end
+    local before_positions = {
+      vim.deepcopy(model.find(session:model(), "furniture", "furniture-tools-1").position_mm),
+      vim.deepcopy(model.find(session:model(), "furniture", "furniture-tools-2").position_mm),
+    }
+    local move_revision = session:revision_id()
+    h.eq("MOVE", controller.move_marked(session))
+    h.truthy(controller.direction(session, 1, 0, "normal"))
+    h.eq(move_revision + 1, session:revision_id())
+    local first = model.find(session:model(), "furniture", "furniture-tools-1").position_mm
+    local second = model.find(session:model(), "furniture", "furniture-tools-2").position_mm
+    h.eq(first[1] - before_positions[1][1], second[1] - before_positions[2][1])
+    h.eq(first[2] - before_positions[1][2], second[2] - before_positions[2][2])
+    h.eq("Move 2 marked objects", session.history:current_node().label)
+    controller.escape(session)
+
+    local duplicate_revision = session:revision_id()
+    h.truthy(controller.duplicate_marked(session))
+    h.eq(duplicate_revision + 1, session:revision_id())
+    h.eq(4, #session:model().furniture)
+    h.eq(2, #selection_set.list(session:model(), session.marked_objects))
+    h.eq("Duplicate 2 marked objects", session.history:current_node().label)
+    h.truthy(controller.undo(session))
+    h.eq(2, #session:model().furniture)
+
+    local history = h.truthy(controller.history(session))
+    h.eq("Undo history · newest first", history.title)
+    h.truthy(#history.items >= 2)
+    require("roomplan.ui.palette").close(history, "test complete")
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
   it("keeps the ordinary room editor compact and undoable", function()
     cleanup()
     local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
@@ -1298,7 +1402,7 @@ describe("controller lifecycle", function()
     local session = h.truthy(controller.init_source(nil, { path = path }))
     h.truthy(controller.dispatch(session, {
       type = "add_room",
-      room = model.new_room({ id = "room-native-write", name = "Native write", origin_mm = { 0, 0 }, size_mm = { 1200, 900 } }),
+      room = model.new_room({ id = "room-native-write", name = "Native write", origin_mm = { 0, 0 }, size_mm = { 1200, 900 }, }),
     }))
     local original_write = source.write_buffer
     source.write_buffer = function()
@@ -1324,7 +1428,7 @@ describe("controller lifecycle", function()
     local old_bufnr = session.source.bufnr
     h.truthy(controller.dispatch(session, {
       type = "add_room",
-      room = model.new_room({ id = "room-after-wipe", name = "After wipe", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } }),
+      room = model.new_room({ id = "room-after-wipe", name = "After wipe", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 }, }),
     }))
     vim.api.nvim_buf_delete(old_bufnr, { force = true })
     h.eq(nil, session.source.bufnr)
@@ -1364,7 +1468,7 @@ describe("controller lifecycle", function()
 
     h.truthy(controller.dispatch(session, {
       type = "add_room",
-      room = model.new_room({ id = "room-invalid-save-as", name = "Room", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } }),
+      room = model.new_room({ id = "room-invalid-save-as", name = "Room", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 }, }),
     }))
     h.truthy(controller.dispatch(session, {
       type = "add_furniture",

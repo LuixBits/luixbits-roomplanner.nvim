@@ -58,6 +58,9 @@ actions. View rotation only changes how direction keys are projected, so
 moving right on screen still looks right. Grid and geometric snapping are
 view-scale aware and capped by `snapping.max_distance_mm`. The breadcrumb adds
 the active object, last visible direction and distance, and named snap target.
+At deep zoom, the plan's existing `fine_step_mm` is the minimum magnetic range
+(still capped by `snapping.max_distance_mm`), so tiny millimetre remainders snap
+cleanly instead of requiring repeated Ctrl-directions.
 
 ## Live dimension resizing
 
@@ -72,8 +75,11 @@ bar identifies `RESIZE`, the active section and edge, the last step, and any
 named snap target. Nearby section edges and
 other-room walls take snap precedence over the grid; a light guide shows the
 alignment and extends just beyond the target wall so horizontal and vertical
-connections stay visible. The matching edge overlap is strongly highlighted,
-and the target is named in the status. `gs` toggles snapping and `g!` bypasses the next change.
+connections stay visible. Every positive-length exterior wall overlap around
+the final room or furniture silhouette is strongly highlighted, including
+separate wall segments that share the same coordinate; the target names remain
+available in status. Centres can align to centres but are never misreported as
+wall contact. `gs` toggles snapping and `g!` bypasses the next change.
 Moving away releases a snap immediately, even with fine steps. Use ordinary
 `m` movement to move the whole room and its furniture with the same snap
 feedback. See

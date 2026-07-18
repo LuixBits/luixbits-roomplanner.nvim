@@ -92,7 +92,10 @@ snapping = {
 `mm_per_column` is the initial/fallback scale; Fit chooses a scale from the
 scene. Snap tolerance begins in displayed cells, converts through the current
 viewport, then is capped in millimetres. The priority resolves equal
-candidates deterministically.
+candidates deterministically. At deep zoom, `plan_defaults.settings.fine_step_mm`
+acts as the minimum tolerance so ordinary movement removes a residual smaller
+than one visible cell. The existing `snapping.max_distance_mm` cap still wins;
+there is no additional setup key for this behaviour.
 
 `scrolloff` follows Neovim's option name and keeps that many drawable canvas
 cells between the logical cursor and every viewport edge while navigating with
@@ -107,7 +110,9 @@ take precedence over the grid. Resizing and ordinary movement both show the
 chosen target as a transient light guide, name it in the canvas status, and
 strongly highlight the overlapping edge. Moving away temporarily releases that
 axis until it leaves the tolerance, so fine steps cannot become snap-locked.
-Feedback never enters saved data.
+After correction, RoomPlan recomputes exact exterior-silhouette contact and
+highlights every positive-length touched segment rather than only the candidate
+that won the snap. Feedback never enters saved data.
 
 `detail_level` controls transient canvas text. `high` shows labels plus every
 exterior wall-run, furniture width/depth, and door/window-width dimension.
