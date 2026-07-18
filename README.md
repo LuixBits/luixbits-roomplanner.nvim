@@ -77,7 +77,9 @@ Initialize a standalone source without overwriting an existing file:
 
 Then press `a` to add a room, `m` to move the selected object, `r` to resize
 room or furniture dimensions live, `R` to rotate furniture, or `e` for exact
-properties. Save with `s`. Press
+properties. `A` aligns selected rooms; with one of at least three furniture
+items selected, it previews equal horizontal or vertical spacing for every
+item in that room. Save with `s`. Press
 `t` to cycle canvas detail, `1` to focus or toggle the
 Navigator, and `3` to do the same for Details. `?` opens every currently
 available action; press `/` there and type to filter it live inside the popup.

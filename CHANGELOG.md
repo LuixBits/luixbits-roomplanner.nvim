@@ -4,6 +4,13 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Added furniture equal spacing without adding another mapping. Select any of
+  at least three furniture items in a room and press `A`; the contextual popup
+  previews horizontal or vertical distribution of every item in that room,
+  keeps the two visual outer items fixed, and applies all movement as one
+  validated undo entry. Rotated, odd-sized, and compound furniture use exact
+  world bounds, with unavoidable integer-position differences balanced across
+  the resulting gaps. The same `A` continues to align rooms.
 - Unified room, furniture, and project-template shape editing under the
   ordinary `e` popup. Each editor now has an explicit **Edit footprint** row
   that transitions to the shared canvas section controls without a duplicate

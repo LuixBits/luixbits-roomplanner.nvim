@@ -21,6 +21,8 @@ Select furniture and use:
   rotation, or activate **Edit footprint** for direct section editing;
 - `r` to enter highlighted live dimension/section resizing immediately;
 - `m` plus directions to move by the configured plan steps;
+- `A` to preview equal horizontal or vertical spacing for every furniture item
+  in the same room;
 - `R` to rotate one quarter-turn;
 - `y` to duplicate it;
 - `d` to delete it.
@@ -28,6 +30,22 @@ Select furniture and use:
 Movement and rotation are semantic actions with undo/redo and validation.
 Snapping can target room edges/centres, doors, furniture, and grid according
 to the configured priority.
+
+## Equal spacing
+
+When a room contains at least three furniture items, select any one of them
+and press `A`. Choose horizontal or vertical distribution in the popup. The
+preview names the two outer items that stay fixed, shows the resulting clear
+gap, and lists the movements before anything changes. Apply moves every
+intermediate item as one undoable action; cancel changes nothing.
+
+Distribution uses each complete rotated or compound world footprint, not a
+template width/depth approximation. Odd dimensions can put edges on half
+millimetres while saved anchor positions remain integer millimetres. When one
+perfect gap is not representable, RoomPlan balances the smallest possible
+difference across the gaps and shows the range in the popup. The final layout
+is validated atomically and is rejected if it would introduce containment or
+overlap errors.
 
 Built-in and imported rectangle templates become canonical one-part footprints
 when placed. Loaded compound furniture can be moved, rotated, duplicated,

@@ -126,7 +126,8 @@ explicitly.
 :RoomPlanAddRoom          Open the structured room form.
 
                                                         *:RoomPlanAlign*
-:RoomPlanAlign            Open room alignment for the current selection.
+:RoomPlanAlign            Align selected rooms, or distribute all furniture
+                          in the selected furniture item's room.
 
                                                         *:RoomPlanAddDoor*
 :RoomPlanAddDoor          Open the structured door form.
@@ -262,7 +263,7 @@ Canvas and editing:
   m / p          MOVE / PAN mode
   a              Add menu (r/d/w/o/f choose object type)
   D / W / O / F  add door / window / outlet / furniture
-  A              align room
+  A              align room / equally space furniture in its room
   e              exact edit
   d / y          delete / duplicate selection
   r / R          live-resize room/furniture / rotate furniture

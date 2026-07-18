@@ -35,7 +35,7 @@ commands or your own buffer mappings in that case.
 | `Enter` | `workspace_toggle_details_section` | Toggle a Details section |
 | `a`, `D`, `W`, `O`, `F` | `add`, `add_door`, `add_window`, `add_outlet`, `add_furniture` | Add objects |
 | `e`, `d`, `y` | `edit`, `delete`, `duplicate` | Edit supported properties, delete, duplicate |
-| `m`, `A` | `move_mode`, `align` | Move room/object, align room |
+| `m`, `A` | `move_mode`, `align` | Move room/object; align rooms or equally space furniture |
 | `r`, `R` | `resize_dimensions`, `rotate` | Live-resize room/furniture dimensions, rotate furniture |
 | `Enter` | `select` | Select under Canvas cursor |
 | `q`, `Esc`, `?` | `hide`, `escape`, `help` | Hide, leave context, show actions |
