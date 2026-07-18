@@ -36,6 +36,9 @@ rounding can never corrupt the saved plan.
   atomic group move, duplicate, and delete operations.
 - Exact silhouette snapping highlights every touched wall segment, cleans up
   fine-step millimetre residuals, and remains bounded by the existing snap cap.
+  Exact touch highlights remain visible during movement and resize even when
+  magnetic snapping is disabled. Canvas text progressively abbreviates or
+  disappears as its object shrinks on screen, keeping fitted overviews legible.
   Validation, bounded resources, multiple concurrent plans, and dirty-session
   protection remain part of the same workflow.
 - Dependency-free furniture catalogues from inline Lua definitions or JSON

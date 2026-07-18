@@ -17,6 +17,10 @@ local function label(text, x, y, options)
     role = options.role,
     ref = options.ref,
     max_cells = options.max_cells,
+    fit_bounds = options.fit_bounds,
+    fit_span = options.fit_span,
+    scale_policy = options.scale_policy,
+    max_mm_per_column = options.max_mm_per_column,
     candidates = options.candidates,
     placement = options.placement,
     allow_truncate = options.allow_truncate ~= false,
@@ -52,6 +56,8 @@ function M.room(room, ref, order, geometry)
     return label(room.name or room.id, cx, cy, {
       ref = ref,
       role = "room_label",
+      fit_bounds = bounds,
+      scale_policy = "room_name",
       candidates = candidates,
       priority = 30,
       order = order,
@@ -73,6 +79,8 @@ function M.room(room, ref, order, geometry)
   return label(room.name or room.id, cx, cy, {
     ref = ref,
     role = "room_label",
+    fit_bounds = { left = x, right = x + width, bottom = y, top = y + depth },
+    scale_policy = "room_name",
     candidates = candidates,
     priority = 30,
     order = order,
@@ -95,6 +103,8 @@ function M.furniture(item, bounds, ref, order, anchor)
   return label(item.name or item.id, x, y, {
     ref = ref,
     role = "furniture_label",
+    fit_bounds = bounds,
+    scale_policy = "object_name",
     candidates = candidates,
     priority = 20,
     order = order,
@@ -124,6 +134,10 @@ function M.edge_dimension(edge, ref, order, priority)
       kind = "dimension",
       ref = ref or edge.ref,
       role = "dimension",
+      fit_span = horizontal
+          and { x1 = edge.start, y1 = edge.fixed, x2 = edge.finish, y2 = edge.fixed }
+        or { x1 = edge.fixed, y1 = edge.start, x2 = edge.fixed, y2 = edge.finish },
+      scale_policy = "dimension",
       placement = horizontal and "horizontal_edge" or "vertical_edge",
       allow_truncate = false,
       priority = priority or 0,
@@ -178,6 +192,7 @@ function M.outlet(outlet, marker, ref, order)
   return label(text, x, y, {
     ref = ref,
     role = "outlet",
+    max_mm_per_column = 300,
     candidates = candidates,
     priority = 25,
     order = order,

@@ -261,6 +261,47 @@ describe("pure geometry", function()
     assert_equal({ 1000, 1500 }, { guides[1].overlap_start_mm, guides[1].overlap_finish_mm })
     assert_equal({ 1500, 2000 }, { guides[2].overlap_start_mm, guides[2].overlap_finish_mm })
     assert_true(guides[1].target_label ~= guides[2].target_label)
+
+    local vertical = geometry.snapping.snap_room(
+      room("room-moving-y", 1000, 993, 1000, 1000),
+      {
+        room("room-left", 1000, 2000, 500, 500),
+        room("room-right", 1500, 2000, 500, 500),
+      },
+      {
+        tolerance_mm = { x = 0, y = 10 },
+        priority = { "room_edge", "grid" },
+      }
+    )
+    assert_equal({ 1000, 1000 }, vertical.origin_mm)
+    local vertical_guides = geometry.snapping.guides(vertical)
+    assert_equal(2, #vertical_guides)
+    assert_equal("y", vertical_guides[1].axis)
+    assert_equal({ 1000, 1500 }, {
+      vertical_guides[1].overlap_start_mm,
+      vertical_guides[1].overlap_finish_mm,
+    })
+    assert_equal({ 1500, 2000 }, {
+      vertical_guides[2].overlap_start_mm,
+      vertical_guides[2].overlap_finish_mm,
+    })
+  end)
+
+  it("keeps exact contact feedback when magnetic snapping is disabled", function()
+    local value = base_model()
+    add(value, "rooms", room("room-south", 0, 0, 1000, 1000))
+    add(value, "rooms", room("room-north", 0, 1100, 1000, 1000))
+    local changed, result = actions.apply(value, {
+      type = "move_room",
+      id = "room-north",
+      delta_mm = { 0, -100 },
+    }, { snapping = false })
+    assert_equal({ 0, 1000 }, assert(changed).rooms[2].origin_mm)
+    local guides = geometry.snapping.guides(assert(result).metadata.snapping)
+    assert_equal(1, #guides)
+    assert_equal("y", guides[1].axis)
+    assert_equal(true, guides[1].contact_only)
+    assert_equal(nil, geometry.snapping.summary(guides))
   end)
 
   it("computes aperture and handed swing for every side and hinge", function()

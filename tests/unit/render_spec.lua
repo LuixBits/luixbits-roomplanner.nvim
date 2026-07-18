@@ -456,13 +456,13 @@ describe("scene extraction and rendering", function()
     })
     assert_true(vim.deep_equal(pristine_scene, scene), "rasterization must not mutate its semantic scene")
     assert_equal(table.concat({
-      " 400mm ",
+      "       ",
       " +---+ ",
       " |   | ",
       " | A | ",
       " |   | ",
       " +---+ ",
-      " 400mm ",
+      "       ",
     }, "\n"), table.concat(output.lines, "\n"))
   end)
 
@@ -536,7 +536,9 @@ describe("scene extraction and rendering", function()
       },
       warnings = {},
     }, view, { width = 7, height = 3, glyph_mode = "unicode" })
-    assert_true(table.concat(abbreviated.lines, "\n"):find("…", 1, true) ~= nil)
+    local abbreviated_text = table.concat(abbreviated.lines, "\n")
+    assert_true(abbreviated_text:find("…", 1, true) ~= nil)
+    assert_true(abbreviated_text:find("bel", 1, true) ~= nil)
     assert_equal("LABEL_ABBREVIATED", abbreviated.warnings[1].code)
 
     local dimension = raster.rasterize({
@@ -551,6 +553,41 @@ describe("scene extraction and rendering", function()
     }, view, { width = 4, height = 3, glyph_mode = "ascii" })
     assert_true(table.concat(dimension.lines, ""):match("%d") == nil)
     assert_equal("LABEL_NOT_RENDERED", dimension.warnings[1].code)
+  end)
+
+  it("reduces text density as objects shrink on screen", function()
+    local primitive = {
+      kind = "label",
+      layer = 70,
+      text = "Living room",
+      x = 500,
+      y = 400,
+      fit_bounds = { left = 0, right = 1000, bottom = 0, top = 800 },
+      scale_policy = "room_name",
+      ref = { type = "room", id = "room-living" },
+    }
+    local near = raster.rasterize({ primitives = { primitive }, warnings = {} },
+      fixed_view(0, 1000, 50, 100), { width = 24, height = 12, glyph_mode = "ascii" })
+    assert_true(table.concat(near.lines, "\n"):find("Living room", 1, true) ~= nil)
+
+    local far = raster.rasterize({ primitives = { primitive }, warnings = {} },
+      fixed_view(0, 1000, 500, 500), { width = 6, height = 4, glyph_mode = "ascii" })
+    assert_true(table.concat(far.lines, "\n"):find("Living", 1, true) == nil)
+    assert_equal(0, #far.warnings)
+
+    local dimension_primitive = {
+      kind = "dimension",
+      layer = 70,
+      text = "1m",
+      x = 500,
+      y = 0,
+      fit_span = { x1 = 0, y1 = 0, x2 = 1000, y2 = 0 },
+      scale_policy = "dimension",
+      allow_truncate = false,
+    }
+    local crowded = raster.rasterize({ primitives = { dimension_primitive }, warnings = {} },
+      fixed_view(0, 500, 250, 500), { width = 6, height = 3, glyph_mode = "ascii" })
+    assert_true(table.concat(crowded.lines, ""):find("1m", 1, true) == nil)
   end)
 
   it("merges only structural walls into junction glyphs", function()
@@ -832,6 +869,34 @@ describe("scene extraction and rendering", function()
     end
     assert_equal(1, lines)
     assert_equal(2, overlaps)
+  end)
+
+  it("draws exact contacts without filling the canvas with guide lines", function()
+    local scene = scene_builder.build({
+      rooms = {
+        { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      },
+      doors = {}, windows = {}, outlets = {}, furniture = {},
+    }, {}, {
+      snap_guides = {
+        {
+          axis = "y",
+          value2 = 2000,
+          value_mm = 1000,
+          overlap_start_mm = 0,
+          overlap_finish_mm = 1000,
+          target_label = "North wall",
+          contact_only = true,
+        },
+      },
+    })
+    local lines, overlaps = 0, 0
+    for _, primitive_value in ipairs(scene.primitives) do
+      if primitive_value.kind == "snap_guide" then lines = lines + 1 end
+      if primitive_value.kind == "snap_overlap" then overlaps = overlaps + 1 end
+    end
+    assert_equal(0, lines)
+    assert_equal(1, overlaps)
   end)
 
   it("opens, redraws, maps byte columns, and wipes a scratch canvas", function()
