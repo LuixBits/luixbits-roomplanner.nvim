@@ -95,10 +95,12 @@ stays compact while all three object kinds share the controls below.
 | `Esc` | `form_cancel` | Cancel form |
 | `j` / `k` | `palette_next` / `palette_previous` | Move in a palette |
 | `Enter` / `Esc` | `palette_choose` / `palette_cancel` | Run/cancel palette |
-| `/` | `palette_search` | Focus live search in the full `?` action window |
+| `/` | `palette_search` | Start live search in the full `?` action window |
 
 Search is deliberately limited to the full action window opened by `?`. The
-search row and filtered results remain inside that popup. The small `a` Add
+search row and filtered results remain inside that popup. Its buffer stays
+read-only: typing extends the query, `Backspace` removes a character, and no
+Insert-mode completion or command-line search is activated. The small `a` Add
 menu keeps immediate one-key choices and does not expose search.
 
 Run `:checkhealth roomplan` to review overrides, explicitly disabled actions,
