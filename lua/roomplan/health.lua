@@ -178,6 +178,14 @@ local function report_configuration(health, effective)
   health.ok("effective configuration loaded")
   report_glyphs(health, effective)
   report_keymaps(health, effective)
+  local sun = type(effective.sun_study) == "table" and effective.sun_study or {}
+  local windows = type(sun.window_defaults) == "table" and sun.window_defaults or {}
+  local playback = type(sun.playback) == "table" and sun.playback or {}
+  health.info(string.format(
+    "sun study defaults: sill/head=%s/%s mm, step=%s min, frame=%s ms",
+    tostring(windows.sill_height_mm), tostring(windows.head_height_mm),
+    tostring(playback.step_minutes), tostring(playback.frame_duration_ms)
+  ))
 end
 
 local function discover_neorg_version(neorg)

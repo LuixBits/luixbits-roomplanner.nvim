@@ -1,28 +1,32 @@
 local alignment = require("roomplan.geometry.alignment")
 local common = require("roomplan.ui.forms.common")
+local directions = require("roomplan.directions")
 
 local M = {}
 
-local OPERATIONS = {
-  { value = "align_left", label = "Align left edges" },
-  { value = "align_right", label = "Align right edges" },
-  { value = "align_top", label = "Align north/top edges" },
-  { value = "align_bottom", label = "Align south/bottom edges" },
+local function operations(context)
+  local result = {
+  { value = "align_left", label = "Align " .. directions.label("west", context):lower() .. " edges" },
+  { value = "align_right", label = "Align " .. directions.label("east", context):lower() .. " edges" },
+  { value = "align_top", label = "Align " .. directions.label("north", context):lower() .. " edges" },
+  { value = "align_bottom", label = "Align " .. directions.label("south", context):lower() .. " edges" },
   { value = "align_center_x", label = "Align horizontal centres" },
   { value = "align_center_y", label = "Align vertical centres" },
-  { value = "place_north", label = "Place north" },
-  { value = "place_east", label = "Place east" },
-  { value = "place_south", label = "Place south" },
-  { value = "place_west", label = "Place west" },
   { value = "snap_corner", label = "Snap corners" },
-}
+  }
+  for _, choice in ipairs(directions.choices(context)) do
+    result[#result + 1] = { value = "place_" .. choice.value, label = "Place " .. choice.label:lower() }
+  end
+  return result
+end
 
-local CORNERS = {
-  { value = "southwest", label = "Southwest" },
-  { value = "southeast", label = "Southeast" },
-  { value = "northwest", label = "Northwest" },
-  { value = "northeast", label = "Northeast" },
-}
+local function corners(context)
+  local result = {}
+  for _, value in ipairs({ "southwest", "southeast", "northwest", "northeast" }) do
+    result[#result + 1] = { value = value, label = directions.corner_label(value, context) }
+  end
+  return result
+end
 
 local function is_place(operation)
   return type(operation) == "string" and operation:sub(1, 6) == "place_"
@@ -72,17 +76,17 @@ function M.new(session, opts)
         key = "reference_room_id", label = "Reference room", type = "object_ref", required = true,
         choices = function(ctx, draft) return common.rooms(ctx, draft.moving_room_id) end,
       },
-      { key = "operation", label = "Operation", type = "enum", required = true, choices = OPERATIONS },
+      { key = "operation", label = "Operation", type = "enum", required = true, choices = operations },
       {
         key = "gap_mm", label = "Gap", type = "measurement", allow_zero = true,
         visible = function(_, draft) return is_place(draft.operation) end,
       },
       {
-        key = "moving_corner", label = "Moving corner", type = "enum", choices = CORNERS,
+        key = "moving_corner", label = "Moving corner", type = "enum", choices = corners,
         visible = function(_, draft) return draft.operation == "snap_corner" end,
       },
       {
-        key = "reference_corner", label = "Reference corner", type = "enum", choices = CORNERS,
+        key = "reference_corner", label = "Reference corner", type = "enum", choices = corners,
         visible = function(_, draft) return draft.operation == "snap_corner" end,
       },
       { key = "force", label = "Allow invalid draft", type = "toggle", default = false },

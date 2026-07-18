@@ -126,6 +126,28 @@ visible levels, names and dimensions have built-in projected-screen budgets:
 they abbreviate or disappear as their objects shrink, so no additional zoom
 threshold setting is required.
 
+## Sun study defaults
+
+```lua
+sun_study = {
+  window_defaults = {
+    sill_height_mm = 900,
+    head_height_mm = 2100,
+  },
+  playback = {
+    step_minutes = 60,
+    frame_duration_ms = 700,
+  },
+},
+```
+
+Window defaults are used only when a window has no explicit sill/head pair;
+they are not copied into every plan object. The head must exceed the
+non-negative sill. Playback defaults seed each new transient `L` popup. The
+step may be 1–720 minutes and frame duration 50–60000 ms; the popup lets you
+change both for the current study. Sun colors adapt to the colorscheme and do
+not add more configuration keys. See [Sun study](../planning/sun-study.md).
+
 ## Workspace and notifications
 
 ```lua

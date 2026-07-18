@@ -48,6 +48,7 @@ bypass structural validation or source-conflict checks.
 | `:RoomPlanCanvasDetail [high\|middle\|none\|cycle]` | Set canvas detail, or cycle when omitted |
 | `:RoomPlanAspect [ratio]` | Prompt for or set terminal cell height/width calibration |
 | `:RoomPlanRotateView [clockwise\|counterclockwise\|reset]` | Rotate only the viewport projection |
+| `:RoomPlanSunStudy` | Open site setup or the offline sunrise-to-sunset study popup |
 
 The following convenience aliases remain available:
 

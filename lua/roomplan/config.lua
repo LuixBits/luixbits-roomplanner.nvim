@@ -49,6 +49,16 @@ local defaults = {
     max_distance_mm = 250,
     priority = { "door", "room_edge", "room_center", "furniture", "grid" },
   },
+  sun_study = {
+    window_defaults = {
+      sill_height_mm = 900,
+      head_height_mm = 2100,
+    },
+    playback = {
+      step_minutes = 60,
+      frame_duration_ms = 700,
+    },
+  },
   ui = {
     confirm_delete = true,
     notify_level = "info",
@@ -127,6 +137,14 @@ function M.setup(opts)
   numeric_positive(candidate, "canvas.max_mm_per_column", candidate.canvas.max_mm_per_column, errors)
   numeric_positive(candidate, "snapping.tolerance_cells", candidate.snapping.tolerance_cells, errors)
   numeric_positive(candidate, "snapping.max_distance_mm", candidate.snapping.max_distance_mm, errors)
+  integer_positive("sun_study.window_defaults.sill_height_mm",
+    candidate.sun_study.window_defaults.sill_height_mm, errors, true)
+  integer_positive("sun_study.window_defaults.head_height_mm",
+    candidate.sun_study.window_defaults.head_height_mm, errors)
+  integer_positive("sun_study.playback.step_minutes",
+    candidate.sun_study.playback.step_minutes, errors)
+  integer_positive("sun_study.playback.frame_duration_ms",
+    candidate.sun_study.playback.frame_duration_ms, errors)
   for key, value in pairs(candidate.plan_defaults.settings) do
     integer_positive("plan_defaults.settings." .. key, value, errors)
   end
@@ -150,6 +168,20 @@ function M.setup(opts)
   end
   if candidate.canvas.min_mm_per_column > candidate.canvas.max_mm_per_column then
     errors[#errors + 1] = "canvas.min_mm_per_column: must not exceed max_mm_per_column"
+  end
+  if candidate.sun_study.window_defaults.head_height_mm
+      <= candidate.sun_study.window_defaults.sill_height_mm
+  then
+    errors[#errors + 1] = "sun_study.window_defaults.head_height_mm: must exceed sill_height_mm"
+  end
+  if candidate.sun_study.playback.step_minutes > 720 then
+    errors[#errors + 1] = "sun_study.playback.step_minutes: must be at most 720"
+  end
+  if candidate.sun_study.playback.frame_duration_ms < 50 then
+    errors[#errors + 1] = "sun_study.playback.frame_duration_ms: must be at least 50"
+  end
+  if candidate.sun_study.playback.frame_duration_ms > 60000 then
+    errors[#errors + 1] = "sun_study.playback.frame_duration_ms: must be at most 60000"
   end
   if candidate.canvas.zoom_factor <= 1 then errors[#errors + 1] = "canvas.zoom_factor: expected number greater than 1" end
   if candidate.canvas.open ~= "tab" and candidate.canvas.open ~= "split" and candidate.canvas.open ~= "vsplit" then

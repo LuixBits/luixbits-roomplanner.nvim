@@ -616,6 +616,10 @@ function handlers.edit_window(model, action)
   if not window then return nil, failure("NOT_FOUND", "window was not found", { id = action.id }) end
   local _, err = copy_patch(window, action.patch, window.id)
   if err then return nil, err end
+  if action.clear_heights then
+    window.sill_height_mm = nil
+    window.head_height_mm = nil
+  end
   return { label = "Edit window " .. window.id, touched = { touched("window", window.id) } }
 end
 
@@ -784,6 +788,14 @@ function handlers.edit_plan(model, action)
     label = "Edit plan",
     touched = { touched("plan", "roomplan.nvim"), touched("settings", "settings") },
   }
+end
+
+function handlers.edit_site(model, action)
+  if type(action.site) ~= "table" then
+    return nil, failure("INVALID_ACTION", "edit_site requires a site object")
+  end
+  model.site = action_json_value(action.site, "object")
+  return { label = "Edit plan site", touched = { touched("plan", "roomplan.nvim") } }
 end
 
 function handlers.batch(model, action, context)

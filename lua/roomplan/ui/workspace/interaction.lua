@@ -248,7 +248,7 @@ function M.map_common(api, session, buffer, role)
   end, "Hide RoomPlan workspace", "hide")
   for _, id in ipairs({
     "add", "edit", "resize_dimensions", "move", "pan", "align", "rotate", "duplicate", "delete",
-    "validate", "save", "fit", "cycle_detail_level", "help",
+    "validate", "save", "fit", "cycle_detail_level", "sun_study", "help",
     "add_door", "add_window", "add_outlet", "add_furniture", "undo", "redo",
     "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view", "apply", "reset", "shape_apply",
     "next_issue", "previous_issue",

@@ -20,6 +20,33 @@ local function room()
 end
 
 describe("schema v4 outlet placement", function()
+  it("round-trips exact sunlight site data and optional paired window heights", function()
+    local plan = h.truthy(model.new({ name = "Sun study" }))
+    plan.site = json.object({
+      north_deg = h.truthy(json.decimal_from_string("17.125")),
+      latitude_deg = h.truthy(json.decimal_from_string("47.3769")),
+      longitude_deg = h.truthy(json.decimal_from_string("8.5417")),
+      utc_offset_minutes = 60,
+    })
+    plan.rooms[1] = room()
+    plan.windows[1] = model.new_window({
+      id = "window-sun", room_id = "room-main", part_id = "part-main", side = "north",
+      offset_mm = 500, width_mm = 1200, sill_height_mm = 850, head_height_mm = 2150,
+    })
+    local normalized, info = schema_v4.normalize(plan)
+    h.truthy(normalized, vim.inspect(info))
+    h.eq("17.125\n", json.encode(normalized.site.north_deg))
+    h.eq(850, normalized.windows[1].sill_height_mm)
+    local encoded = h.truthy(schema.encode(normalized))
+    h.truthy(json.deep_equal(normalized, h.truthy(schema.decode(encoded))))
+
+    local unpaired = json.deep_copy(plan)
+    unpaired.windows[1].head_height_mm = nil
+    local rejected, err = schema_v4.normalize(unpaired)
+    h.eq(nil, rejected)
+    h.eq("SCHEMA_WINDOW_HEIGHT_PAIR", h.truthy(err).code)
+  end)
+
   it("migrates v3 outlets to explicit wall placement without mutating input", function()
     local source_document = fixture("windows-outlets-v3.roomplan.json")
     local original = json.deep_copy(source_document)

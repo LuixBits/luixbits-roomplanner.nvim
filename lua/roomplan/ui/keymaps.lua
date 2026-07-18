@@ -22,9 +22,16 @@ function M.apply(buf, session)
   for _, entry in ipairs({ { "h", -1, 0 }, { "j", 0, -1 }, { "k", 0, 1 }, { "l", 1, 0 } }) do
     map(buf, entry[1], controller("direction", entry[2], entry[3], "normal"), "RoomPlan direction")
   end
-  for _, entry in ipairs({ { "H", -1, 0 }, { "J", 0, -1 }, { "K", 0, 1 }, { "L", 1, 0 } }) do
+  for _, entry in ipairs({ { "H", -1, 0 }, { "J", 0, -1 }, { "K", 0, 1 } }) do
     map(buf, entry[1], controller("direction", entry[2], entry[3], "coarse"), "RoomPlan coarse direction")
   end
+  map(buf, "L", controller("direction", 1, 0, "coarse"), "RoomPlan coarse direction", "coarse_right")
+  map(buf, "L", function()
+    if session.mode == "NAV" and not session.shape_edit then
+      return require("roomplan.controller").sun_study(session)
+    end
+    return require("roomplan.controller").direction(session, 1, 0, "coarse")
+  end, "Open RoomPlan sun study or move right coarsely", "sun_study")
   for _, entry in ipairs({ { "<C-h>", -1, 0 }, { "<C-j>", 0, -1 }, { "<C-k>", 0, 1 }, { "<C-l>", 1, 0 } }) do
     map(buf, entry[1], controller("direction", entry[2], entry[3], "fine"), "RoomPlan fine direction")
   end
@@ -52,7 +59,7 @@ function M.apply(buf, session)
   map(buf, "<A-l>", controller("rotate_view", "clockwise"), "Rotate RoomPlan view clockwise", "rotate_view_clockwise")
   map(buf, "<A-h>", controller("rotate_view", "counterclockwise"),
     "Rotate RoomPlan view counter-clockwise", "rotate_view_counterclockwise")
-  map(buf, "g0", controller("rotate_view", "reset"), "Reset RoomPlan view north-up", "reset_view")
+  map(buf, "g0", controller("rotate_view", "reset"), "Reset RoomPlan plan view/up", "reset_view")
   map(buf, "f", controller("fit"), "Fit RoomPlan", "fit")
   map(buf, "t", controller("set_detail_level", "cycle"), "Cycle RoomPlan canvas detail", "cycle_detail_level")
   map(buf, "zf", controller("fit"), "Fit RoomPlan")

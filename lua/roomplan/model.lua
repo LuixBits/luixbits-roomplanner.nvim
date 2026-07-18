@@ -60,6 +60,7 @@ function M.new(options)
     units = "mm",
     metadata = metadata,
     settings = settings,
+    site = options.site and json.deep_copy(options.site) or nil,
     rooms = json.array(),
     doors = json.array(),
     windows = json.array(),

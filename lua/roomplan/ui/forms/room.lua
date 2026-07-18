@@ -5,6 +5,7 @@ local model_helpers = require("roomplan.model")
 local room_footprints = require("roomplan.model.room_footprints")
 local common = require("roomplan.ui.forms.common")
 local room_sections = require("roomplan.ui.forms.room_sections")
+local directions = require("roomplan.directions")
 
 local M = {}
 
@@ -78,12 +79,13 @@ local function missing_corner_field()
   return {
     key = "missing_corner", label = "Missing corner", type = "enum", required = true,
     visible = function(_, draft) return draft.shape == "l_shape" end,
-    choices = {
-      { value = "northeast", label = "North-east" },
-      { value = "northwest", label = "North-west" },
-      { value = "southeast", label = "South-east" },
-      { value = "southwest", label = "South-west" },
-    },
+    choices = function(context)
+      local result = {}
+      for _, corner in ipairs({ "northeast", "northwest", "southeast", "southwest" }) do
+        result[#result + 1] = { value = corner, label = directions.corner_label(corner, context) }
+      end
+      return result
+    end,
   }
 end
 
@@ -124,7 +126,8 @@ local function proposal(draft, context)
     if not reference then return nil, { code = "ROOM_REFERENCE", message = "choose a reference room" } end
     local result, err = alignment.propose(room, reference, RELATIVE[draft.placement], { gap_mm = draft.gap_mm or 0 })
     if not result then return nil, err end
-    result.description = string.format("%s of %s", draft.placement, reference.name or reference.id)
+    result.description = string.format("%s of %s",
+      directions.label(draft.placement, context), reference.name or reference.id)
     return placement(result, room)
   end
   local plan = common.model(context)
@@ -153,10 +156,12 @@ function M.add(session, opts)
     { value = "cursor", label = "Canvas cursor" },
   }
   if #rooms > 0 then
-    placement_choices[#placement_choices + 1] = { value = "north", label = "North of a room" }
-    placement_choices[#placement_choices + 1] = { value = "east", label = "East of a room" }
-    placement_choices[#placement_choices + 1] = { value = "south", label = "South of a room" }
-    placement_choices[#placement_choices + 1] = { value = "west", label = "West of a room" }
+    for _, choice in ipairs(directions.choices(context)) do
+      placement_choices[#placement_choices + 1] = {
+        value = choice.value,
+        label = choice.label .. " of a room",
+      }
+    end
   end
   local spec = {
     id = "add-room",

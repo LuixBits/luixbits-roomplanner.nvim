@@ -56,7 +56,11 @@ The main canvas groups are:
 `RoomPlanFurniture`, `RoomPlanRoomLabel`, `RoomPlanFurnitureLabel`,
 `RoomPlanSelected`, `RoomPlanSnap`, `RoomPlanSnapOverlap`, `RoomPlanError`,
 `RoomPlanWarning`, `RoomPlanGrid`, `RoomPlanStatus`, `RoomPlanMuted`, and
-`RoomPlanCompass`.
+`RoomPlanCompass`. Sun studies additionally use `RoomPlanSunWall`,
+`RoomPlanSunWindow`, and `RoomPlanSunlight1` through `RoomPlanSunlight5`.
+The five floor-light backgrounds form an adaptive yellow-to-orange gradient
+derived from the active `Normal` background, so they remain visible without a
+fixed light or dark theme palette.
 
 Workspace groups use the `RoomPlanWorkspace*` prefix for titles, active and
 inactive borders, cursor rows, selection, keys, values, object kinds, and

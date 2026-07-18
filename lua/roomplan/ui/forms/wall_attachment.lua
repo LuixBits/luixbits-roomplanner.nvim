@@ -5,15 +5,13 @@ local adjacency = require("roomplan.geometry.adjacency")
 local wall_geometry = require("roomplan.geometry.wall_attachment")
 local util = require("roomplan.util")
 local common = require("roomplan.ui.forms.common")
+local directions = require("roomplan.directions")
 
 local M = {}
 
-M.side_choices = {
-  { value = "north", label = "North" },
-  { value = "east", label = "East" },
-  { value = "south", label = "South" },
-  { value = "west", label = "West" },
-}
+function M.side_choices(context)
+  return directions.choices(context)
+end
 
 function M.owner(draft, context)
   return common.find(context, "room", draft.room_id)

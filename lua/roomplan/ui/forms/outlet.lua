@@ -4,6 +4,7 @@ local model = require("roomplan.model")
 local outlet_types = require("roomplan.outlet_types")
 local common = require("roomplan.ui.forms.common")
 local wall = require("roomplan.ui.forms.wall_attachment")
+local directions = require("roomplan.directions")
 
 local M = {}
 
@@ -156,7 +157,8 @@ local function preview(draft, context)
   if is_wall(draft) then
     local offset, err = wall.resolve_offset(wall_draft(draft), context, 0)
     if offset == nil then return nil, err end
-    first = string.format("%s wall of %s: offset %d mm", draft.side, owner.name or owner.id, offset)
+    first = string.format("%s wall of %s: offset %d mm",
+      directions.label(draft.side, context), owner.name or owner.id, offset)
   else
     local position, err = floor_position(draft, context)
     if not position then return nil, err end

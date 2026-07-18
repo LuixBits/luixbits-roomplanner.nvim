@@ -30,6 +30,9 @@ rotations in 90-degree steps. Existing schema-v1/v2/v3 plans migrate in memory
 and are rewritten only by an explicit save. RoomPlan is a space planner, not
 CAD/BIM software or a building-code checker.
 
+An offline sun study persists exact plan north, location, and UTC offset, then
+draws transient window light patches for a chosen date and time.
+
 Requirements:
 
 - Neovim 0.10 or newer
@@ -98,6 +101,8 @@ furniture wall placement, and named undo-history browsing.
 
 With a room present, `W` adds a window and `O` adds a wall or floor outlet. The
 `a` Add menu offers the same objects with lowercase `w` and `o`.
+Press `L` for the sunlight study. First use opens site setup; later uses open
+the date/time and sunrise-to-sunset playback popup directly.
 
 Open the plan later with: >vim
   :RoomPlanOpen ~/plans/flat.roomplan.json
@@ -190,6 +195,9 @@ explicitly.
 :RoomPlanRotateView [dir] Rotate the view clockwise by default. dir may be
                           clockwise, counterclockwise, or reset.
 
+                                                        *:RoomPlanSunStudy*
+:RoomPlanSunStudy       Open site setup or the transient sunlight study.
+
                                                         *:RoomPlanSave*
 :RoomPlanSave[!]          Save. ! permits saving a structurally valid draft
                           that still has layout errors.
@@ -279,7 +287,8 @@ Canvas and editing:
   t              cycle high / middle / none canvas detail
   zh zj zk zl    pan without entering PAN mode
   Alt-l / Alt-h / g0
-                  rotate view clockwise / counterclockwise / north-up
+                  rotate view clockwise / counterclockwise / plan view-up
+  L               open sunlight study (coarse right outside NAV)
   gs / g!        toggle snapping / bypass the next snap
 
 Measurement, furniture wall placement, marked-object batch actions, and named
@@ -344,6 +353,10 @@ errors; options are not silently ignored. The important defaults are: >lua
       max_distance_mm = 250,
       priority = { "door", "room_edge", "room_center", "furniture", "grid" },
     },
+    sun_study = {
+      window_defaults = { sill_height_mm = 900, head_height_mm = 2100 },
+      playback = { step_minutes = 60, frame_duration_ms = 700 },
+    },
     ui = {
       confirm_delete = true,
       notify_level = "info",
@@ -392,15 +405,17 @@ instead store a strictly interior room-local point and move with their room.
 A window also stores width and connects either to outside (JSON null) or to a
 room whose opposite wall covers the whole aperture. A valid window cuts its
 owner wall; only a verified connection cuts the matching connected wall.
-Invalid aperture geometry never cuts a wall. Windows have no swing.
+Invalid aperture geometry never cuts a wall. Windows have no swing. An
+optional paired sill_height_mm/head_height_mm feeds sunlight; otherwise setup
+defaults are used without adding keys to the plan.
 
 An outlet never cuts a wall. Types are power, usb, ethernet, coax, phone, and
 other; slots must be 1 through 32. Wall outlets use inward-facing half circles
 and must be strictly inside an exterior edge because corners are ambiguous.
 Floor outlets use full circles and must be strictly inside their owner room.
 
-The top-down model does not yet store window sill/head/opening height or outlet
-mounting height. See docs/planning/windows-and-outlets.md.
+The top-down model does not store glazing/opening style or outlet mounting
+height. See docs/planning/windows-and-outlets.md and planning/sun-study.md.
 
 ==============================================================================
 9. FURNITURE CATALOGUES                                 *roomplan-furniture*
@@ -469,10 +484,16 @@ cell height divided by cell width; the default is 2.0. If a square room looks
 vertically stretched, use :RoomPlanAspect with a measured ratio. This updates
 the current Neovim process and refits every live canvas; no rebuild is needed.
 
-View rotation is also transient. Alt-l and Alt-h rotate by 90 degrees, g0
-restores north-up, and the compass shows where world north points. Movement
-and panning remain screen-relative. Saved room, door, window, outlet, and
-furniture coordinates never rotate.
+View rotation is also transient. Alt-l and Alt-h rotate by 90 degrees, while
+g0 restores plan view/up. Before site setup the compass shows plan up (P plus
+an arrow); afterwards it shows geographic north (N plus an arrow). Movement,
+panning, and top/right/bottom/left wall labels remain screen-relative. Saved
+room, door, window, outlet, and furniture coordinates never rotate.
+
+The sun study uses `h`/`l` for one configured time step and Space to play or
+pause. It calculates offline and stops at sunset. Its yellow/orange floor
+patches are approximate 2D clear-sky exposure, not illuminance or thermal
+simulation.
 
 canvas.detail_level defaults to "middle". high shows labels plus all exterior
 wall-run, furniture width/depth, and door/window width dimensions. middle shows
@@ -517,6 +538,7 @@ Public entry points: >lua
   roomplan.set_aspect(ratio, opts, callback)
   roomplan.set_canvas_detail(level)
   roomplan.rotate_view(direction)
+  roomplan.sun_study()
   roomplan.hide(opts)
   roomplan.close(opts, callback)
   roomplan.validate(opts)

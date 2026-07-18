@@ -124,6 +124,61 @@ function M.decimal_parts(value)
   return value.sign, value.coefficient, value.exponent
 end
 
+---Create the codec's exact decimal representation from ordinary decimal text.
+---Whole values remain ordinary safe Lua integers, matching decoded JSON.
+function M.decimal_from_string(value)
+  if type(value) ~= "string" then return nil, "expected decimal text" end
+  value = value:match("^%s*(.-)%s*$")
+  local mantissa, exponent_text = value:match("^(.-)[eE]([+-]?%d+)$")
+  if not mantissa then
+    if value:find("[eE]") then return nil, "expected a decimal number" end
+    mantissa, exponent_text = value, "0"
+  end
+  local sign_text = mantissa:sub(1, 1)
+  if sign_text == "+" or sign_text == "-" then mantissa = mantissa:sub(2)
+  else sign_text = "" end
+  local whole, fraction
+  if mantissa:match("^%d+$") then
+    whole, fraction = mantissa, ""
+  else
+    whole, fraction = mantissa:match("^(%d*)%.(%d+)$")
+    if whole == "" then whole = "0" end
+  end
+  if not whole then return nil, "expected a decimal number" end
+  local exponent = tonumber(exponent_text)
+  if not exponent or math.abs(exponent) > HARD_LIMITS.max_abs_exponent then
+    return nil, "decimal exponent exceeds the hard limit"
+  end
+  local coefficient = whole .. fraction
+  exponent = exponent - #fraction
+  local sign = sign_text == "-" and -1 or 1
+  local decimal = M.decimal(sign, coefficient, exponent)
+  local integer = nil
+  if decimal.exponent >= 0 and #decimal.coefficient + decimal.exponent <= 15 then
+    integer = tonumber(decimal.coefficient) * (10 ^ decimal.exponent) * decimal.sign
+  end
+  if integer and integer == math.floor(integer) and math.abs(integer) <= 9007199254740991 then
+    return integer
+  end
+  return decimal
+end
+
+---Convert a tagged JSON decimal or finite Lua number for calculations.
+function M.number_value(value)
+  if type(value) == "number" then
+    if value == value and value ~= math.huge and value ~= -math.huge then return value end
+    return nil
+  end
+  if not M.is_decimal(value) then return nil end
+  local sign, coefficient, exponent = M.decimal_parts(value)
+  if #coefficient > 32 or math.abs(exponent) > 308 then return nil end
+  local converted = tonumber(coefficient)
+  if not converted then return nil end
+  converted = sign * converted * (10 ^ exponent)
+  if converted ~= converted or converted == math.huge or converted == -math.huge then return nil end
+  return converted
+end
+
 local function effective_limit(options, name)
   local hard = HARD_LIMITS[name]
   local requested = options and options[name]

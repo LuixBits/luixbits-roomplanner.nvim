@@ -114,6 +114,27 @@ function M.integer(context, value, path, minimum, maximum, maximum_abs)
   return converted
 end
 
+---Normalize a bounded finite JSON number while preserving decimal text.
+function M.number(context, value, path, minimum, maximum)
+  local converted = json.number_value(value)
+  if converted == nil then
+    return M.add_error(context, "SCHEMA_NUMBER", path, "must be a finite number", value)
+  end
+  if minimum ~= nil and converted < minimum then
+    return M.add_error(context, "SCHEMA_NUMBER_MIN", path, "must be at least " .. minimum, value)
+  end
+  if maximum ~= nil and converted > maximum then
+    return M.add_error(context, "SCHEMA_NUMBER_MAX", path, "must be at most " .. maximum, value)
+  end
+  if type(value) == "number" and value ~= math.floor(value) then
+    local persisted, reason = json.decimal_from_string(string.format("%.15g", value))
+    if not persisted then return M.add_error(context, "SCHEMA_NUMBER", path, reason, value) end
+    context.normalized = true
+    return persisted
+  end
+  return value
+end
+
 local function has_disallowed_control(value, allow_lines)
   local cursor = 1
   while cursor <= #value do

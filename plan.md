@@ -50,6 +50,11 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
 - Popup-first wall placement and exact two-object measurement, Navigator
   marking with atomic batch move/duplicate/delete, and a named retained-history
   browser with confirmed revision restore.
+- Offline sunlight study with one exact persisted site/north authority,
+  top/right/bottom/left screen labels, optional per-window sill/head pairs,
+  configurable assumed heights, clear-sky solar angles, exposed-wall/window
+  emphasis, clipped floor gradients, and popup playback from sunrise to sunset.
+  Study date/time/playback remains transient and closes with its timer.
 
 Schema v1, v2, and v3 stay readable compatibility formats; schema v4 is the only
 writer. Compound footprints are connected, hole-free unions of at most 256
@@ -64,7 +69,7 @@ outside the current model.
   geometry changes; never persist array indexes or raster segments.
 - Migrate door/window attachments from `room_id + part_id + side + offset` to
   persistent wall runs through a new sequential schema migration.
-- Add vertical window metadata only when rendering or analysis consumes it.
+- Carry the shipped sill/head pair through any future stable wall migration.
   Wall thickness and materials wait for complete rendering, validation,
   clearance, and opening semantics.
 
@@ -81,12 +86,11 @@ outside the current model.
 
 ### Sun study
 
-- Use geographic north plus user-supplied location, timezone, date, and time;
-  never require network access or geolocation.
-- Start with deterministic morning/noon/evening directions and a time slider.
-  View rotation changes projection, never world north.
-- Later project approximate light polygons through windows using modeled wall,
-  sill, head, and obstacle heights.
+- Extend the shipped deterministic offline study only where the main canvas
+  benefits: legends, reusable overlay controls, wall thickness/overhangs, and
+  furniture-height or explicit-obstacle shadows.
+- Keep view rotation as projection only and retain one exact persisted
+  geographic-north/site authority.
 - Label results as approximate 2D exposure, not illuminance, thermal,
   construction, or building-code analysis.
 

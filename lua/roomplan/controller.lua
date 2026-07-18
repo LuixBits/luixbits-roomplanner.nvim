@@ -9,6 +9,7 @@ local modules = {
   "roomplan.controller.view",
   "roomplan.controller.edit",
   "roomplan.controller.shape",
+  "roomplan.controller.sun",
 }
 
 for _, name in ipairs(modules) do

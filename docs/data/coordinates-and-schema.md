@@ -14,6 +14,8 @@ producers.
 
 - Units are always integer millimetres.
 - World `X` increases east/right and world `Y` increases north/up.
+- Those cardinal names describe the stable file coordinate system only. The
+  UI translates sides to top/right/bottom/left for the current rotated view.
 - A room's `origin_mm` is the stable world origin of its local footprint.
 - A footprint is a `rect_union` of local rectangular parts. Each part has a
   stable `part-*` ID, local `origin_mm`, and `[width, depth]` `size_mm`.
@@ -49,6 +51,12 @@ remain world-relative.
     "coarse_step_mm": 500,
     "default_door_width_mm": 900
   },
+  "site": {
+    "north_deg": 17.125,
+    "latitude_deg": 47.3769,
+    "longitude_deg": 8.5417,
+    "utc_offset_minutes": 60
+  },
   "rooms": [],
   "doors": [],
   "windows": [],
@@ -63,6 +71,14 @@ IDs are stable and globally unique. Room, door, window, outlet, and furniture
 IDs begin with `room-`, `door-`, `window-`, `outlet-`, and `furniture-`;
 project template IDs begin with `custom:`. Template references may also use the
 reserved `builtin:` namespace.
+
+`site` is optional. Its decimal angles are preserved without forcing them
+through binary floating point during JSON round trips. `north_deg` is the
+clockwise angle from plan top to geographic north in `[0, 360)`. Latitude,
+longitude, and the fixed UTC offset feed the offline sun calculation. A window
+may optionally store the paired integer fields `sill_height_mm` and
+`head_height_mm`; omitted pairs use setup defaults at display time and do not
+create extra saved keys.
 
 Rooms and furniture may contain an optional `color` value. It is either
 `"auto"`, which inherits the active colorscheme, or a canonical six-digit

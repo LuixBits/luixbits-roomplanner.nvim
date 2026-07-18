@@ -8,7 +8,7 @@ local entities = require("roomplan.schema.v3.entities")
 local M = {}
 local VERSION = 3
 
-function M.normalize_with(document, schema_version, entity_normalizers)
+function M.normalize_with(document, schema_version, entity_normalizers, normalize_root)
   schema_version = schema_version or VERSION
   entity_normalizers = entity_normalizers or entities
   local context = common.new_context()
@@ -143,6 +143,8 @@ function M.normalize_with(document, schema_version, entity_normalizers)
     entity_normalizers.validate_window_parts(context, result.windows, room_footprints)
     entity_normalizers.validate_outlet_parts(context, result.outlets, room_footprints)
   end
+
+  if type(normalize_root) == "function" then normalize_root(context, result) end
 
   common.validate_json_tree(context, result, "$", {})
   return common.result_or_error(context, result)

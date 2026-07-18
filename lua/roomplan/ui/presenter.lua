@@ -5,6 +5,7 @@ local color = require("roomplan.color")
 local footprint = require("roomplan.geometry.footprint")
 local canvas_detail = require("roomplan.canvas_detail")
 local outlet_types = require("roomplan.outlet_types")
+local directions = require("roomplan.directions")
 
 local M = {}
 
@@ -44,9 +45,9 @@ local function shape_context(value)
   return {
     shape_section_index = index or 0,
     shape_section_count = #(edit.footprint.parts or {}),
-    shape_edge = require("roomplan.room_shape").edge_summary(edit),
-    shape_feedback = edit.move_feedback,
-    shape_snap = require("roomplan.room_shape").snap_summary(edit),
+    shape_edge = directions.replace_cardinals(require("roomplan.room_shape").edge_summary(edit), value),
+    shape_feedback = directions.replace_cardinals(edit.move_feedback, value),
+    shape_snap = directions.replace_cardinals(require("roomplan.room_shape").snap_summary(edit), value),
   }
 end
 
@@ -163,7 +164,7 @@ function M.objects(value, opts)
       id = door.id,
       name = door.name or door.id,
       room_name = rooms[door.room_id] and rooms[door.room_id].name or door.room_id,
-      label = string.format("%s → %s", door.side or "Door", destination_name),
+      label = string.format("%s → %s", directions.label(door.side, value), destination_name),
       detail = short_mm(door.width_mm),
       object = door,
     })
@@ -176,7 +177,7 @@ function M.objects(value, opts)
       id = window.id,
       name = window.id,
       room_name = rooms[window.room_id] and rooms[window.room_id].name or window.room_id,
-      label = string.format("%s window → %s", window.side or "Wall", destination_name),
+      label = string.format("%s window → %s", directions.label(window.side, value), destination_name),
       detail = short_mm(window.width_mm),
       object = window,
     })
@@ -190,7 +191,8 @@ function M.objects(value, opts)
       room_name = rooms[outlet.room_id] and rooms[outlet.room_id].name or outlet.room_id,
       label = outlet_name .. " outlet",
       detail = string.format("%d slot%s · %s", outlet.slots or 0,
-        outlet.slots == 1 and "" or "s", outlet.placement == "floor" and "floor" or (outlet.side or "wall")),
+        outlet.slots == 1 and "" or "s",
+        outlet.placement == "floor" and "floor" or directions.label(outlet.side, value):lower()),
       object = outlet,
     })
   end
@@ -369,7 +371,7 @@ local function room_name(rooms, id, fallback)
   return fallback
 end
 
-local function selection_breadcrumb(model, selection, object)
+local function selection_breadcrumb(model, selection, object, direction_context)
   if not selection or selection.kind == "plan" or not object then return nil end
   local rooms = room_lookup(model)
   local kind = selection.kind
@@ -385,7 +387,7 @@ local function selection_breadcrumb(model, selection, object)
     values[1] = room_name(rooms, object.room_id, "Unknown room")
     local destination = room_name(rooms, object.connects_to_room_id, "outside")
     values[2] = string.format("%s · %s → %s",
-      kind == "door" and "Door" or "Window", capitalized(object.side, "wall"), destination)
+      kind == "door" and "Door" or "Window", directions.label(object.side, direction_context), destination)
   elseif kind == "outlet" then
     values[1] = room_name(rooms, object.room_id, "Unknown room")
     local placement = object.placement == "floor" and "Floor outlet" or "Wall outlet"
@@ -416,7 +418,7 @@ function M.breadcrumb(value, ctx)
   local model = model_of(value)
   local selection = ctx.selection ~= nil and ctx.selection or selection_of(value)
   local object = ctx.selected_object or find(model, selection)
-  local result = selection_breadcrumb(model, selection, object)
+  local result = selection_breadcrumb(model, selection, object, value)
   if not result then return nil end
 
   local values = { result.selection_text }
@@ -523,7 +525,7 @@ function M.properties(value, opts)
   elseif selection.kind == "door" then
     local destination = type(object.connects_to_room_id) == "string" and object.connects_to_room_id or "outside"
     groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
-      field("Room", object.room_id), field("Wall", object.side),
+      field("Room", object.room_id), field("Wall", directions.label(object.side, value)),
       metric("Offset", object.offset_mm), metric("Width", object.width_mm),
     } }
     if compound_geometry and object.part_id then
@@ -536,10 +538,17 @@ function M.properties(value, opts)
   elseif selection.kind == "window" then
     local destination = type(object.connects_to_room_id) == "string" and object.connects_to_room_id or "outside"
     groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
-      field("Room", object.room_id), field("Wall", object.side),
+      field("Room", object.room_id), field("Wall", directions.label(object.side, value)),
       metric("Offset", object.offset_mm), metric("Width", object.width_mm),
     } }
     if object.part_id then table.insert(groups[#groups].fields, 2, field("Part", object.part_id)) end
+    local defaults = require("roomplan.config").get().sun_study.window_defaults
+    groups[#groups + 1] = { id = "sunlight", title = "Sunlight", fields = {
+      metric("Sill height", object.sill_height_mm or defaults.sill_height_mm),
+      metric("Head height", object.head_height_mm or defaults.head_height_mm),
+      field("Source", object.sill_height_mm ~= nil and object.head_height_mm ~= nil
+        and "This window" or "Configured defaults"),
+    } }
     groups[#groups + 1] = { id = "connection", title = "Connection", fields = {
       field("Destination", destination),
     } }
@@ -553,7 +562,7 @@ function M.properties(value, opts)
     else
       groups[#groups + 1] = { id = "placement", title = "Placement", fields = {
         field("Room", object.room_id), field("Location", "Wall"),
-        field("Wall", object.side), metric("Offset", object.offset_mm),
+        field("Wall", directions.label(object.side, value)), metric("Offset", object.offset_mm),
       } }
       if object.part_id then table.insert(groups[#groups].fields, 2, field("Part", object.part_id)) end
     end

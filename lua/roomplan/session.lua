@@ -281,6 +281,7 @@ end
 
 function Session:reset(snapshot, revision, locator, opts)
   opts = opts or {}
+  pcall(function() require("roomplan.controller.sun").close(self) end)
   if self.form then pcall(function() require("roomplan.ui.form").cancel(self.form, "plan reloaded") end) end
   self.history:reset(snapshot, { durable = opts.durable ~= false, label = opts.label or "Reload plan" })
   self.source.revision = revision
@@ -313,6 +314,7 @@ function Session:destroy(opts)
     return nil, util.err("SESSION_DIRTY", "RoomPlan session has protected changes")
   end
   self.tearing_down = true
+  pcall(function() require("roomplan.controller.sun").close(self) end)
   if self.form then pcall(function() require("roomplan.ui.form").cancel(self.form, "session closed") end) end
   require("roomplan.ui.flow").cancel(self, "session closed")
   if self.workspace then pcall(function() require("roomplan.ui.workspace").close(self) end) end

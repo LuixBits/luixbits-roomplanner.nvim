@@ -15,7 +15,7 @@ rounding can never corrupt the saved plan.
 
 - Canvas-first responsive workspace with toggleable Navigator and Details
   panes, contextual actions, a compact selection/MOVE/RESIZE breadcrumb,
-  validation issues, semantic highlighting, and a north compass. Three
+  validation issues, semantic highlighting, and a plan/geographic compass. Three
   transient detail levels keep labels and measurements as sparse or complete
   as the current task needs.
 - Structured forms for rooms, furniture, doors, windows, outlets, alignment,
@@ -30,6 +30,9 @@ rounding can never corrupt the saved plan.
   template updates explicit and never bulk-rewrites other placed items.
 - View-only 90-degree rotation and runtime terminal-cell aspect calibration;
   neither operation changes saved geometry.
+- Offline sunlight studies with exact plan-north/site setup, date/time controls,
+  sunrise-to-sunset playback, configurable assumed window heights, and clipped
+  yellow-to-orange floor patches beneath the main plan display.
 - Strict, deterministic JSON with preserved extension fields, plus marked Neorg
   embedding and conflict-safe writes.
 - Named undo history with confirmed revision restore; Navigator marking for
@@ -98,6 +101,8 @@ For a room, furniture item, or project template, `e` also exposes an
 `q` returns to the canvas before hiding the workspace. Add a window directly
 with `W` or an outlet with `O`; the outlet form chooses wall or floor placement.
 From the Add menu use `a` followed by lowercase `w` or `o`.
+Press `L` for the sunlight study. Its first use asks for plan north, location,
+and UTC offset in one popup; later uses open the date/time playback directly.
 
 Open the plan again with:
 
@@ -115,8 +120,8 @@ The documentation is a linked, chaptered handbook:
 - [Documentation home](docs/README.md) and [complete chapter list](docs/SUMMARY.md)
 - [Workspace and navigation](docs/workspace/overview.md)
 - [Rooms](docs/planning/rooms.md), [doors](docs/planning/doors.md),
-  [windows and outlets](docs/planning/windows-and-outlets.md), and
-  [furniture](docs/planning/furniture.md)
+  [windows and outlets](docs/planning/windows-and-outlets.md),
+  [sun study](docs/planning/sun-study.md), and [furniture](docs/planning/furniture.md)
 - [Settings](docs/configuration/settings.md),
   [keymaps](docs/configuration/keymaps.md), and
   [appearance](docs/display/appearance.md)
@@ -149,6 +154,10 @@ require("roomplan").setup({
   furniture = {
     include_builtins = false,
     files = { vim.fn.stdpath("config") .. "/roomplan-furniture.json" },
+  },
+  sun_study = {
+    window_defaults = { sill_height_mm = 900, head_height_mm = 2100 },
+    playback = { step_minutes = 60, frame_duration_ms = 700 },
   },
   ui = {
     workspace = {

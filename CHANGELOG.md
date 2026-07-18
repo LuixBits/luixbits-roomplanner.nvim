@@ -4,6 +4,16 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Added a complete offline sunlight study. `L`, `:RoomPlanSunStudy`, and the
+  searchable action popup open one structured workflow for exact plan north,
+  location, fixed UTC offset, date/time, step size, frame duration, and
+  sunrise-to-sunset playback. Exterior sun-facing walls/windows and clipped
+  yellow-to-orange floor patches render beneath normal plan geometry. Windows
+  may store one optional sill/head pair or use configurable 900/2100 mm
+  defaults without redundant saved keys. Site data is undoable and persisted;
+  playback and overlays are transient and timer-safe. User-facing wall choices
+  now follow the current top/right/bottom/left view while the stable file
+  coordinate schema remains unchanged.
 - Made the main canvas responsive to zoom density. Room and furniture names
   now use their projected footprint as a text budget, preserve both ends when
   abbreviated, and disappear once the object is only an overview glyph.

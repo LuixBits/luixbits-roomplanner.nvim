@@ -55,6 +55,7 @@ local definitions = {
   RoomPlanRotateView = {
     method = "rotate_view", nargs = "?", desc = "Rotate the RoomPlan view without changing geometry",
   },
+  RoomPlanSunStudy = { method = "sun_study", desc = "Open the RoomPlan sunlight study" },
   RoomPlanSave = { method = "save", bang = true, desc = "Save RoomPlan" },
   RoomPlanSaveAs = { method = "save_as", nargs = 1, bang = true, complete = "file", desc = "Save RoomPlan As" },
   RoomPlanReload = { method = "reload", bang = true, desc = "Reload RoomPlan" },
