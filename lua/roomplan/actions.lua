@@ -5,6 +5,7 @@ local alignment = require("roomplan.geometry.alignment")
 local adjacency = require("roomplan.geometry.adjacency")
 local json = require("roomplan.codec.json")
 local door_geometry = require("roomplan.geometry.door")
+local distribution = require("roomplan.geometry.distribution")
 local model_helpers = require("roomplan.model")
 local schema = require("roomplan.schema")
 local snapping = require("roomplan.geometry.snapping")
@@ -434,6 +435,37 @@ function handlers.move_furniture(model, action, context)
     touched = { touched("furniture", furniture.id) }, metadata = metadata }
 end
 
+function handlers.distribute_furniture(model, action)
+  local proposed, err = distribution.propose(model, action.room_id, action.axis, {
+    selected_id = action.selected_id,
+  })
+  if not proposed then return nil, err end
+
+  local moved, by_id = {}, {}
+  for _, item in ipairs(proposed.items) do
+    if item.delta_mm ~= 0 then
+      local furniture = find(model.furniture, item.id)
+      furniture[proposed.position_field] = action_json_value(item.target_position, "array")
+      moved[#moved + 1] = item.id
+      by_id[item.id] = true
+    end
+  end
+
+  local result_touched = {}
+  if action.selected_id then
+    result_touched[#result_touched + 1] = touched("furniture", action.selected_id)
+    by_id[action.selected_id] = nil
+  end
+  for _, id in ipairs(moved) do
+    if by_id[id] then result_touched[#result_touched + 1] = touched("furniture", id) end
+  end
+  return {
+    label = string.format("Distribute %d furniture %s", #proposed.items, proposed.axis),
+    touched = result_touched,
+    metadata = { distribution = proposed, moved_ids = moved },
+  }
+end
+
 function handlers.resize_furniture(model, action)
   local furniture = find(model.furniture, action.id)
   if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id }) end
@@ -786,6 +818,9 @@ local wall_fixture_actions = {
   add_window = true, edit_window = true, duplicate_window = true,
   add_outlet = true, edit_outlet = true, duplicate_outlet = true,
 }
+local furniture_layout_actions = {
+  distribute_furniture = true,
+}
 
 local function diagnostic_signature(value)
   local related = {}
@@ -826,6 +861,7 @@ function M.apply(model, action, context)
   local handler = handlers[name]
   if not handler then return nil, failure("UNKNOWN_ACTION", "unsupported action " .. tostring(name)) end
   local must_block = room_actions[name] or door_actions[name] or wall_fixture_actions[name]
+    or furniture_layout_actions[name]
 
   local structurally_valid, structural = validate.is_structurally_valid(model)
   if not structurally_valid then

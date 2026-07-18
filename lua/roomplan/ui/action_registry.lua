@@ -160,6 +160,21 @@ local function selected_kind(ctx)
   return ctx.selection and ctx.selection.kind
 end
 
+local function selected_furniture_room_count(ctx)
+  local selected_id = ctx.selection and ctx.selection.kind == "furniture" and ctx.selection.id
+  if not selected_id then return 0 end
+  local room_id
+  for _, furniture in ipairs(ctx.model and ctx.model.furniture or {}) do
+    if furniture.id == selected_id then room_id = furniture.room_id; break end
+  end
+  if not room_id then return 0 end
+  local count = 0
+  for _, furniture in ipairs(ctx.model.furniture or {}) do
+    if furniture.room_id == room_id then count = count + 1 end
+  end
+  return count
+end
+
 local function focused_pane(ctx)
   local focus = ctx and ctx.focus or "canvas"
   if focus == "form" then return "properties" end
@@ -211,8 +226,15 @@ local function availability(id, ctx)
       return false, "Select a movable object first"
     end
   elseif id == "align" then
-    if kind ~= "room" then return false, "Select a room first" end
-    if room_count(ctx) < 2 then return false, "Add another room first" end
+    if kind == "furniture" then
+      if selected_furniture_room_count(ctx) < 3 then
+        return false, "Add at least three furniture items to this room"
+      end
+    elseif kind == "room" then
+      if room_count(ctx) < 2 then return false, "Add another room first" end
+    else
+      return false, "Select a room or furniture first"
+    end
   elseif id == "rotate" then
     if kind ~= "furniture" then return false, "Select furniture first" end
   elseif id == "save" and ctx.conflicted then
@@ -258,6 +280,8 @@ function M.get(id, ctx)
       result.handler = "edit_template"
       result.args = { ctx.selection.id }
     end
+  elseif id == "align" and ctx.selection and ctx.selection.kind == "furniture" then
+    result.label = "Equal spacing"
   elseif id == "toggle_snap" then
     result.label = ctx.snap_enabled == false and "Enable snapping" or "Disable snapping"
   elseif id == "cycle_detail_level" then
@@ -309,7 +333,7 @@ local function ids_for(ctx)
     }
   elseif kind == "furniture" then
     return {
-      "edit", "resize_dimensions", "move", "rotate", "fit", "duplicate", "delete",
+      "edit", "resize_dimensions", "move", "align", "rotate", "fit", "duplicate", "delete",
       "validate", "save", "undo", "redo", "help",
     }
   elseif kind == "door" then
@@ -373,7 +397,7 @@ local function primary_ids_for(ctx)
   elseif kind == "room" then
     return { "edit", "resize_dimensions", "move", "align", "add", "help" }
   elseif kind == "furniture" then
-    return { "edit", "resize_dimensions", "move", "rotate", "delete", "help" }
+    return { "edit", "resize_dimensions", "move", "align", "rotate", "delete", "help" }
   elseif kind == "door" then
     return { "edit", "move", "delete", "help" }
   elseif kind == "window" or kind == "outlet" then

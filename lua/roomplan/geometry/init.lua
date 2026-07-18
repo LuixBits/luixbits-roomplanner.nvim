@@ -6,6 +6,7 @@ local geometry = {
   segment = require("roomplan.geometry.segment"),
   adjacency = require("roomplan.geometry.adjacency"),
   alignment = require("roomplan.geometry.alignment"),
+  distribution = require("roomplan.geometry.distribution"),
   snapping = require("roomplan.geometry.snapping"),
   door = require("roomplan.geometry.door"),
   sector = require("roomplan.geometry.sector"),

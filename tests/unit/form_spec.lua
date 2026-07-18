@@ -173,6 +173,31 @@ describe("structured forms", function()
     h.eq("room-bedroom", alignment_action.id)
     h.eq(100, alignment_action.gap_mm)
     h.eq(true, alignment_action.force)
+
+    local plan = session:model()
+    plan.furniture[2] = model.new_furniture({
+      id = "furniture-chair", room_id = "room-living", template_id = "builtin:chair",
+      name = "Chair", position_mm = { 500, 3200 }, size_mm = { 400, 400, 800 },
+    })
+    plan.furniture[3] = model.new_furniture({
+      id = "furniture-desk", room_id = "room-living", template_id = "builtin:desk",
+      name = "Desk", position_mm = { 4500, 3200 }, size_mm = { 500, 400, 740 },
+    })
+    local distribution_spec = forms.distribution.new(session, {
+      furniture_id = "furniture-sofa",
+    })
+    h.eq("FURNITURE DISTRIBUTE", distribution_spec.mode)
+    local distribution_state, distribution_valid = form_state.validate_all(
+      form_state.new(distribution_spec, distribution_spec.context)
+    )
+    h.truthy(distribution_valid, vim.inspect(distribution_state.errors))
+    local distribution_action = h.truthy(distribution_spec.build(
+      distribution_state.draft, distribution_spec.context
+    ))
+    h.eq("distribute_furniture", distribution_action.type)
+    h.eq("room-living", distribution_action.room_id)
+    h.eq("furniture-sofa", distribution_action.selected_id)
+    h.eq("horizontal", distribution_action.axis)
   end)
 
   it("provides full-field atomic edit specs for plans, rooms, furniture, doors, and templates", function()

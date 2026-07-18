@@ -209,6 +209,20 @@ function M.attach(controller)
   function controller.align_room(session)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
+    if resolved.selection and resolved.selection.kind == "furniture" then
+      local furniture = find_entity(resolved, resolved.selection)
+      if not furniture then return notify_error(util.err("SELECTION_STALE", "selected furniture no longer exists")) end
+      local count = 0
+      for _, item in ipairs(resolved:model().furniture or {}) do
+        if item.room_id == furniture.room_id then count = count + 1 end
+      end
+      if count < 3 then
+        return notify_error(util.err("DISTRIBUTION_COUNT", "add at least three furniture items to this room"))
+      end
+      return open_structured_form(resolved, require("roomplan.ui.forms").distribution.new(resolved, {
+        furniture_id = furniture.id,
+      }))
+    end
     if #resolved:model().rooms < 2 then
       return notify_error(util.err("ROOM_REFERENCE_REQUIRED", "add at least two rooms before aligning them"))
     end
@@ -360,7 +374,7 @@ function M.attach(controller)
     local actions = {
       { label = "Open/focus canvas", method = "focus_canvas" },
       { label = "Add room", method = "add_room" },
-      { label = "Align rooms", method = "align_room" },
+      { label = "Align rooms or distribute furniture", method = "align_room" },
       { label = "Add door", method = "add_door" },
       { label = "Add window", method = "add_window" },
       { label = "Add outlet", method = "add_outlet" },

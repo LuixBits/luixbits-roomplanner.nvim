@@ -41,6 +41,11 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   actions after every character without changing the immediate one-key Add
   menu. Adjacent unshifted `,` and `.` keys zoom out and in for Swiss, compact,
   and ergonomic keyboards. Both remain configurable by semantic mapping name.
+- Contextual `A` aligns rooms or opens equal furniture spacing. Furniture
+  distribution uses every item in the selected item's room, previews both
+  axes, keeps the visual outer pair fixed, balances integer-mm placement from
+  exact compound/rotated bounds, validates the final layout, and commits one
+  undo entry without adding a key or schema field.
 - Native packages, lazy.nvim, snacks, rocks, Nix flake, and nvf compatibility
   without optional integrations becoming hard dependencies.
 
@@ -96,7 +101,6 @@ outside the current model.
 
 - Further room/furniture presets only when they reduce common editing work
   without creating parallel geometry representations.
-- Equal-spacing constraints.
 - Minimap drawer and named view presets.
 - Undo-history drawer, grouping, locking, and layer visibility.
 - Line-of-sight, window-view, robot-vacuum reachability, and egress studies.

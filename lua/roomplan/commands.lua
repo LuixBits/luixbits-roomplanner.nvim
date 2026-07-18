@@ -28,7 +28,7 @@ local definitions = {
   RoomPlanHide = { method = "hide", desc = "Hide RoomPlan canvas" },
   RoomPlanClose = { method = "close", bang = true, desc = "Close RoomPlan session" },
   RoomPlanAddRoom = { method = "add_room", desc = "Add a RoomPlan room" },
-  RoomPlanAlign = { method = "align_room", desc = "Align RoomPlan rooms" },
+  RoomPlanAlign = { method = "align_room", desc = "Align RoomPlan rooms or distribute furniture" },
   RoomPlanAddDoor = { method = "add_door", desc = "Add a RoomPlan door" },
   RoomPlanAddWindow = { method = "add_window", desc = "Add a RoomPlan window" },
   RoomPlanAddOutlet = { method = "add_outlet", desc = "Add a RoomPlan outlet" },

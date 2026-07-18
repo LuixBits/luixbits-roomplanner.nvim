@@ -26,7 +26,7 @@ bypass structural validation or source-conflict checks.
 | Command | Purpose |
 | --- | --- |
 | `:RoomPlanAddRoom` | Open Add Room form |
-| `:RoomPlanAlign` | Align the selected room against another room |
+| `:RoomPlanAlign` | Align the selected room, or equally space furniture in the selected item's room |
 | `:RoomPlanAddDoor` | Open Add Door form |
 | `:RoomPlanAddWindow` | Open Add Window form |
 | `:RoomPlanAddOutlet` | Open Add Outlet form |
