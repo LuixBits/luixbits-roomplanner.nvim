@@ -1,5 +1,5 @@
--- Small dependency-free action window. Search is opt-in and currently used by
--- the complete `?` action list; compact choice menus stay one-key interfaces.
+-- Small dependency-free action window. Search is opt-in and stays inside the
+-- complete `?` action list; compact choice menus remain one-key interfaces.
 
 local mappings = require("roomplan.ui.mappings")
 local state = require("roomplan.state")
@@ -35,6 +35,10 @@ local function close(handle, reason)
   if not handle or handle.closed then return false end
   handle.closed = true
   handle.reason = reason
+  if handle.searching and valid_window(handle.winid) and vim.api.nvim_get_current_win() == handle.winid then
+    handle.searching = false
+    pcall(vim.cmd, "stopinsert")
+  end
   if handle.session and valid_buffer(handle.bufnr) then state.detach_buffer(handle.bufnr) end
   if handle.augroup then pcall(vim.api.nvim_del_augroup_by_id, handle.augroup) end
   if valid_window(handle.winid) then pcall(vim.api.nvim_win_close, handle.winid, true) end
@@ -93,9 +97,13 @@ local function document(handle)
   local lines = { handle.title, string.rep("-", math.max(16, text_width(handle.title))), "" }
   local row_map, item_rows, group_rows, disabled_rows, visible = {}, {}, {}, {}, {}
   local maximum = text_width(handle.title)
-  if handle.searchable and handle.query ~= "" then
-    lines[#lines + 1] = "/ " .. handle.query
-    maximum = math.max(maximum, text_width(lines[#lines]))
+  local search_row
+  if handle.searchable then
+    local search_line = "/ " .. handle.query
+    if not handle.searching and handle.query == "" then search_line = "/ Search actions…" end
+    lines[#lines + 1] = search_line
+    search_row = #lines
+    maximum = math.max(maximum, text_width(search_line))
     lines[#lines + 1] = ""
   end
   local previous_group
@@ -130,14 +138,16 @@ local function document(handle)
   lines[#lines + 1] = ""
   local footer = string.format("[%s/%s] Move  [%s] Run",
     display_key(handle.keys.next), display_key(handle.keys.previous), display_key(handle.keys.choose))
-  if handle.searchable then footer = footer .. "  [/] Search" end
+  if handle.searchable then
+    footer = footer .. (handle.searching and "  [type] Filter  [Enter] Run  [Esc] Results" or "  [/] Search")
+  end
   footer = footer .. string.format("  [%s/%s] Cancel",
     display_key(handle.keys.cancel), display_key(handle.keys.cancel_alt))
   lines[#lines + 1] = footer
   maximum = math.max(maximum, text_width(footer))
   return {
     lines = lines, row_map = row_map, item_rows = item_rows, group_rows = group_rows,
-    disabled_rows = disabled_rows, visible = visible, maximum = maximum,
+    disabled_rows = disabled_rows, visible = visible, maximum = maximum, search_row = search_row,
   }
 end
 
@@ -145,11 +155,17 @@ local function render(handle)
   if handle.closed or not valid_buffer(handle.bufnr) then return false end
   local view = document(handle)
   handle.row_map, handle.item_rows, handle.visible = view.row_map, view.item_rows, view.visible
+  handle.search_row = view.search_row
+  handle.rendering = true
   vim.bo[handle.bufnr].modifiable = true
   vim.api.nvim_buf_set_lines(handle.bufnr, 0, -1, false, view.lines)
-  vim.bo[handle.bufnr].modifiable = false
+  vim.bo[handle.bufnr].modifiable = handle.searching == true
+  handle.rendering = false
   vim.api.nvim_buf_clear_namespace(handle.bufnr, highlight_namespace, 0, -1)
   vim.api.nvim_buf_add_highlight(handle.bufnr, highlight_namespace, "Title", 0, 0, -1)
+  if view.search_row then
+    vim.api.nvim_buf_add_highlight(handle.bufnr, highlight_namespace, "Special", view.search_row - 1, 0, 1)
+  end
   for _, row in ipairs(view.group_rows) do
     vim.api.nvim_buf_add_highlight(handle.bufnr, highlight_namespace, "Special", row - 1, 0, -1)
   end
@@ -170,7 +186,13 @@ local function render(handle)
       col = math.max(0, math.floor((vim.o.columns - width) / 2)),
       row = math.max(0, math.floor((vim.o.lines - height) / 2) - 1),
     })
-    if view.item_rows[1] then vim.api.nvim_win_set_cursor(handle.winid, { view.item_rows[1], 0 }) end
+    if handle.searching and view.search_row then
+      local column = handle.search_column or #view.lines[view.search_row]
+      handle.search_column = nil
+      vim.api.nvim_win_set_cursor(handle.winid, { view.search_row, column })
+    elseif view.item_rows[1] then
+      vim.api.nvim_win_set_cursor(handle.winid, { view.item_rows[1], 0 })
+    end
   end
   return view
 end
@@ -182,11 +204,44 @@ local function filter(handle, query)
 end
 
 local function prompt_search(handle)
-  if not handle.searchable then return false end
-  vim.ui.input({ prompt = "Search RoomPlan actions: ", default = handle.query }, function(value)
-    if value ~= nil and not handle.closed then filter(handle, value) end
-  end)
+  if not handle.searchable or handle.closed or not valid_window(handle.winid) then return false end
+  handle.searching = true
+  handle.search_column = #(handle.query or "") + 2
+  render(handle)
+  vim.api.nvim_set_current_win(handle.winid)
+  vim.cmd("startinsert!")
   return true
+end
+
+local function finish_search(handle)
+  if not handle or not handle.searching then return false end
+  handle.searching = false
+  if valid_window(handle.winid) and vim.api.nvim_get_current_win() == handle.winid then
+    pcall(vim.cmd, "stopinsert")
+  end
+  render(handle)
+  return true
+end
+
+local function submit_search(handle)
+  if not finish_search(handle) then return false end
+  return choose(handle)
+end
+
+local function sync_search(handle)
+  if not handle or not handle.searching or handle.rendering or not valid_buffer(handle.bufnr) then return false end
+  local line = vim.api.nvim_buf_get_lines(handle.bufnr, handle.search_row - 1, handle.search_row, false)[1] or ""
+  local cursor = valid_window(handle.winid) and vim.api.nvim_win_get_cursor(handle.winid) or { handle.search_row, #line }
+  local query
+  if line:sub(1, 2) == "/ " then
+    query = line:sub(3)
+    handle.search_column = math.max(2, cursor[2])
+  else
+    query = line:gsub("^/%s?", "")
+    handle.search_column = #query + 2
+  end
+  handle.query = query
+  return render(handle)
 end
 
 local function resolved_items(items, opts, keys)
@@ -225,7 +280,7 @@ function M.open(opts)
   local handle = {
     id = next_id, bufnr = bufnr, winid = nil, session = opts.session,
     title = opts.title or "RoomPlan actions", grouped = opts.grouped == true,
-    searchable = opts.searchable == true, query = "", keys = keys,
+    searchable = opts.searchable == true, searching = false, query = "", keys = keys,
     items = resolved_items(source_items, opts, keys), row_map = {}, item_rows = {}, visible = {},
     on_choice = opts.on_choice, closed = false,
   }
@@ -258,6 +313,12 @@ function M.open(opts)
   mappings.set(bufnr, "q", function() close(handle, "cancelled") end, "Cancel RoomPlan action palette")
   if handle.searchable then
     mappings.set(bufnr, "/", function() prompt_search(handle) end, "Search RoomPlan actions", "palette_search")
+    vim.keymap.set("i", "<CR>", function() submit_search(handle) end, {
+      buffer = bufnr, silent = true, nowait = true, desc = "Run the first matching RoomPlan action",
+    })
+    vim.keymap.set("i", "<Esc>", function() finish_search(handle) end, {
+      buffer = bufnr, silent = true, nowait = true, desc = "Leave RoomPlan action search",
+    })
   end
   for _, item in ipairs(handle.items) do
     if item.palette_shortcut then
@@ -267,6 +328,33 @@ function M.open(opts)
     end
   end
   handle.augroup = vim.api.nvim_create_augroup("RoomPlanPalette" .. next_id, { clear = true })
+  if handle.searchable then
+    vim.api.nvim_create_autocmd("TextChangedI", {
+      group = handle.augroup, buffer = bufnr,
+      callback = function() sync_search(handle) end,
+    })
+    vim.api.nvim_create_autocmd("CursorMovedI", {
+      group = handle.augroup, buffer = bufnr,
+      callback = function()
+        if handle.searching and valid_window(handle.winid) then
+          local cursor = vim.api.nvim_win_get_cursor(handle.winid)
+          if cursor[1] ~= handle.search_row then
+            local line = vim.api.nvim_buf_get_lines(bufnr, handle.search_row - 1, handle.search_row, false)[1] or ""
+            vim.api.nvim_win_set_cursor(handle.winid, { handle.search_row, #line })
+          end
+        end
+      end,
+    })
+    vim.api.nvim_create_autocmd("InsertLeave", {
+      group = handle.augroup, buffer = bufnr,
+      callback = function()
+        if handle.searching and not handle.closed then
+          handle.searching = false
+          vim.schedule(function() if not handle.closed then render(handle) end end)
+        end
+      end,
+    })
+  end
   vim.api.nvim_create_autocmd("BufWipeout", {
     group = handle.augroup, buffer = bufnr, once = true,
     callback = function()
@@ -285,5 +373,8 @@ M.close = close
 M.filter = filter
 M.move = move
 M.prompt_search = prompt_search
+M.finish_search = finish_search
+M.submit_search = submit_search
+M.sync_search = sync_search
 
 return M

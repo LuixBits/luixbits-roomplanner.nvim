@@ -35,6 +35,79 @@ describe("direct room resize drafts", function()
     h.eq("keep me", action.patch.footprint.note)
   end)
 
+  it("edits placed-furniture sections without moving its explicit anchor", function()
+    local plan = fixture()
+    plan.furniture[1] = model.new_furniture({
+      id = "furniture-sofa",
+      room_id = "room-main",
+      template_id = "builtin:custom-rectangle",
+      name = "Sofa",
+      category = "seating",
+      position_mm = { 1500, 1000 },
+      anchor2_mm = { 1000, 500 },
+      footprint = model.rectangle_footprint({ 1000, 500 }),
+      height_mm = 800,
+      rotation_deg = 90,
+    })
+
+    local edit = h.truthy(room_shape.start(plan, "furniture-sofa", 3, "furniture"))
+    h.eq("furniture", edit.kind)
+    h.eq({ 1000, 500 }, edit.anchor2_mm)
+    h.eq({ 0, -1 }, { room_shape.local_delta(edit, 1, 0) })
+
+    edit = h.truthy(room_shape.direction(edit, 0, -1, 100, { max_dimension_mm = 100000 }))
+    h.eq("east", room_shape.edge_summary(edit))
+    h.eq({ 0, -100 }, edit.footprint.parts[1].origin_mm)
+    h.eq({ 1000, 600 }, edit.footprint.parts[1].size_mm)
+    h.eq({ 0, 0 }, plan.furniture[1].footprint.parts[1].origin_mm)
+
+    local preview = h.truthy(room_shape.preview_model(plan, edit))
+    h.eq({ 0, -100 }, preview.furniture[1].footprint.parts[1].origin_mm)
+    h.eq({ 1000, 500 }, preview.furniture[1].anchor2_mm)
+    local action = room_shape.action(edit)
+    h.eq("edit_furniture", action.type)
+    h.eq("furniture-sofa", action.id)
+
+    local west = h.truthy(room_shape.start(plan, "furniture-sofa", 3, "furniture"))
+    west = h.truthy(room_shape.direction(west, -1, 0, 100, { max_dimension_mm = 100000 }))
+    west = h.truthy(room_shape.direction(west, 1, 0, 600, { max_dimension_mm = 100000 }))
+    local outside, anchor_err = room_shape.direction(west, 1, 0, 10, { max_dimension_mm = 100000 })
+    h.eq(nil, outside)
+    h.eq("FURNITURE_SHAPE_ANCHOR", anchor_err.code)
+  end)
+
+  it("snaps quarter-turned furniture edges in world space", function()
+    local plan = fixture()
+    plan.rooms[2] = model.new_room({
+      id = "room-target", name = "Target", origin_mm = { 1375, 0 }, size_mm = { 1000, 2000 },
+    })
+    plan.furniture[1] = model.new_furniture({
+      id = "furniture-rotated", room_id = "room-main", template_id = "builtin:custom-rectangle",
+      name = "Rotated", category = "custom", position_mm = { 1000, 1000 },
+      anchor2_mm = { 1000, 500 }, footprint = model.rectangle_footprint({ 1000, 500 }),
+      height_mm = 500, rotation_deg = 90,
+    })
+    local geometry = require("roomplan.geometry.footprint")
+    local edit = h.truthy(room_shape.start(plan, "furniture-rotated", 1, "furniture"))
+    edit = h.truthy(room_shape.direction(edit, 0, -1, 100, { max_dimension_mm = 100000 }, {
+      model = plan,
+      options = {
+        tolerance_mm = { x = 100, y = 100 },
+        mm_per_screen_unit = { x = 100, y = 100 },
+        priority = { "room_edge", "furniture_edge", "grid" },
+        grid_mm = 100,
+      },
+      world_shape = function(candidate)
+        local preview = h.truthy(room_shape.preview_model(plan, candidate))
+        return geometry.from_furniture(preview.rooms[1], preview.furniture[1])
+      end,
+    }))
+    h.eq({ 0, -25 }, edit.footprint.parts[1].origin_mm)
+    h.eq({ 1000, 525 }, edit.footprint.parts[1].size_mm)
+    h.eq("east", room_shape.edge_summary(edit))
+    h.eq("X → Target west wall", room_shape.snap_summary(edit))
+  end)
+
   it("uses the first direction key to choose each resize edge", function()
     local plan = fixture()
     local edit = h.truthy(room_shape.start(plan, "room-main", 1))

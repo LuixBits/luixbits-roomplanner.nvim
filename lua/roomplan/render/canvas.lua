@@ -141,8 +141,8 @@ local function session_header(session, canvas_config)
     display_mode = session.workspace.state.interaction
   end
   local shape_notice = ""
-  if session.room_shape_edit then
-    local edit = session.room_shape_edit
+  if session.shape_edit then
+    local edit = session.shape_edit
     local _, index = require("roomplan.room_shape").selected(edit)
     local snap = require("roomplan.room_shape").snap_summary(edit)
     local edge = require("roomplan.room_shape").edge_summary(edit)
@@ -205,8 +205,8 @@ local function session_footer(session)
     return " MOVE" .. (session.move_feedback and (" · " .. session.move_feedback) or "")
       .. (snap and (" · snap " .. snap) or "")
       .. " | [h/j/k/l] Move  [H/J/K/L] Coarse  [Ctrl-h/j/k/l] Fine  [Esc] Done "
-  elseif session.mode == "RESIZE" and session.room_shape_edit then
-    local edit = session.room_shape_edit
+  elseif session.mode == "RESIZE" and session.shape_edit then
+    local edit = session.shape_edit
     local _, index = require("roomplan.room_shape").selected(edit)
     local snap = require("roomplan.room_shape").snap_summary(edit)
       or (session.snap_enabled == false and "off" or "ready")
@@ -251,9 +251,9 @@ local function options_for_session(session, callbacks)
   }
   options.get_scene = function()
     return require("roomplan.scene.build").build(current_model(session), session.validation, {
-      selected = session.room_shape_edit and nil or session.selection,
-      shape_edit = session.room_shape_edit,
-      snap_guides = session.room_shape_edit and session.room_shape_edit.snap_guides or session.snap_guides,
+      selected = session.shape_edit and nil or session.selection,
+      shape_edit = session.shape_edit,
+      snap_guides = session.shape_edit and session.shape_edit.snap_guides or session.snap_guides,
       show_grid = canvas_config.show_grid,
       detail_level = session.canvas_detail_level or canvas_config.detail_level,
     })

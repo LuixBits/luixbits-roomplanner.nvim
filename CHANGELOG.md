@@ -4,6 +4,17 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Moved full-action search into the `?` popup. `/` now focuses a visible search
+  row, every typed character immediately reduces the grouped results, and
+  `Enter` runs the first match while `Esc` returns to action navigation. It no
+  longer uses `vim.ui.input` or a command-line prompt, and compact one-key
+  palettes remain unchanged.
+- Extended direct compound section editing to placed furniture through an
+  unmapped **Edit furniture shape** action in the searchable `?` popup. The
+  shared preview/add/remove/resize workflow handles quarter turns in world
+  space, preserves and validates the explicit anchor, snaps to structural and
+  furniture edges, and commits one item-only undo step without rewriting its
+  source template.
 - Added a one-line contextual selection breadcrumb to the existing action bar.
   Rooms, furniture, doors, windows, outlets, and project templates use their
   semantic colors and concise owner/object labels; MOVE and RESIZE add active

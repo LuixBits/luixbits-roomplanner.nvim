@@ -28,6 +28,10 @@ local definitions = {
     priority = 75, scopes = { "canvas" },
   },
   edit = { key = "e", mapping = "edit", label = "Edit", handler = "edit_selected", priority = 100 },
+  edit_shape = {
+    mapping = "edit_shape", label = "Edit furniture shape",
+    handler = "edit_selected_shape", priority = 85,
+  },
   move = { key = "m", mapping = "move_mode", label = "Move", handler = "set_mode", args = { "MOVE" }, priority = 95 },
   pan = { key = "p", mapping = "pan_mode", label = "Pan", handler = "set_mode", args = { "PAN" }, priority = 30 },
   align = { key = "A", mapping = "align", label = "Align", handler = "align_room", priority = 90 },
@@ -114,7 +118,7 @@ local definitions = {
 
 local group_members = {
   create = { "add", "add_room", "add_door", "add_window", "add_outlet", "add_furniture" },
-  selection = { "select", "edit", "move", "align", "rotate", "duplicate", "delete" },
+  selection = { "select", "edit", "edit_shape", "move", "align", "rotate", "duplicate", "delete" },
   view = {
     "pan", "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
     "reset_view", "validate", "next_issue", "previous_issue",
@@ -202,6 +206,8 @@ local function availability(id, ctx)
     then
       return false, "Select a movable object first"
     end
+  elseif id == "edit_shape" then
+    if kind ~= "furniture" then return false, "Select placed furniture first" end
   elseif id == "align" then
     if kind ~= "room" then return false, "Select a room first" end
     if room_count(ctx) < 2 then return false, "Add another room first" end
@@ -305,7 +311,10 @@ local function ids_for(ctx)
       "delete", "validate", "save", "undo", "redo", "help",
     }
   elseif kind == "furniture" then
-    return { "edit", "move", "rotate", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
+    return {
+      "edit", "edit_shape", "move", "rotate", "fit", "duplicate", "delete",
+      "validate", "save", "undo", "redo", "help",
+    }
   elseif kind == "door" then
     return { "edit", "move", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
   elseif kind == "window" or kind == "outlet" then
@@ -328,7 +337,7 @@ local safe_full_ids = {
   "toggle_snap", "bypass_snap", "aspect", "save", "save_as", "undo", "redo", "reload", "close",
 }
 
-local selection_full_ids = { "edit", "move", "align", "rotate", "duplicate", "delete" }
+local selection_full_ids = { "edit", "edit_shape", "move", "align", "rotate", "duplicate", "delete" }
 
 local function create_full_ids(ctx)
   if room_count(ctx) == 0 then

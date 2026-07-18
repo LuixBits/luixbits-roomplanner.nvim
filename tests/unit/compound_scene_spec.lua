@@ -96,6 +96,10 @@ describe("compound scene extraction", function()
           rotation_deg = 0,
         },
       },
+    }, nil, {
+      shape_edit = {
+        kind = "furniture", entity_id = "furniture-l", selected_part_id = "part-return",
+      },
     })
 
     assert_equal(2, count_kind(scene, "furniture_interior"))
@@ -104,12 +108,19 @@ describe("compound scene extraction", function()
     assert_equal("furniture-l", scene.objects[2].id)
 
     local first_ref
+    local selected_parts = 0
     for _, primitive in ipairs(scene.primitives) do
       if primitive.kind == "furniture_interior" then
         first_ref = first_ref or primitive.ref
         assert_true(first_ref == primitive.ref)
       end
+      if (primitive.kind == "furniture_interior" or primitive.kind == "furniture_outline")
+        and primitive.part_id == "part-return" and primitive.role == "selected"
+      then
+        selected_parts = selected_parts + 1
+      end
     end
+    assert_equal(2, selected_parts)
   end)
 
   it("accepts only part-local door apertures that lie on the union exterior", function()

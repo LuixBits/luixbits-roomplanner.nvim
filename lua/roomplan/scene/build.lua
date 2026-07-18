@@ -454,6 +454,7 @@ function M.build(model, validation, opts)
       local rectangles = room.footprint ~= nil and shape_rectangles(shape) or { bounds }
       for part_index, rectangle in ipairs(rectangles) do
         local shape_selected = opts.shape_edit
+          and (opts.shape_edit.kind or "room") == "room"
           and opts.shape_edit.room_id == room.id
           and opts.shape_edit.selected_part_id == rectangle.part_id
         add_primitive(scene, {
@@ -513,6 +514,10 @@ function M.build(model, validation, opts)
         bbox_rect(scene.bounds, bounds.left, bounds.bottom, bounds.right, bounds.top)
         local rectangles = item.footprint ~= nil and shape_rectangles(shape) or { bounds }
         for part_index, rectangle in ipairs(rectangles) do
+          local shape_selected = opts.shape_edit
+            and opts.shape_edit.kind == "furniture"
+            and opts.shape_edit.entity_id == item.id
+            and opts.shape_edit.selected_part_id == rectangle.part_id
           add_primitive(scene, {
             kind = "furniture_interior",
             layer = M.layers.furniture,
@@ -523,6 +528,7 @@ function M.build(model, validation, opts)
             part_id = rectangle.part_id,
             part_index = item.footprint ~= nil and part_index or nil,
             ref = ref,
+            role = shape_selected and "selected" or nil,
           }, roles)
           add_primitive(scene, {
             kind = "furniture_outline",
@@ -535,6 +541,7 @@ function M.build(model, validation, opts)
             part_index = item.footprint ~= nil and part_index or nil,
             ref = ref,
             color = color.resolve(item.color),
+            role = shape_selected and "selected" or nil,
           }, roles)
         end
         if show_labels then

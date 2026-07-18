@@ -27,9 +27,12 @@ but the canvas remains a top-down 2D footprint.
 The room form creates rectangles and configurable two-part L shapes; direct
 canvas resizing can also add, resize, and remove rectangular sections while
 preserving valid union topology. The furniture form currently creates
-one-part rectangles. Compound furniture and project templates are preserved
-across supported operations, but their direct shape editor is still planned.
-Rectangle-only resize actions remain disabled for those objects.
+one-part rectangles. Placed furniture can use the direct canvas section editor
+from the full action popup while preserving its explicit anchor through every
+quarter turn. Compound project templates are preserved across supported
+operations, but their direct shape editor and update-template workflow are
+still planned. Rectangle-only form resizing remains disabled for compound
+objects.
 
 ## Deliberately not represented
 

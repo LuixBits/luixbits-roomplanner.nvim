@@ -249,7 +249,7 @@ Workspace:
   /              filter Navigator or Issues
   h / l          collapse / expand a room or Details section
   ?              complete action window or contextual help
-  /              search the action window opened by ?
+  /              focus live in-popup search in the ? action window
   q              return to canvas, close a drawer, or hide workspace
   <Esc>          cancel the current interaction, then return to canvas
 
@@ -391,6 +391,13 @@ mounting height. See docs/planning/windows-and-outlets.md.
 ==============================================================================
 9. FURNITURE CATALOGUES                                 *roomplan-furniture*
 
+Placed furniture has direct compound shape editing without another permanent
+mapping. Select it, press ?, then / and type "shape"; Enter runs the matching
+Edit furniture shape action. RESIZE uses Enter/Tab to select sections,
+h/j/k/l to choose and move visible edges, a/d to add/remove, s to apply and
+save, and Esc to cancel. Its explicit anchor and position stay fixed. Invalid
+anchor-removing edits are rejected, and the source template is not rewritten.
+
 RoomPlan includes generic built-in templates. Add process-wide defaults inline
 or load one or more dependency-free JSON files. Set
 furniture.include_builtins=false to make imported and inline definitions the
@@ -526,7 +533,8 @@ changing the installed package/generation.
 If the canvas looks stretched, run :RoomPlanAspect; this never requires a Nix
 or system rebuild. If a plan is not visible, press `f`. If an action is not in
 the compact footer, press `?` to see the complete contextual action window and
-`/` to search it.
+`/` to filter it live without leaving the popup. Enter runs the first match;
+Esc returns to the matching results without running anything.
 
 For detailed diagnosis see docs/reference/troubleshooting.md.
 

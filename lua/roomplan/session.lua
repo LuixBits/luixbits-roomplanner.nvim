@@ -275,7 +275,7 @@ function Session:reset(snapshot, revision, locator, opts)
   self.validation_revision_id = nil
   self.selection = nil
   self.mode = "NAV"
-  self.room_shape_edit = nil
+  self.shape_edit = nil
   self.preview_model = nil
   self.snap_guides = {}
   self.snap_exclusions = {}

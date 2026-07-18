@@ -35,7 +35,10 @@ The one-line action bar changes with focus, selection, and mode. It hides
 irrelevant or unmapped actions to remain compact. `?` opens the full grouped
 action window and explains why actions such as Align or Rotate are unavailable.
 Press `/` in that window to search labels, descriptions, groups, IDs, and keys;
-submit an empty search to restore the complete list.
+the search row stays inside the popup and reduces the visible actions after
+every character. `Enter` runs the first match; `Esc` returns focus to the
+filtered results without running anything. Clear the search row to restore the
+complete list.
 `:RoomPlan` opens the same context-aware action surface for the active session.
 
 A useful selection also adds a short room/object breadcrumb to that same line;
