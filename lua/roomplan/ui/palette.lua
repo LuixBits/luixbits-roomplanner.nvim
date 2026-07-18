@@ -7,6 +7,9 @@ local state = require("roomplan.state")
 local M = {}
 local next_id = 0
 local highlight_namespace = vim.api.nvim_create_namespace("roomplan-palette")
+local install_navigation_mappings
+local install_search_mappings
+local remove_search_mappings
 
 local function valid_buffer(bufnr)
   return type(bufnr) == "number" and vim.api.nvim_buf_is_valid(bufnr)
@@ -137,13 +140,16 @@ local function document(handle)
     maximum = math.max(maximum, text_width(lines[#lines]))
   end
   lines[#lines + 1] = ""
-  local footer = string.format("[%s/%s] Move  [%s] Run",
-    display_key(handle.keys.next), display_key(handle.keys.previous), display_key(handle.keys.choose))
-  if handle.searchable then
-    footer = footer .. (handle.searching and "  [type] Filter  [Enter] Run  [Esc] Results" or "  [/] Search")
+  local footer
+  if handle.searchable and handle.searching then
+    footer = "[type] Filter  [Backspace] Delete  [Enter] Run  [Esc] Results"
+  else
+    footer = string.format("[%s/%s] Move  [%s] Run",
+      display_key(handle.keys.next), display_key(handle.keys.previous), display_key(handle.keys.choose))
+    if handle.searchable then footer = footer .. "  [/] Search" end
+    footer = footer .. string.format("  [%s/%s] Cancel",
+      display_key(handle.keys.cancel), display_key(handle.keys.cancel_alt))
   end
-  footer = footer .. string.format("  [%s/%s] Cancel",
-    display_key(handle.keys.cancel), display_key(handle.keys.cancel_alt))
   lines[#lines + 1] = footer
   maximum = math.max(maximum, text_width(footer))
   return {
@@ -152,7 +158,7 @@ local function document(handle)
   }
 end
 
-local function render(handle, preserve_search_line)
+local function render(handle)
   if handle.closed or not valid_buffer(handle.bufnr) then return false end
   local view = document(handle)
   handle.row_map, handle.item_rows, handle.visible = view.row_map, view.item_rows, view.visible
@@ -160,18 +166,10 @@ local function render(handle, preserve_search_line)
   handle.rendering = true
   local wrote, write_error = pcall(function()
     vim.bo[handle.bufnr].modifiable = true
-    if preserve_search_line and handle.searching and view.search_row then
-      local tail = {}
-      for index = view.search_row + 1, #view.lines do tail[#tail + 1] = view.lines[index] end
-      -- TextChangedI is already editing the query row. Replacing that row from
-      -- inside its callback can interrupt Neovim's pending insert operation.
-      vim.api.nvim_buf_set_lines(handle.bufnr, view.search_row, -1, false, tail)
-    else
-      vim.api.nvim_buf_set_lines(handle.bufnr, 0, -1, false, view.lines)
-    end
+    vim.api.nvim_buf_set_lines(handle.bufnr, 0, -1, false, view.lines)
   end)
   handle.rendering = false
-  if valid_buffer(handle.bufnr) then vim.bo[handle.bufnr].modifiable = handle.searching == true end
+  if valid_buffer(handle.bufnr) then vim.bo[handle.bufnr].modifiable = false end
   if not wrote then error(write_error, 0) end
   vim.api.nvim_buf_clear_namespace(handle.bufnr, highlight_namespace, 0, -1)
   vim.api.nvim_buf_add_highlight(handle.bufnr, highlight_namespace, "Title", 0, 0, -1)
@@ -218,16 +216,17 @@ end
 local function prompt_search(handle)
   if not handle.searchable or handle.closed or not valid_window(handle.winid) then return false end
   handle.searching = true
-  handle.search_column = #(handle.query or "") + 2
+  install_search_mappings(handle)
   render(handle)
   vim.api.nvim_set_current_win(handle.winid)
-  vim.cmd("startinsert!")
   return true
 end
 
 local function finish_search(handle)
   if not handle or handle.closed then return false end
   handle.searching = false
+  remove_search_mappings(handle)
+  install_navigation_mappings(handle)
   if valid_window(handle.winid) and vim.api.nvim_get_current_win() == handle.winid then
     pcall(vim.cmd, "stopinsert")
   end
@@ -238,22 +237,6 @@ end
 local function submit_search(handle)
   if not finish_search(handle) then return false end
   return choose(handle)
-end
-
-local function sync_search(handle)
-  if not handle or not handle.searching or handle.rendering or not valid_buffer(handle.bufnr) then return false end
-  local line = vim.api.nvim_buf_get_lines(handle.bufnr, handle.search_row - 1, handle.search_row, false)[1] or ""
-  local cursor = valid_window(handle.winid) and vim.api.nvim_win_get_cursor(handle.winid) or { handle.search_row, #line }
-  local query
-  if line:sub(1, 2) == "/ " then
-    query = line:sub(3)
-    handle.search_column = math.max(2, cursor[2])
-  else
-    query = line:gsub("^/%s?", "")
-    handle.search_column = #query + 2
-  end
-  handle.query = query
-  return render(handle, true)
 end
 
 local function resolved_items(items, opts, keys)
@@ -274,6 +257,72 @@ local function resolved_items(items, opts, keys)
     result[#result + 1] = item
   end
   return result
+end
+
+local search_characters = {}
+for byte = 32, 126 do
+  local character = string.char(byte)
+  local lhs = character == " " and "<Space>" or (character == "<" and "<lt>" or character)
+  search_characters[#search_characters + 1] = { lhs = lhs, character = character }
+end
+
+local function update_search(handle, query)
+  if not handle.searching or handle.closed then return false end
+  handle.query = query
+  return render(handle)
+end
+
+local function delete_search_character(handle)
+  local count = vim.fn.strchars(handle.query)
+  return update_search(handle, vim.fn.strcharpart(handle.query, 0, math.max(0, count - 1)))
+end
+
+remove_search_mappings = function(handle)
+  if not valid_buffer(handle.bufnr) then return end
+  for _, entry in ipairs(search_characters) do
+    pcall(vim.keymap.del, "n", entry.lhs, { buffer = handle.bufnr })
+  end
+  for _, lhs in ipairs({ "<BS>", "<C-h>", "<C-u>", "<CR>", "<Esc>" }) do
+    pcall(vim.keymap.del, "n", lhs, { buffer = handle.bufnr })
+  end
+end
+
+install_search_mappings = function(handle)
+  local opts = { buffer = handle.bufnr, silent = true, nowait = true }
+  for _, entry in ipairs(search_characters) do
+    local character = entry.character
+    vim.keymap.set("n", entry.lhs, function()
+      update_search(handle, handle.query .. character)
+    end, vim.tbl_extend("force", opts, { desc = "Type in RoomPlan action search" }))
+  end
+  local function map(lhs, rhs, desc)
+    vim.keymap.set("n", lhs, rhs, vim.tbl_extend("force", opts, { desc = desc }))
+  end
+  map("<BS>", function() delete_search_character(handle) end, "Delete from RoomPlan action search")
+  map("<C-h>", function() delete_search_character(handle) end, "Delete from RoomPlan action search")
+  map("<C-u>", function() update_search(handle, "") end, "Clear RoomPlan action search")
+  map("<CR>", function() submit_search(handle) end, "Run the first matching RoomPlan action")
+  map("<Esc>", function() finish_search(handle) end, "Leave RoomPlan action search")
+end
+
+install_navigation_mappings = function(handle)
+  local bufnr = handle.bufnr
+  mappings.set(bufnr, "j", function() move(handle, 1) end, "Next RoomPlan action", "palette_next")
+  mappings.set(bufnr, "k", function() move(handle, -1) end, "Previous RoomPlan action", "palette_previous")
+  mappings.set(bufnr, "<CR>", function() choose(handle) end, "Run RoomPlan action", "palette_choose")
+  mappings.set(bufnr, "<Esc>", function() close(handle, "cancelled") end,
+    "Cancel RoomPlan action palette", "palette_cancel")
+  mappings.set(bufnr, "q", function() close(handle, "cancelled") end, "Cancel RoomPlan action palette")
+  if handle.searchable then
+    mappings.set(bufnr, "/", function() prompt_search(handle) end, "Search RoomPlan actions", "palette_search")
+  end
+  for _, item in ipairs(handle.items) do
+    if item.palette_shortcut then
+      local selected = item
+      mappings.set(bufnr, selected.palette_shortcut, function() choose(handle, selected) end,
+        "Run " .. tostring(selected.label), nil, { enabled = true, mappings = {} })
+    end
+  end
 end
 
 function M.open(opts)
@@ -318,46 +367,8 @@ function M.open(opts)
   vim.wo[handle.winid].wrap = false
   vim.wo[handle.winid].winhighlight = "Normal:NormalFloat,FloatBorder:FloatBorder"
   if opts.session then state.attach_buffer(opts.session, bufnr, "palette") end
-  mappings.set(bufnr, "j", function() move(handle, 1) end, "Next RoomPlan action", "palette_next")
-  mappings.set(bufnr, "k", function() move(handle, -1) end, "Previous RoomPlan action", "palette_previous")
-  mappings.set(bufnr, "<CR>", function() choose(handle) end, "Run RoomPlan action", "palette_choose")
-  mappings.set(bufnr, "<Esc>", function() close(handle, "cancelled") end, "Cancel RoomPlan action palette", "palette_cancel")
-  mappings.set(bufnr, "q", function() close(handle, "cancelled") end, "Cancel RoomPlan action palette")
-  if handle.searchable then
-    mappings.set(bufnr, "/", function() prompt_search(handle) end, "Search RoomPlan actions", "palette_search")
-    vim.keymap.set("i", "<CR>", function() submit_search(handle) end, {
-      buffer = bufnr, silent = true, nowait = true, desc = "Run the first matching RoomPlan action",
-    })
-    vim.keymap.set("i", "<Esc>", function() finish_search(handle) end, {
-      buffer = bufnr, silent = true, nowait = true, desc = "Leave RoomPlan action search",
-    })
-  end
-  for _, item in ipairs(handle.items) do
-    if item.palette_shortcut then
-      local selected = item
-      mappings.set(bufnr, selected.palette_shortcut, function() choose(handle, selected) end,
-        "Run " .. tostring(selected.label), nil, { enabled = true, mappings = {} })
-    end
-  end
+  install_navigation_mappings(handle)
   handle.augroup = vim.api.nvim_create_augroup("RoomPlanPalette" .. next_id, { clear = true })
-  if handle.searchable then
-    vim.api.nvim_create_autocmd("TextChangedI", {
-      group = handle.augroup, buffer = bufnr,
-      callback = function() sync_search(handle) end,
-    })
-    vim.api.nvim_create_autocmd("CursorMovedI", {
-      group = handle.augroup, buffer = bufnr,
-      callback = function()
-        if handle.searching and valid_window(handle.winid) then
-          local cursor = vim.api.nvim_win_get_cursor(handle.winid)
-          if cursor[1] ~= handle.search_row then
-            local line = vim.api.nvim_buf_get_lines(bufnr, handle.search_row - 1, handle.search_row, false)[1] or ""
-            vim.api.nvim_win_set_cursor(handle.winid, { handle.search_row, #line })
-          end
-        end
-      end,
-    })
-  end
   vim.api.nvim_create_autocmd("BufWipeout", {
     group = handle.augroup, buffer = bufnr, once = true,
     callback = function()
@@ -378,6 +389,5 @@ M.move = move
 M.prompt_search = prompt_search
 M.finish_search = finish_search
 M.submit_search = submit_search
-M.sync_search = sync_search
 
 return M

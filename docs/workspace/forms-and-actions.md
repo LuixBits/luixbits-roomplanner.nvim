@@ -36,9 +36,9 @@ irrelevant or unmapped actions to remain compact. `?` opens the full grouped
 action window and explains why actions such as Align or Rotate are unavailable.
 Press `/` in that window to search labels, descriptions, groups, IDs, and keys;
 the search row stays inside the popup and reduces the visible actions after
-every character. `Enter` runs the first match; `Esc` returns focus to the
-filtered results without running anything. Clear the search row to restore the
-complete list.
+every character without entering Insert mode. `Backspace` edits the query,
+`Enter` runs the first match, and `Esc` returns focus to the filtered results
+without running anything. Clear the query to restore the complete list.
 `:RoomPlan` opens the same context-aware action surface for the active session.
 
 A useful selection also adds a short room/object breadcrumb to that same line;

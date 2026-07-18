@@ -11,7 +11,7 @@ The workspace has four areas:
 - **Details** shows compact, accordion-style information about the selection.
 - **Action bar** shows only the most useful actions for the current pane and
   mode. Press `?` for the complete grouped action window, including disabled
-  actions and their reasons, then `/` to focus its in-popup live search.
+  actions and their reasons, then `/` to start its in-popup live search.
 
 Selection is shared by every area. Selecting an Objects or Issues row updates
 the canvas and Details; selecting on the canvas updates both side panes.

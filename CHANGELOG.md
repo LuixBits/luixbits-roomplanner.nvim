@@ -4,13 +4,14 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
-- Moved full-action search into the `?` popup. `/` now focuses a visible search
+- Moved full-action search into the `?` popup. `/` now starts a visible search
   row, every typed character immediately reduces the grouped results, and
   `Enter` runs the first match while `Esc` returns to action navigation. It no
   longer uses `vim.ui.input` or a command-line prompt, and compact one-key
-  palettes remain unchanged. Fixed an insert-mode event race that could make
-  the search row read-only with `E21`; live filtering now preserves the row
-  being edited, and `Esc` always restores normal popup navigation.
+  palettes remain unchanged. Search now captures temporary popup-local input
+  while its buffer remains read-only, so insert-mode completion providers
+  cannot interfere or raise `E21`; `Backspace` edits the query and `Esc` always
+  restores normal popup navigation.
 - Extended direct compound section editing to placed furniture and project
   templates through unmapped actions in the searchable `?` popup. Furniture
   handles quarter turns and world-space snapping; templates use an isolated
