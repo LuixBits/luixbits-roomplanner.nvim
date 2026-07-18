@@ -250,6 +250,11 @@ describe("workspace UI", function()
     assert_equal("plan", ctx.selection.kind)
     assert_equal("edit_plan", registry.get("edit", ctx).handler)
     assert_equal(2, ctx.zoom)
+    assert_equal("SUN STUDY", presenter.context({
+      model = fixture(),
+      sun_study = { viewing = true },
+    }).mode)
+    assert_equal(true, registry.get("sun_study", { mode = "SUN STUDY" }).enabled)
   end)
 
   it("builds concise selection and interaction breadcrumbs from presenter data", function()

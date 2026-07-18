@@ -300,7 +300,7 @@ local function availability(id, ctx)
     return false, "Nothing to redo"
   elseif id == "reset_view" and (ctx.view_rotation or 0) == 0 then
     return false, "View is already plan-up"
-  elseif id == "sun_study" and ctx.mode ~= nil and ctx.mode ~= "NAV" then
+  elseif id == "sun_study" and ctx.mode ~= nil and ctx.mode ~= "NAV" and ctx.mode ~= "SUN STUDY" then
     return false, "Finish the current interaction first"
   elseif id == "activate_focused" then
     local row = ctx.focused_row

@@ -74,6 +74,11 @@ a different mode; `zh zj zk zl` are direct pan aliases. The semantic
 `sun_study` override may move or disable the NAV shortcut without removing
 uppercase `L` coarse movement from editing modes.
 
+After a study moves to the canvas, contextual `h`/`l` step through time,
+`Space` plays or pauses, `L` reopens its popup, and `Esc` closes it. They reuse
+existing canvas keys only for the lifetime of the visible study and add no
+configuration entries.
+
 ## Direct compound-shape resizing
 
 Select a room, placed furniture item, or project template and press `r` to

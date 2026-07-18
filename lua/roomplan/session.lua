@@ -125,7 +125,23 @@ function Session:create_guard()
         guard = true,
       })
       if not ok then
-        error((err and err.message) or "RoomPlan guard save failed")
+        set_modified(bufnr, true)
+        local message = (err and err.message) or "RoomPlan guard save failed"
+        if err and err.code == "SOURCE_CONFLICT" then
+          compat.notify("RoomPlan source changed; choose how to resolve it before saving.", vim.log.levels.WARN)
+          if not self.guard_resolution_scheduled then
+            self.guard_resolution_scheduled = true
+            vim.schedule(function()
+              self.guard_resolution_scheduled = false
+              if not self.closed and not self.tearing_down and self.source_conflicted then
+                require("roomplan.controller").resolve_conflict(self)
+              end
+            end)
+          end
+        else
+          compat.notify("RoomPlan could not save protected changes: " .. message, vim.log.levels.ERROR)
+        end
+        return
       end
       set_modified(bufnr, false)
     end,

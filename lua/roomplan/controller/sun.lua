@@ -22,6 +22,75 @@ local function clear_study(controller, session)
   if not session.closed then controller.refresh(session) end
 end
 
+local function publish(controller, session, values)
+  local study = session and session.sun_study
+  if not study then return nil, util.err("SUN_INACTIVE", "the sunlight study is not active") end
+  local calculation, reason = solar.position(session:model().site, values.date, values.time)
+  if not calculation then return nil, util.err("SUN_INVALID_TIME", reason) end
+  study.calculation = calculation
+  study.date = values.date
+  study.time = values.time
+  study.step_minutes = values.step_minutes
+  study.frame_duration_ms = values.frame_duration_ms
+  controller.refresh(session)
+  return calculation
+end
+
+local function advance(controller, session, delta)
+  local study = session and session.sun_study
+  if not study then return nil, util.err("SUN_INACTIVE", "the sunlight study is not active") end
+  local calculation, reason = solar.position(session:model().site, study.date, study.time)
+  if not calculation then return nil, util.err("SUN_INVALID_TIME", reason) end
+  local next_time = calculation.minutes + delta * study.step_minutes
+  if calculation.daylight_state == "normal" then
+    next_time = math.max(calculation.sunrise_minutes, math.min(calculation.sunset_minutes, next_time))
+  else
+    next_time = math.max(0, math.min(24 * 60 - 1, next_time))
+  end
+  if next_time == calculation.minutes then return false end
+  study.time = solar.format_time(next_time)
+  local updated, update_error = publish(controller, session, study)
+  if not updated then return nil, update_error end
+  return true
+end
+
+local function toggle_playback(controller, session)
+  local study = session and session.sun_study
+  if not study then return nil, util.err("SUN_INACTIVE", "the sunlight study is not active") end
+  if not study.viewing then
+    return nil, util.err("SUN_NOT_VIEWING", "view the sunlight study on the canvas before starting playback")
+  end
+  if study.playing then
+    stop_timer(session)
+    controller.refresh(session)
+    return false
+  end
+  if study.calculation and study.calculation.daylight_state == "polar_night" then
+    return nil, util.err("SUN_NO_DAYLIGHT", "there is no sunrise on this date")
+  end
+  local uv = vim.uv or vim.loop
+  if not uv or not uv.new_timer then
+    return nil, util.err("SUN_TIMER", "this Neovim build does not provide timers")
+  end
+  local timer = uv.new_timer()
+  study.timer = timer
+  study.playing = true
+  timer:start(study.frame_duration_ms, study.frame_duration_ms, vim.schedule_wrap(function()
+    local current = session.sun_study
+    if session.closed or not current or not current.viewing then
+      stop_timer(session)
+      return
+    end
+    local changed = advance(controller, session, 1)
+    if not changed then
+      stop_timer(session)
+      controller.refresh(session)
+    end
+  end))
+  controller.refresh(session)
+  return true
+end
+
 local function form_focus(controller, session)
   vim.schedule(function()
     if session.closed then return end
@@ -36,8 +105,8 @@ local function study_spec(session, initial)
     id = "sun-study",
     title = "Sun study",
     mode = "SUN STUDY",
-    description = "Offline clear-sky sunlight from sunrise to sunset. h/l step; Space plays or pauses.",
-    apply_label = "Close sun study",
+    description = "Set the study, then view it on the canvas. h/l step; Space starts playback.",
+    apply_label = "View on canvas",
     context = { session = session },
     initial = initial,
     fields = {
@@ -61,7 +130,8 @@ local function study_spec(session, initial)
         return session.sun_study and session.sun_study.playing and "Running · Space pauses" or "Paused · Space plays"
       end },
       { key = "previous", label = "Previous step", type = "action", action = "previous" },
-      { key = "play", label = "Play / pause", type = "action", action = "play" },
+      { key = "view", label = "View current time on canvas", type = "action", action = "view" },
+      { key = "play", label = "Play on canvas", type = "action", action = "play" },
       { key = "next", label = "Next step", type = "action", action = "next" },
       { key = "edit_site", label = "Edit location and plan north", type = "action", action = "edit_site" },
     },
@@ -96,6 +166,9 @@ end
 function M.attach(controller)
   local resolve = common.resolve
   local notify_error = common.notify_error
+  local base_direction = controller.direction
+  local base_escape = controller.escape
+  local base_hide = controller.hide
 
   function controller.configure_sun_site(session, opts)
     opts = opts or {}
@@ -135,37 +208,38 @@ function M.attach(controller)
       return controller.configure_sun_site(resolved, { open_study = true })
     end
     local runtime = config.get().sun_study.playback
-    local offset_minutes = solar.number(resolved:model().site.utc_offset_minutes) or 0
-    local now = os.date("!*t", os.time() + offset_minutes * 60)
-    local initial = {
-      date = string.format("%04d-%02d-%02d", now.year, now.month, now.day),
-      time = string.format("%02d:%02d", now.hour, now.min),
-      step_minutes = runtime.step_minutes,
-      frame_duration_ms = runtime.frame_duration_ms,
-    }
-    local first = solar.position(resolved:model().site, initial.date, initial.time)
-    if first and first.daylight_state == "normal"
-      and (first.minutes < first.sunrise_minutes or first.minutes > first.sunset_minutes)
-    then
-      initial.time = solar.format_time(first.sunrise_minutes)
+    local initial
+    if resolved.sun_study then
+      stop_timer(resolved)
+      resolved.sun_study.viewing = false
+      initial = {
+        date = resolved.sun_study.date,
+        time = resolved.sun_study.time,
+        step_minutes = resolved.sun_study.step_minutes,
+        frame_duration_ms = resolved.sun_study.frame_duration_ms,
+      }
+    else
+      local offset_minutes = solar.number(resolved:model().site.utc_offset_minutes) or 0
+      local now = os.date("!*t", os.time() + offset_minutes * 60)
+      initial = {
+        date = string.format("%04d-%02d-%02d", now.year, now.month, now.day),
+        time = string.format("%02d:%02d", now.hour, now.min),
+        step_minutes = runtime.step_minutes,
+        frame_duration_ms = runtime.frame_duration_ms,
+      }
+      local first = solar.position(resolved:model().site, initial.date, initial.time)
+      if first and first.daylight_state == "normal"
+        and (first.minutes < first.sunrise_minutes or first.minutes > first.sunset_minutes)
+      then
+        initial.time = solar.format_time(first.sunrise_minutes)
+      end
+      resolved.sun_study = { active = true, viewing = false, playing = false, assumed_count = 0 }
     end
-    resolved.sun_study = { active = true, playing = false, assumed_count = 0 }
     local form = require("roomplan.ui.form")
     local handle
+    local play_after_submit = false
 
-    local function publish(draft)
-      if not resolved.sun_study then return nil end
-      local calculation = solar.position(resolved:model().site, draft.date, draft.time)
-      resolved.sun_study.calculation = calculation
-      resolved.sun_study.date = draft.date
-      resolved.sun_study.time = draft.time
-      resolved.sun_study.step_minutes = draft.step_minutes
-      resolved.sun_study.frame_duration_ms = draft.frame_duration_ms
-      controller.refresh(resolved)
-      return calculation
-    end
-
-    local function advance(delta)
+    local function advance_form(delta)
       if not handle or not form.is_current(handle) then return false end
       local draft = handle.state.draft
       local calculation = solar.position(resolved:model().site, draft.date, draft.time)
@@ -180,61 +254,43 @@ function M.attach(controller)
       return next_time ~= calculation.minutes
     end
 
-    local function render_playback()
-      if handle and form.is_current(handle) then form.render(handle) end
-    end
-
-    local function toggle_play()
-      if not resolved.sun_study then return false end
-      if resolved.sun_study.playing then
-        stop_timer(resolved)
-        render_playback()
-        return true
-      end
-      local calculation = solar.position(resolved:model().site, handle.state.draft.date, handle.state.draft.time)
-      if calculation and calculation.daylight_state == "polar_night" then
-        return nil, util.err("SUN_NO_DAYLIGHT", "there is no sunrise on this date")
-      end
-      local uv = vim.uv or vim.loop
-      if not uv or not uv.new_timer then
-        return nil, util.err("SUN_TIMER", "this Neovim build does not provide timers")
-      end
-      local duration = handle.state.draft.frame_duration_ms
-      local timer = uv.new_timer()
-      resolved.sun_study.timer = timer
-      resolved.sun_study.playing = true
-      timer:start(duration, duration, vim.schedule_wrap(function()
-        if resolved.closed or not resolved.sun_study or not form.is_current(handle) then
-          stop_timer(resolved)
-          return
-        end
-        if not advance(1) then
-          stop_timer(resolved)
-          render_playback()
-        end
-      end))
-      render_playback()
-      return true
+    local function view_on_canvas(play)
+      play_after_submit = play == true
+      return form.apply(handle)
     end
 
     local spec = study_spec(resolved, initial)
     handle, err = form.open(resolved, spec, {
-      on_submit = function() clear_study(controller, resolved); form_focus(controller, resolved); return true end,
+      on_submit = function(draft)
+        local calculation, publish_error = publish(controller, resolved, draft)
+        if not calculation then return nil, publish_error end
+        resolved.sun_study.viewing = true
+        local start_playback = play_after_submit
+        play_after_submit = false
+        vim.schedule(function()
+          if resolved.closed or not resolved.sun_study then return end
+          controller.focus_canvas(resolved)
+          if start_playback then controller.sun_toggle(resolved) end
+        end)
+        return true
+      end,
       on_cancel = function() clear_study(controller, resolved); form_focus(controller, resolved) end,
-      on_change = function(draft) publish(draft) end,
-      on_reset = function(active) publish(active.state.draft) end,
+      on_change = function(draft) publish(controller, resolved, draft) end,
+      on_reset = function(active) publish(controller, resolved, active.state.draft) end,
       on_open = function(active)
         handle = active
-        publish(active.state.draft)
+        publish(controller, resolved, active.state.draft)
         local mappings = require("roomplan.ui.mappings")
-        mappings.set(active.bufnr, "h", function() advance(-1) end, "Previous sunlight step")
-        mappings.set(active.bufnr, "l", function() advance(1) end, "Next sunlight step")
-        mappings.set(active.bufnr, "<Space>", toggle_play, "Play or pause sunlight study")
+        mappings.set(active.bufnr, "h", function() advance_form(-1) end, "Previous sunlight step")
+        mappings.set(active.bufnr, "l", function() advance_form(1) end, "Next sunlight step")
+        mappings.set(active.bufnr, "<Space>", function() view_on_canvas(true) end,
+          "Start sunlight playback on the canvas")
       end,
       on_action = function(action)
-        if action == "previous" then return advance(-1) end
-        if action == "next" then return advance(1) end
-        if action == "play" then return toggle_play() end
+        if action == "previous" then return advance_form(-1) end
+        if action == "next" then return advance_form(1) end
+        if action == "view" then return view_on_canvas(false) end
+        if action == "play" then return view_on_canvas(true) end
         if action == "edit_site" then
           stop_timer(resolved)
           if not form.transition(handle, "edit-sun-site") then return false end
@@ -252,6 +308,54 @@ function M.attach(controller)
       return notify_error(err)
     end
     return handle
+  end
+
+  function controller.sun_step(session, delta)
+    local resolved, err = resolve(session)
+    if not resolved then return notify_error(err) end
+    if not resolved.sun_study or not resolved.sun_study.viewing then
+      return notify_error(util.err("SUN_NOT_VIEWING", "open the sunlight study with L first"))
+    end
+    local changed, step_error = advance(controller, resolved, delta and delta < 0 and -1 or 1)
+    if changed == nil then return notify_error(step_error) end
+    return changed
+  end
+
+  function controller.sun_toggle(session)
+    local resolved, err = resolve(session)
+    if not resolved then return notify_error(err) end
+    local playing, playback_error = toggle_playback(controller, resolved)
+    if playing == nil then return notify_error(playback_error) end
+    return playing
+  end
+
+  function controller.close_sun_study(session)
+    local resolved, err = resolve(session)
+    if not resolved then return notify_error(err) end
+    if not resolved.sun_study then return false end
+    clear_study(controller, resolved)
+    return true
+  end
+
+  controller.direction = function(session, dx, dy, scale)
+    if session and session.sun_study and session.sun_study.viewing
+      and scale == "normal" and dy == 0 and dx ~= 0
+    then
+      return controller.sun_step(session, dx)
+    end
+    return base_direction(session, dx, dy, scale)
+  end
+
+  controller.escape = function(session)
+    if session and session.sun_study and session.sun_study.viewing then
+      return controller.close_sun_study(session)
+    end
+    return base_escape(session)
+  end
+
+  controller.hide = function(session, opts)
+    if session and session.sun_study then clear_study(controller, session) end
+    return base_hide(session, opts)
   end
 end
 

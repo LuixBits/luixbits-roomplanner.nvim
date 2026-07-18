@@ -1115,6 +1115,42 @@ describe("controller lifecycle", function()
     cleanup()
   end)
 
+  it("opens conflict resolution when the hidden quit guard cannot save", function()
+    cleanup()
+    local path = temp(".roomplan.json")
+    local session = h.truthy(controller.init_source(nil, { path = path }))
+    h.truthy(controller.dispatch(session, {
+      type = "edit_metadata",
+      patch = { notes = "retained conflict edit" },
+    }))
+    session.source_conflicted = true
+    session.retained_model_at_risk = true
+    session:update_guard()
+
+    local compatibility = require("roomplan.compat")
+    local original_notify = compatibility.notify
+    local original_resolve = controller.resolve_conflict
+    local notices, resolutions = {}, 0
+    compatibility.notify = function(message) notices[#notices + 1] = message end
+    controller.resolve_conflict = function(target)
+      h.eq(session, target)
+      resolutions = resolutions + 1
+      return true
+    end
+    local ok, test_error = xpcall(function()
+      vim.api.nvim_buf_call(session.guard_bufnr, function() vim.cmd("write") end)
+      h.truthy(vim.bo[session.guard_bufnr].modified)
+      h.truthy(vim.wait(500, function() return resolutions == 1 end, 10))
+      h.matches("choose how to resolve", table.concat(notices, "\n"))
+    end, debug.traceback)
+    controller.resolve_conflict = original_resolve
+    compatibility.notify = original_notify
+    if not ok then error(test_error, 0) end
+
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
   it("keeps normalized source content protected across reconciliation", function()
     cleanup()
     local path = temp(".roomplan.json")

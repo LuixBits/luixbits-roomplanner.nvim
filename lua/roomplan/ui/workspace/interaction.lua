@@ -190,7 +190,7 @@ function M.invoke(api, session, id)
     return false, "no structured form is active"
   end
   if id == "help" then return require("roomplan.ui.help").open(session) end
-  if id == "hide" then return api.hide(session) end
+  if id == "hide" then return require("roomplan.controller").hide(session) end
   if workspace.opts.on_action then return workspace.opts.on_action(session, action) end
   local controller = require("roomplan.controller")
   local handler = controller[action.handler]
@@ -244,7 +244,11 @@ function M.map_common(api, session, buffer, role)
   map("<Esc>", function() api.escape(session) end, "Leave RoomPlan workspace mode", "escape")
   map("q", function()
     local current = session.workspace
-    if current and current.windows.drawer then api.focus(session, "canvas") else api.hide(session) end
+    if current and current.windows.drawer then
+      api.focus(session, "canvas")
+    else
+      require("roomplan.controller").hide(session)
+    end
   end, "Hide RoomPlan workspace", "hide")
   for _, id in ipairs({
     "add", "edit", "resize_dimensions", "move", "pan", "align", "rotate", "duplicate", "delete",

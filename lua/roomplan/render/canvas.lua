@@ -224,6 +224,11 @@ local function session_footer(session)
       label, index or 0, #(edit.footprint.parts or {}), edge, snap
     )
   end
+  if session.sun_study and session.sun_study.viewing then
+    local playback = session.sun_study.playing and "Pause" or "Play"
+    return " SUN STUDY | [h/l] Previous/next  [Space] " .. playback
+      .. "  [L] Settings  [Esc] Close "
+  end
   if #rooms == 0 then
     return " [a] Add first room  [?] Help  [q] Hide "
   end

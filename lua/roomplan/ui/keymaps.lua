@@ -32,6 +32,12 @@ function M.apply(buf, session)
     end
     return require("roomplan.controller").direction(session, 1, 0, "coarse")
   end, "Open RoomPlan sun study or move right coarsely", "sun_study")
+  map(buf, "<Space>", function()
+    if session.sun_study and session.sun_study.viewing then
+      return require("roomplan.controller").sun_toggle(session)
+    end
+    return false
+  end, "Play or pause the visible RoomPlan sunlight study")
   for _, entry in ipairs({ { "<C-h>", -1, 0 }, { "<C-j>", 0, -1 }, { "<C-k>", 0, 1 }, { "<C-l>", 1, 0 } }) do
     map(buf, entry[1], controller("direction", entry[2], entry[3], "fine"), "RoomPlan fine direction")
   end

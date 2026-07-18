@@ -19,6 +19,10 @@ truth.
 | `g0` | Restore the plan view/up projection |
 | `L` | Open the offline sunlight study |
 
+Starting playback dismisses the study form so it cannot cover the plan. While
+the study is on the canvas, `h`/`l` step, `Space` plays or pauses, `L` reopens
+settings, and `Esc` closes the transient overlay.
+
 Zoom is limited by `canvas.min_mm_per_column` and
 `canvas.max_mm_per_column`. Terminal rows use `cell_aspect` times the
 millimetres-per-column scale so plan proportions look correct in non-square
