@@ -31,7 +31,7 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   remain strictly inside their owner room.
 - Rooms, placed furniture, and project templates reach the shared direct
   compound-section editor from **Edit footprint** in their ordinary `e`
-  popup without adding a mapping; `r` remains the room shortcut. Quarter-turned
+  popup or directly with `r`; `R` rotates furniture. Quarter-turned
   furniture movement and snapping operate in world space; templates use an
   isolated local preview. Explicit doubled-mm anchors stay fixed. A compact
   popup chooses item-only or item-plus-template scope, commits one undo step,

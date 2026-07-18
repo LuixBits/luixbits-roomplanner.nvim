@@ -59,10 +59,10 @@ moving right on screen still looks right. Grid and geometric snapping are
 view-scale aware and capped by `snapping.max_distance_mm`. The breadcrumb adds
 the active object, last visible direction and distance, and named snap target.
 
-## Room resizing
+## Live dimension resizing
 
-Select a room and press `r` to resize its rectangular union directly on the
-canvas. One section is highlighted at a time. `Enter` selects under the cursor,
+Select a room or furniture item and press `r` to resize its rectangular union
+directly on the canvas. One section is highlighted at a time. `Enter` selects under the cursor,
 `Tab` cycles sections, and the usual direction keys use normal, coarse, or fine
 plan steps. The first horizontal/vertical key chooses the corresponding west,
 east, south, or north edge; the status keeps that handle visible while opposite

@@ -19,8 +19,9 @@ Select furniture and use:
 
 - `e` to edit room, template, label, geometry where available, position, and
   rotation, or activate **Edit footprint** for direct section editing;
+- `r` to enter highlighted live dimension/section resizing immediately;
 - `m` plus directions to move by the configured plan steps;
-- `r` to rotate one quarter-turn;
+- `R` to rotate one quarter-turn;
 - `y` to duplicate it;
 - `d` to delete it.
 
@@ -36,11 +37,11 @@ room-local position, height, and rotation stay editable there.
 
 ## Direct shape editing
 
-Press `e` and activate **Edit footprint**. The canvas then uses the same
-`RESIZE` interaction as rooms: `Enter` or `Tab` selects a section,
-direction keys choose and resize its visible edge, `a` adds an adjoining
-same-sized section, and `d` removes the selected section. `s` applies the
-complete footprint as one undo step and saves; `Esc` cancels it.
+Press `r` for the direct path, or press `e` and activate **Edit footprint**.
+The canvas then uses the same `RESIZE` interaction as rooms: `Enter` or `Tab`
+selects a section, direction keys choose and resize its visible edge, `a` adds
+an adjoining same-sized section, and `d` removes the selected section. `s`
+applies the complete footprint as one undo step and saves; `Esc` cancels it.
 
 The item's doubled-mm anchor and room-local position remain fixed, including
 through quarter-turn rotations. RoomPlan rejects any resize or removal that
@@ -66,8 +67,9 @@ returns to the active shape draft; it neither commits nor saves anything.
 Enable **Save as project template** while adding furniture to create a
 `custom:*` template with the current footprint and height. Project templates
 are saved inside that plan, appear as top-level Objects rows, and can be edited
-with `e`. In that same popup, activate **Edit footprint** to edit its rectangular
-sections in an isolated local canvas preview. The usual `Enter`/`Tab`,
+with `e`. Press `r` for direct editing, or activate **Edit footprint** in that
+popup, to edit its rectangular sections in an isolated local canvas preview.
+The usual `Enter`/`Tab`,
 directions, `a`, `d`, `s`, and `Esc` controls apply. The plan viewport is
 restored afterwards, and the template anchor stays fixed and valid.
 

@@ -6,10 +6,12 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 - Unified room, furniture, and project-template shape editing under the
   ordinary `e` popup. Each editor now has an explicit **Edit footprint** row
-  that transitions to the shared canvas section controls, without a new global
-  mapping or a duplicate hidden action in `?`. Any changed scalar fields are
+  that transitions to the shared canvas section controls without a duplicate
+  hidden action in `?`. Any changed scalar fields are
   validated and applied before the transition, so popup work is not silently
-  discarded. The room `r` mapping remains a direct shortcut.
+  discarded. Lowercase `r` now starts the same highlighted live resize for
+  rooms, placed furniture, and project templates; uppercase `R` rotates
+  furniture.
 - Added Neovim-style canvas edge following for NAV movement. `h/j/k/l` and
   their coarse variants keep advancing through world space when the logical
   cursor reaches the edge of a zoomed viewport; the canvas pans just enough to

@@ -322,16 +322,25 @@ describe("controller lifecycle", function()
         height_mm = 800, rotation_deg = 90,
       }),
     }))
-    session.selection = { kind = "furniture", id = "furniture-shape" }
+    session.selection = { kind = "room", id = "room-furniture-shape" }
     session.snap_enabled = false
 
     local revision = session:revision_id()
-    local form = require("roomplan.ui.form")
-    local editor = h.truthy(controller.edit_selected(session))
-    h.eq("Edit footprint", h.truthy(editor.state.field_index.edit_footprint).field.label)
-    h.eq("Edit sections on canvas…", h.truthy(editor.state.field_index.edit_footprint).field.value)
-    h.truthy(form.activate(editor, "edit_footprint"))
-    h.truthy(form.edit(editor))
+    controller.refresh(session)
+    local workspace = require("roomplan.ui.workspace")
+    h.truthy(workspace.focus(session, "objects"))
+    local furniture_row
+    for line, row in pairs(session.workspace.rendered.objects.row_map or {}) do
+      if row.kind == "furniture" and row.id == "furniture-shape" then furniture_row = line; break end
+    end
+    h.truthy(furniture_row)
+    vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { furniture_row, 0 })
+    vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), "x", false)
+    h.truthy(vim.wait(200, function()
+      return session.selection and session.selection.kind == "furniture"
+        and session.selection.id == "furniture-shape"
+    end, 10))
+    vim.api.nvim_feedkeys("r", "x", false)
     h.truthy(vim.wait(200, function() return session.shape_edit ~= nil end, 10))
     h.eq("RESIZE", session.mode)
     h.eq("furniture", session.shape_edit.kind)

@@ -48,17 +48,18 @@ feedback. It adds no mapping, never replaces an action hint that already fits,
 and is clipped with the rest of the one-line status on narrow layouts. Complete
 properties remain in Details rather than being repeated in the footer.
 
-The ordinary `e` popup is also the single entry point for compound-shape
+The ordinary `e` popup is a discoverable entry point for compound-shape
 editing. Room, furniture, and project-template forms include **Edit footprint**;
 row; pressing `Enter` there opens the shared canvas section controls. If other
 popup fields changed first, RoomPlan validates and applies them before the
 transition. Project templates use an isolated local preview. When a placed item
 references a project-local template, saving opens a second compact popup for
 **This item only** versus **Item + project template**. Neither choice rewrites
-other placed items. The room `r` key remains a convenient direct shortcut.
+other placed items. Lowercase `r` enters the same live resize directly for
+rooms, furniture, and project templates; uppercase `R` rotates furniture.
 
 Common actions are `a` (Add), `e` (Edit), `m` (Move), `A` (Align), `r`
-(resize a room or rotate furniture), `y` (Duplicate), and `d` (Delete). `D`, `W`, `O`, and `F`
+(live resize), `R` (rotate furniture), `y` (Duplicate), and `d` (Delete). `D`, `W`, `O`, and `F`
 open Door, Window, Outlet, and Furniture directly; the `a` Add menu uses
 lowercase `d`, `w`, `o`, and `f`. Deleting a room summarizes and confirms its
 cascading doors, windows, outlets, and furniture when deletion confirmation is

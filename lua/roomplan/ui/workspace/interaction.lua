@@ -220,7 +220,7 @@ function M.map_common(api, session, buffer, role)
     if current and current.windows.drawer then api.focus(session, "canvas") else api.hide(session) end
   end, "Hide RoomPlan workspace", "hide")
   for _, id in ipairs({
-    "add", "edit", "move", "pan", "align", "rotate", "duplicate", "delete",
+    "add", "edit", "resize_dimensions", "move", "pan", "align", "rotate", "duplicate", "delete",
     "validate", "save", "fit", "cycle_detail_level", "help",
     "add_door", "add_window", "add_outlet", "add_furniture", "undo", "redo",
     "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view", "apply", "reset", "shape_apply",
