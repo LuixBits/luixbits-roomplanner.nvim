@@ -160,6 +160,23 @@ describe("action registry", function()
     assert_equal("Add a room first", registry.get("add_outlet", empty).reason)
   end)
 
+  it("offers placed-furniture shape editing through More without adding a key", function()
+    local ctx = context("canvas", { kind = "furniture", id = "sofa-1" })
+    local action = registry.get("edit_shape", ctx)
+    assert_equal(true, action.enabled)
+    assert_equal(nil, action.key)
+    assert_equal("Edit furniture shape", action.label)
+
+    local found = false
+    for _, candidate in ipairs(registry.full(ctx)) do
+      if candidate.id == "edit_shape" then found = true end
+    end
+    assert_equal(true, found)
+    assert_equal(false, registry.get("edit_shape", context("canvas", {
+      kind = "room", id = "room-main",
+    })).enabled)
+  end)
+
   it("prioritizes pane-local keys and respects mapping overrides", function()
     local ctx = context("objects", nil)
     local original_count = registry.more_count(ctx)

@@ -23,8 +23,8 @@ rounding can never corrupt the saved plan.
   and furniture colors.
 - Compound footprints for L-, T-, and U-shaped rooms and furniture, with
   seam-free walls and one logical selection per object. The room form creates
-  configurable L shapes; direct canvas resizing can add, resize, and remove
-  rectangular room sections.
+  configurable L shapes; direct canvas editing can add, resize, and remove
+  rectangular room and placed-furniture sections without adding another key.
 - View-only 90-degree rotation and runtime terminal-cell aspect calibration;
   neither operation changes saved geometry.
 - Strict, deterministic JSON with preserved extension fields, plus marked Neorg
@@ -77,7 +77,8 @@ Then press `a` to add a room, `m` to move the selected room and its furniture,
 `r` to resize its sections, or `e` for exact properties. Save with `s`. Press
 `t` to cycle canvas detail, `1` to focus or toggle the
 Navigator, and `3` to do the same for Details. `?` opens every currently
-available action; press `/` there to search it. `,` and `.` zoom out and in.
+available action; press `/` there and type to filter it live inside the popup.
+`,` and `.` zoom out and in.
 `q` returns to the canvas before hiding the workspace. Add a window directly
 with `W` or an outlet with `O`; the outlet form chooses wall or floor placement.
 From the Add menu use `a` followed by lowercase `w` or `o`.

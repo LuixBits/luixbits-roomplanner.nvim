@@ -262,11 +262,11 @@ function M.apply_canvas_keymaps(api, session, opts)
   end
   if opts.cycle_tabs ~= false then
     map("<Tab>", function()
-      if session.room_shape_edit then require("roomplan.controller").cycle_room_shape_part(session, 1)
+      if session.shape_edit then require("roomplan.controller").cycle_room_shape_part(session, 1)
       else api.cycle_focus(session, 1) end
     end, "Next RoomPlan workspace pane or room section", "workspace_next_pane")
     map("<S-Tab>", function()
-      if session.room_shape_edit then require("roomplan.controller").cycle_room_shape_part(session, -1)
+      if session.shape_edit then require("roomplan.controller").cycle_room_shape_part(session, -1)
       else api.cycle_focus(session, -1) end
     end,
       "Previous RoomPlan workspace pane", "workspace_previous_pane")

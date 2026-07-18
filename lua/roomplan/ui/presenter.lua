@@ -38,7 +38,7 @@ local function selection_of(value, opts)
 end
 
 local function shape_context(value)
-  local edit = type(value) == "table" and value.room_shape_edit or nil
+  local edit = type(value) == "table" and value.shape_edit or nil
   if not edit then return {} end
   local _, index = require("roomplan.room_shape").selected(edit)
   return {

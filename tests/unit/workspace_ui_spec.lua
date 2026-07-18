@@ -390,10 +390,26 @@ describe("workspace UI", function()
         { key = "d", label = "Door", description = "Add an opening" },
       },
     }))
-    assert_true(palette.filter(handle, "opening"))
+    local initial = table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
+    assert_true(initial:find("/ Search actions", 1, true) ~= nil)
+
+    local original_input = vim.ui.input
+    vim.ui.input = function() error("the action search must stay inside its popup") end
+    assert_true(palette.prompt_search(handle))
+    vim.ui.input = original_input
+    assert_equal(true, handle.searching)
+    assert_equal(true, vim.bo[handle.bufnr].modifiable)
+
+    vim.api.nvim_buf_set_lines(handle.bufnr, handle.search_row - 1, handle.search_row, false, { "/ opening" })
+    vim.api.nvim_exec_autocmds("TextChangedI", { buffer = handle.bufnr })
     local filtered = table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
     assert_true(filtered:find("Door", 1, true) ~= nil)
     assert_true(filtered:find("Create geometry", 1, true) == nil)
+    assert_true(filtered:find("/ opening", 1, true) ~= nil)
+    assert_true(palette.finish_search(handle))
+    assert_equal(false, handle.searching)
+    assert_equal(false, vim.bo[handle.bufnr].modifiable)
+
     assert_true(palette.filter(handle, ""))
     local restored = table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
     assert_true(restored:find("Room", 1, true) ~= nil)
@@ -402,6 +418,19 @@ describe("workspace UI", function()
     local compact = assert(palette.open({ items = { { label = "Room" } } }))
     assert_equal(false, palette.filter(compact, "room"))
     palette.close(compact, "test complete")
+
+    local chosen
+    local submit = assert(palette.open({
+      searchable = true,
+      items = {
+        { label = "Room" },
+        { label = "Door", description = "Add an opening", callback = function() chosen = "door" end },
+      },
+    }))
+    assert_true(palette.prompt_search(submit))
+    assert_true(palette.filter(submit, "opening"))
+    assert_true(palette.submit_search(submit))
+    assert_true(vim.wait(200, function() return chosen == "door" end, 10))
   end)
 
   it("renders stable pane rows and a width-bounded persistent action bar", function()

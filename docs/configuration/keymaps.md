@@ -92,11 +92,11 @@ Select a room and press `r`; no form step is required.
 | `Esc` | `form_cancel` | Cancel form |
 | `j` / `k` | `palette_next` / `palette_previous` | Move in a palette |
 | `Enter` / `Esc` | `palette_choose` / `palette_cancel` | Run/cancel palette |
-| `/` | `palette_search` | Search the full `?` action window |
+| `/` | `palette_search` | Focus live search in the full `?` action window |
 
 Search is deliberately limited to the full action window opened by `?`. The
-small `a` Add menu keeps immediate one-key choices and does not open a search
-prompt.
+search row and filtered results remain inside that popup. The small `a` Add
+menu keeps immediate one-key choices and does not expose search.
 
 Run `:checkhealth roomplan` to review overrides, explicitly disabled actions,
 and duplicate replacement keys.

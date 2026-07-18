@@ -1,5 +1,5 @@
--- Direct canvas room resizing. It previews a complete shape but commits
--- exactly one semantic room edit when the user applies it.
+-- Direct canvas room and placed-furniture shape editing. It previews a complete
+-- shape but commits exactly one semantic entity edit when the user applies it.
 
 local config = require("roomplan.config")
 local model = require("roomplan.model")
@@ -35,7 +35,7 @@ function M.attach(controller)
   }
 
   local function active(session)
-    return session and session.room_shape_edit or nil
+    return session and session.shape_edit or nil
   end
 
   local function workspace_mode(session, mode)
@@ -46,17 +46,17 @@ function M.attach(controller)
   local function publish(session, edit)
     local preview, err = room_shape.preview_model(session:model(), edit)
     if not preview then return nil, err end
-    session.room_shape_edit = edit
+    session.shape_edit = edit
     session.preview_model = preview
     session.mode = "RESIZE"
-    session.selection = { kind = "room", id = edit.room_id }
+    session.selection = { kind = edit.kind or "room", id = edit.entity_id or edit.room_id }
     workspace_mode(session, session.mode)
     controller.refresh(session)
     return edit
   end
 
   local function clear(session)
-    session.room_shape_edit = nil
+    session.shape_edit = nil
     session.preview_model = nil
     common.clear_snap_feedback(session)
     session.move_feedback = nil
@@ -67,6 +67,21 @@ function M.attach(controller)
 
   local function room_for(session, edit)
     return model.find(session:model(), "room", edit.room_id)
+  end
+
+  local function entity_for(value, edit)
+    return model.find(value, edit.kind or "room", edit.entity_id or edit.room_id)
+  end
+
+  local function world_shape(value, edit)
+    local target = entity_for(value, edit)
+    if not target then return nil end
+    local geometry = require("roomplan.geometry.footprint")
+    if edit.kind == "furniture" then
+      local owner = model.find(value, "room", target.room_id)
+      return owner and geometry.from_furniture(owner, target) or nil
+    end
+    return geometry.from_room(target)
   end
 
   local function cursor_world(session)
@@ -83,16 +98,20 @@ function M.attach(controller)
     return result
   end
 
-  function controller.start_room_resize(session, room_id)
+  function controller.start_shape_resize(session, kind, entity_id)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
     if active(resolved) then return active(resolved) end
     common.clear_snap_feedback(resolved)
     resolved.move_feedback = nil
     local selection = resolved.selection
-    room_id = room_id or (selection and selection.kind == "room" and selection.id)
-    if not room_id then return notify_error(util.err("ROOM_REQUIRED", "select a room before editing its shape")) end
-    local edit, start_err = room_shape.start(resolved:model(), room_id, resolved:revision_id())
+    kind = kind or (selection and selection.kind)
+    entity_id = entity_id or (selection and selection.id)
+    if kind ~= "room" and kind ~= "furniture" then
+      return notify_error(util.err("SHAPE_REQUIRED", "select a room or placed furniture item before editing its shape"))
+    end
+    if not entity_id then return notify_error(util.err("SHAPE_REQUIRED", "select an object before editing its shape")) end
+    local edit, start_err = room_shape.start(resolved:model(), entity_id, resolved:revision_id(), kind)
     if not edit then return notify_error(start_err) end
     local result, publish_err = publish(resolved, edit)
     if not result then return notify_error(publish_err) end
@@ -100,17 +119,25 @@ function M.attach(controller)
     return result
   end
 
+  function controller.start_room_resize(session, room_id)
+    return controller.start_shape_resize(session, "room", room_id)
+  end
+
+  function controller.edit_selected_shape(session)
+    return controller.start_shape_resize(session)
+  end
+
   function controller.select_room_shape_part(session)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
     local edit = active(resolved)
     if not edit then return notify_error(util.err("ROOM_SHAPE_INACTIVE", "room resizing is not active")) end
-    local owner = room_for(resolved, edit)
     local point = cursor_world(resolved)
-    if not owner or not point then
-      return notify_error(util.err("ROOM_SHAPE_CURSOR", "place the canvas cursor over a room section"))
+    local shape = world_shape(resolved:current_model(), edit)
+    if not shape or not point then
+      return notify_error(util.err("SHAPE_CURSOR", "place the canvas cursor over a shape section"))
     end
-    return update(resolved, room_shape.select_world(edit, owner.origin_mm, point))
+    return update(resolved, room_shape.select_world(edit, shape, point))
   end
 
   function controller.cycle_room_shape_part(session, direction)
@@ -132,12 +159,17 @@ function M.attach(controller)
       or settings.normal_step_mm
     local direction_label = dx < 0 and "left" or dx > 0 and "right" or dy < 0 and "down" or "up"
     dx, dy = require("roomplan.render.viewport").view_delta_to_world(ensure_viewport(resolved), dx, dy)
+    dx, dy = room_shape.local_delta(edit, dx, dy)
     local owner = room_for(resolved, edit)
     local snap_options = common.snapping_options(resolved)
     local next_edit, shape_err = room_shape.direction(edit, dx, dy, step, config.get().limits, {
       model = resolved:model(),
       origin_mm = owner and owner.origin_mm,
       options = snap_options,
+      world_shape = function(candidate)
+        local preview = room_shape.preview_model(resolved:model(), candidate)
+        return preview and world_shape(preview, candidate) or nil
+      end,
     })
     if next_edit then next_edit.move_feedback = string.format("%s %d mm", direction_label, step) end
     resolved.bypass_snap_once = false
@@ -149,15 +181,21 @@ function M.attach(controller)
     if not resolved then return notify_error(err) end
     local edit = active(resolved)
     if not edit then return notify_error(util.err("ROOM_SHAPE_INACTIVE", "room resizing is not active")) end
-    local owner, part = room_for(resolved, edit), room_shape.selected(edit)
+    local part = room_shape.selected(edit)
     local point = cursor_world(resolved)
     local dx, dy = 0, 0
-    if owner and part and point then
-      local center_x = owner.origin_mm[1] + part.origin_mm[1] + part.size_mm[1] / 2
-      local center_y = owner.origin_mm[2] + part.origin_mm[2] + part.size_mm[2] / 2
+    local shape = world_shape(resolved:current_model(), edit)
+    local runtime_part
+    for _, candidate in ipairs(shape and shape.parts or {}) do
+      if part and candidate.id == part.id then runtime_part = candidate; break end
+    end
+    if runtime_part and point then
+      local center_x = (runtime_part.left2 + runtime_part.right2) / 4
+      local center_y = (runtime_part.bottom2 + runtime_part.top2) / 4
       local relative_x, relative_y = point[1] - center_x, point[2] - center_y
       if math.abs(relative_x) >= math.abs(relative_y) then dx = relative_x < 0 and -1 or 1
       else dy = relative_y < 0 and -1 or 1 end
+      dx, dy = room_shape.local_delta(edit, dx, dy)
     end
     return update(resolved, room_shape.add(edit, dx, dy))
   end
@@ -176,7 +214,7 @@ function M.attach(controller)
     local edit = active(resolved)
     if not edit then return base.save(resolved) end
     if resolved:revision_id() ~= edit.base_revision_id then
-      return notify_error(util.err("ROOM_SHAPE_STALE", "the plan changed; cancel and restart resizing"))
+      return notify_error(util.err("SHAPE_STALE", "the plan changed; cancel and restart shape editing"))
     end
     if not room_shape.is_changed(edit) then clear(resolved); return true end
     local result, dispatch_err = controller.dispatch(resolved, room_shape.action(edit))
@@ -233,7 +271,7 @@ function M.attach(controller)
     return base.escape(session)
   end
   controller.toggle_snap = function(session)
-    if active(session) then session.room_shape_edit = room_shape.clear_feedback(active(session)) end
+    if active(session) then session.shape_edit = room_shape.clear_feedback(active(session)) end
     return base.toggle_snap(session)
   end
   controller.hide = function(session, opts)

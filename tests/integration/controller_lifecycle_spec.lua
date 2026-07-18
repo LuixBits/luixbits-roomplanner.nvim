@@ -190,13 +190,13 @@ describe("controller lifecycle", function()
     session.selection = { kind = "room", id = "room-shape" }
     h.truthy(controller.rotate_selected(session))
     h.eq("RESIZE", session.mode)
-    h.truthy(session.room_shape_edit)
+    h.truthy(session.shape_edit)
 
     local revision = session:revision_id()
     h.truthy(controller.direction(session, 1, 0, "normal"))
     h.eq(3000, session:model().rooms[1].footprint.parts[1].size_mm[1])
     h.eq(3100, session:current_model().rooms[1].footprint.parts[1].size_mm[1])
-    h.eq("right 100 mm", session.room_shape_edit.move_feedback)
+    h.eq("right 100 mm", session.shape_edit.move_feedback)
     h.eq(revision, session:revision_id())
 
     h.truthy(controller.add_room_shape_part(session))
@@ -208,7 +208,7 @@ describe("controller lifecycle", function()
 
     h.truthy(controller.save(session))
     h.eq("NAV", session.mode)
-    h.eq(nil, session.room_shape_edit)
+    h.eq(nil, session.shape_edit)
     h.eq(2, #session:model().rooms[1].footprint.parts)
     h.truthy(session:revision_id() ~= revision)
     h.eq(false, session:model_dirty())
@@ -269,6 +269,50 @@ describe("controller lifecycle", function()
     local after = h.truthy(require("roomplan.geometry.footprint").bounds(after_shape))
     h.eq(before.left + 90, after.left)
     h.eq(before.right + 90, after.right)
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
+  it("edits a rotated furniture footprint as one anchored undo step", function()
+    cleanup()
+    local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-furniture-shape", name = "Shape room", origin_mm = { 0, 0 }, size_mm = { 4000, 3000 },
+      }),
+    }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_furniture",
+      furniture = model.new_furniture({
+        id = "furniture-shape", room_id = "room-furniture-shape", template_id = "builtin:custom-rectangle",
+        name = "Sectional", category = "seating", position_mm = { 2000, 1500 },
+        anchor2_mm = { 1000, 500 }, footprint = model.rectangle_footprint({ 1000, 500 }),
+        height_mm = 800, rotation_deg = 90,
+      }),
+    }))
+    session.selection = { kind = "furniture", id = "furniture-shape" }
+    session.snap_enabled = false
+
+    local revision = session:revision_id()
+    h.truthy(controller.edit_selected_shape(session))
+    h.eq("RESIZE", session.mode)
+    h.eq("furniture", session.shape_edit.kind)
+    h.truthy(controller.direction(session, 1, 0, "normal"))
+    h.eq({ 0, -100 }, session:current_model().furniture[1].footprint.parts[1].origin_mm)
+    h.eq({ 1000, 600 }, session:current_model().furniture[1].footprint.parts[1].size_mm)
+    h.eq({ 1000, 500 }, session:current_model().furniture[1].anchor2_mm)
+    h.eq({ 0, 0 }, session:model().furniture[1].footprint.parts[1].origin_mm)
+    h.eq(revision, session:revision_id())
+
+    h.truthy(controller.save(session))
+    h.eq("NAV", session.mode)
+    h.eq(nil, session.shape_edit)
+    h.eq({ 0, -100 }, session:model().furniture[1].footprint.parts[1].origin_mm)
+    h.eq({ 1000, 500 }, session:model().furniture[1].anchor2_mm)
+    h.truthy(session:revision_id() ~= revision)
+    h.truthy(controller.undo(session))
+    h.eq({ 0, 0 }, session:model().furniture[1].footprint.parts[1].origin_mm)
     controller.close(session, { bang = true })
     cleanup()
   end)

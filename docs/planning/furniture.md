@@ -19,6 +19,8 @@ Select furniture and use:
 
 - `e` to edit room, template, label, geometry where available, position, and
   rotation;
+- `?`, then `/` and `shape`, to open direct section editing without adding a
+  permanent furniture shortcut;
 - `m` plus directions to move by the configured plan steps;
 - `r` to rotate one quarter-turn;
 - `y` to duplicate it;
@@ -30,9 +32,27 @@ to the configured priority.
 
 Built-in and imported rectangle templates become canonical one-part footprints
 when placed. Loaded compound furniture can be moved, rotated, duplicated,
-validated, rendered, and saved without flattening it. Its rectangle-only
-width/depth controls are hidden until the compound part editor is available;
-label, category, room-local position, height, and rotation remain editable.
+validated, rendered, shape-edited, and saved without flattening it. Its
+rectangle-only width/depth form controls remain hidden; label, category,
+room-local position, height, and rotation stay editable there.
+
+## Direct shape editing
+
+Choose **Edit furniture shape** from the full `?` action popup. The canvas then
+uses the same `RESIZE` interaction as rooms: `Enter` or `Tab` selects a section,
+direction keys choose and resize its visible edge, `a` adds an adjoining
+same-sized section, and `d` removes the selected section. `s` applies the
+complete footprint as one undo step and saves; `Esc` cancels it.
+
+The item's doubled-mm anchor and room-local position remain fixed, including
+through quarter-turn rotations. RoomPlan rejects any resize or removal that
+would leave the anchor outside the footprint. Snapping is calculated in world
+space against other sections, room walls, furniture, and the plan grid, then
+converted back to the item's local rotated geometry.
+
+Editing a placed item changes only that item. Its source project/imported
+template is not silently rewritten; direct project-template shape editing and
+an explicit update-template workflow remain separate roadmap work.
 
 ## Project templates
 
@@ -41,7 +61,8 @@ Enable **Save as project template** while adding furniture to create a
 are saved inside that plan, appear as top-level Objects rows, and can be edited
 with `e`. Existing placed furniture keeps explicit geometry when its template
 is edited. Loaded compound project templates are preserved; their
-rectangle-only size controls are hidden.
+rectangle-only size controls are hidden until direct template shape editing is
+implemented.
 
 For reusable personal or team defaults that should not be copied into every
 plan, use [Furniture catalogues](furniture-catalogs.md).

@@ -29,10 +29,15 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   semantic colours, and responsive workspace drawers. Wall outlets use
   view-aware inward-facing half circles; floor outlets use full circles and
   remain strictly inside their owner room.
-- The complete `?` action window supports `/` search without changing the
-  immediate one-key Add menu. Adjacent unshifted `,` and `.` keys zoom out and
-  in for Swiss, compact, and ergonomic keyboards. Both remain configurable by
-  semantic mapping name.
+- Placed furniture reuses the direct compound section editor from the full
+  action popup without adding a mapping. Quarter-turned edge movement and
+  snapping operate in world space while the explicit doubled-mm anchor stays
+  fixed; apply is one undoable furniture edit and never silently rewrites its
+  source template.
+- The complete `?` action window has an in-popup `/` search row that filters
+  actions after every character without changing the immediate one-key Add
+  menu. Adjacent unshifted `,` and `.` keys zoom out and in for Swiss, compact,
+  and ergonomic keyboards. Both remain configurable by semantic mapping name.
 - Native packages, lazy.nvim, snacks, rocks, Nix flake, and nvf compatibility
   without optional integrations becoming hard dependencies.
 
@@ -43,8 +48,8 @@ outside the current model.
 
 ## Next — extend compound authoring
 
-- Reuse that interaction for placed furniture and project templates, including
-  explicit anchor handling and catalogue round trips.
+- Reuse that interaction for project templates, with an explicit placed-item
+  versus update-template choice and tested catalogue round trips.
 - Add further room/furniture presets only when they reduce common editing work
   without creating parallel geometry representations.
 
