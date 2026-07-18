@@ -433,6 +433,36 @@ describe("workspace UI", function()
     assert_true(vim.wait(200, function() return chosen == "door" end, 10))
   end)
 
+  it("keeps action search writable after entering it through the popup mapping", function()
+    local palette = require("roomplan.ui.palette")
+    local handle = assert(palette.open({
+      title = "RoomPlan actions",
+      searchable = true,
+      items = {
+        { label = "Edit room" },
+        { label = "Edit furniture shape" },
+      },
+    }))
+    local ok, err = xpcall(function()
+      vim.api.nvim_feedkeys("/", "x", false)
+      assert_equal(true, handle.searching)
+      assert_equal(true, vim.bo[handle.bufnr].modifiable)
+      vim.api.nvim_buf_set_lines(handle.bufnr, handle.search_row - 1, handle.search_row, false, { "/ shape" })
+      vim.api.nvim_exec_autocmds("TextChangedI", { buffer = handle.bufnr, modeline = false })
+      assert_equal(handle.query, "shape")
+      assert_equal(true, vim.bo[handle.bufnr].modifiable)
+      assert_true(table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
+        :find("Edit furniture shape", 1, true) ~= nil)
+      assert_true(palette.finish_search(handle))
+      assert_equal(false, handle.searching)
+      assert_equal(false, vim.bo[handle.bufnr].modifiable)
+      vim.api.nvim_feedkeys("q", "x", false)
+      assert_equal(true, handle.closed)
+    end, debug.traceback)
+    if not handle.closed then palette.close(handle, "test cleanup") end
+    if not ok then error(err, 0) end
+  end)
+
   it("renders stable pane rows and a width-bounded persistent action bar", function()
     local view = presenter.objects(fixture(), { selection = { kind = "room", id = "room-living" } })
     local panel = objects_panel.render(view, 32, 12)

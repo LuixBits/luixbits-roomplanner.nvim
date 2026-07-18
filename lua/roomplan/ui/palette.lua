@@ -35,8 +35,9 @@ local function close(handle, reason)
   if not handle or handle.closed then return false end
   handle.closed = true
   handle.reason = reason
-  if handle.searching and valid_window(handle.winid) and vim.api.nvim_get_current_win() == handle.winid then
-    handle.searching = false
+  handle.searching = false
+  if valid_window(handle.winid) and vim.api.nvim_get_current_win() == handle.winid
+      and vim.fn.mode():sub(1, 1) == "i" then
     pcall(vim.cmd, "stopinsert")
   end
   if handle.session and valid_buffer(handle.bufnr) then state.detach_buffer(handle.bufnr) end
@@ -151,16 +152,27 @@ local function document(handle)
   }
 end
 
-local function render(handle)
+local function render(handle, preserve_search_line)
   if handle.closed or not valid_buffer(handle.bufnr) then return false end
   local view = document(handle)
   handle.row_map, handle.item_rows, handle.visible = view.row_map, view.item_rows, view.visible
   handle.search_row = view.search_row
   handle.rendering = true
-  vim.bo[handle.bufnr].modifiable = true
-  vim.api.nvim_buf_set_lines(handle.bufnr, 0, -1, false, view.lines)
-  vim.bo[handle.bufnr].modifiable = handle.searching == true
+  local wrote, write_error = pcall(function()
+    vim.bo[handle.bufnr].modifiable = true
+    if preserve_search_line and handle.searching and view.search_row then
+      local tail = {}
+      for index = view.search_row + 1, #view.lines do tail[#tail + 1] = view.lines[index] end
+      -- TextChangedI is already editing the query row. Replacing that row from
+      -- inside its callback can interrupt Neovim's pending insert operation.
+      vim.api.nvim_buf_set_lines(handle.bufnr, view.search_row, -1, false, tail)
+    else
+      vim.api.nvim_buf_set_lines(handle.bufnr, 0, -1, false, view.lines)
+    end
+  end)
   handle.rendering = false
+  if valid_buffer(handle.bufnr) then vim.bo[handle.bufnr].modifiable = handle.searching == true end
+  if not wrote then error(write_error, 0) end
   vim.api.nvim_buf_clear_namespace(handle.bufnr, highlight_namespace, 0, -1)
   vim.api.nvim_buf_add_highlight(handle.bufnr, highlight_namespace, "Title", 0, 0, -1)
   if view.search_row then
@@ -214,7 +226,7 @@ local function prompt_search(handle)
 end
 
 local function finish_search(handle)
-  if not handle or not handle.searching then return false end
+  if not handle or handle.closed then return false end
   handle.searching = false
   if valid_window(handle.winid) and vim.api.nvim_get_current_win() == handle.winid then
     pcall(vim.cmd, "stopinsert")
@@ -241,7 +253,7 @@ local function sync_search(handle)
     handle.search_column = #query + 2
   end
   handle.query = query
-  return render(handle)
+  return render(handle, true)
 end
 
 local function resolved_items(items, opts, keys)
@@ -342,15 +354,6 @@ function M.open(opts)
             local line = vim.api.nvim_buf_get_lines(bufnr, handle.search_row - 1, handle.search_row, false)[1] or ""
             vim.api.nvim_win_set_cursor(handle.winid, { handle.search_row, #line })
           end
-        end
-      end,
-    })
-    vim.api.nvim_create_autocmd("InsertLeave", {
-      group = handle.augroup, buffer = bufnr,
-      callback = function()
-        if handle.searching and not handle.closed then
-          handle.searching = false
-          vim.schedule(function() if not handle.closed then render(handle) end end)
         end
       end,
     })
