@@ -15,12 +15,19 @@ local ROLE_RANK = {
   snap = 85,
   selected = 80,
   outlet = 60,
+  sun_window = 56,
   window = 55,
   door = 50,
   furniture = 40,
   room_label = 35,
   furniture_label = 35,
+  sun_wall = 31,
   wall = 30,
+  sunlight_5 = 25,
+  sunlight_4 = 24,
+  sunlight_3 = 23,
+  sunlight_2 = 22,
+  sunlight_1 = 21,
   room = 20,
   dimension = 15,
   grid = 10,
@@ -398,6 +405,64 @@ local function draw_interior(context, primitive, hit_context)
     for column = left, right do
       local cell = context.grid[row][column]
       add_refs_and_role(cell, primitive, hit_context)
+    end
+  end
+end
+
+local function point_in_rectangles(x, y, rectangles)
+  for _, rectangle in ipairs(rectangles or {}) do
+    if x >= rectangle.left - 1e-9 and x <= rectangle.right + 1e-9
+      and y >= rectangle.bottom - 1e-9 and y <= rectangle.top + 1e-9
+    then
+      return true
+    end
+  end
+  return false
+end
+
+local function point_in_polygon(x, y, vertices)
+  local sign
+  for index = 1, #vertices do
+    local first = vertices[index]
+    local second = vertices[index % #vertices + 1]
+    local cross = (second[1] - first[1]) * (y - first[2])
+      - (second[2] - first[2]) * (x - first[1])
+    if math.abs(cross) > 1e-7 then
+      local current = cross > 0
+      if sign ~= nil and current ~= sign then return false end
+      sign = current
+    end
+  end
+  return sign ~= nil
+end
+
+local function draw_sun_patch(context, primitive)
+  local vertices = primitive.vertices or {}
+  if #vertices < 3 or #(primitive.clip_rects or {}) == 0 then return end
+  local left, right, top, bottom
+  for _, vertex in ipairs(vertices) do
+    local column, row = project(context.viewport, vertex[1], vertex[2])
+    left, right = left and math.min(left, column) or column, right and math.max(right, column) or column
+    top, bottom = top and math.min(top, row) or row, bottom and math.max(bottom, row) or row
+  end
+  left = clamp(math.floor(left) + 1, 1, context.width)
+  right = clamp(math.ceil(right) + 1, 1, context.width)
+  top = clamp(math.floor(top) + 1, 1, context.height)
+  bottom = clamp(math.ceil(bottom) + 1, 1, context.height)
+  local span = math.max(1e-9, primitive.far_distance - primitive.near_distance)
+  for row = top, bottom do
+    for column = left, right do
+      local x, y = viewport_module.screen_to_world(context.viewport, column - 1, row - 1)
+      if point_in_rectangles(x, y, primitive.clip_rects) and point_in_polygon(x, y, vertices) then
+        local distance = (x - primitive.midpoint[1]) * primitive.incoming[1]
+          + (y - primitive.midpoint[2]) * primitive.incoming[2]
+        local progress = clamp((distance - primitive.near_distance) / span, 0, 1)
+        local level = clamp(math.floor(progress * 5) + 1, 1, 5)
+        add_visual(context, row, column, {
+          char = " ", layer = primitive.layer, role = "sunlight_" .. level,
+          order = primitive.order,
+        })
+      end
     end
   end
 end
@@ -1182,6 +1247,8 @@ function M.rasterize(scene, viewport, opts)
         draw_grid(context, primitive)
       elseif primitive.kind == "room_interior" then
         draw_interior(context, primitive, "interior")
+      elseif primitive.kind == "sun_patch" then
+        draw_sun_patch(context, primitive)
       elseif primitive.kind == "furniture_interior" then
         draw_interior(context, primitive, "interior")
       elseif primitive.kind == "furniture_outline" then

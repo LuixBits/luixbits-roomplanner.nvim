@@ -23,6 +23,7 @@ interactive terminal view.
 - [Rooms and alignment](planning/rooms.md)
 - [Doors and shared walls](planning/doors.md)
 - [Windows and outlets](planning/windows-and-outlets.md)
+- [Offline sunlight study](planning/sun-study.md)
 - [Furniture and project templates](planning/furniture.md)
 - [Personal and team furniture catalogues](planning/furniture-catalogs.md)
 

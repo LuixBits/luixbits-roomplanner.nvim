@@ -2,8 +2,9 @@
 
 Schema v4 models windows as linear wall openings and outlets as wall- or
 floor-mounted point markers. Every object belongs to a room. A wall feature
-also belongs to one footprint part and one of its north, east, south, or west
-sides; a floor outlet stores a room-local point instead.
+also belongs to one footprint part and one stable plan-coordinate side; the UI
+names it top, right, bottom, or left for the current view. A floor outlet stores
+a room-local point instead.
 
 ## Add and interact
 
@@ -57,6 +58,12 @@ shared opening. Invalid owner-aperture geometry never cuts a wall, and an
 invalid connection never punches through the claimed connected room. Windows
 have no door leaf or swing.
 
+For sunlight, a window may also store `sill_height_mm` and `head_height_mm` as
+one optional pair. The edit popup switches between explicit heights and the
+configured plan defaults. The pair is required together, and head must be
+higher than sill. Defaults stay in setup instead of creating redundant keys on
+every window. See [Sun study](sun-study.md).
+
 ```json
 {
   "id": "window-living-north",
@@ -65,7 +72,9 @@ have no door leaf or swing.
   "part_id": "part-main",
   "side": "north",
   "offset_mm": 700,
-  "width_mm": 1400
+  "width_mm": 1400,
+  "sill_height_mm": 900,
+  "head_height_mm": 2100
 }
 ```
 
@@ -107,8 +116,9 @@ Floor placement uses mutually exclusive room-local coordinates:
 
 ## Current 2D limits
 
-These are top-down planning objects. Windows do not yet store sill height,
-opening height, head height, glazing, or opening style; outlets do not store a
-mounting height. See [Limitations and roadmap](../reference/limitations-and-roadmap.md).
+These remain top-down planning objects. Window sill/head height currently feeds
+only the approximate sunlight patch; glazing, opening style, wall thickness,
+and outlet mounting height are not represented. See
+[Limitations and roadmap](../reference/limitations-and-roadmap.md).
 
 ← [Doors](doors.md) | [Documentation home](../README.md) | [Furniture](furniture.md) →

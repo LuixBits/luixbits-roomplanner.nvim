@@ -8,12 +8,36 @@ local v3 = require("roomplan.schema.v3.entities")
 local M = {
   normalize_room = v3.normalize_room,
   normalize_door = v3.normalize_door,
-  normalize_window = v3.normalize_window,
   normalize_furniture = v3.normalize_furniture,
   normalize_template = v3.normalize_template,
   validate_door_parts = v3.validate_door_parts,
   validate_window_parts = v3.validate_window_parts,
 }
+
+function M.normalize_window(context, source, path)
+  local result = v3.normalize_window(context, source, path)
+  if not result then return nil end
+  local sill_present = result.sill_height_mm ~= nil
+  local head_present = result.head_height_mm ~= nil
+  if sill_present ~= head_present then
+    common.add_error(context, "SCHEMA_WINDOW_HEIGHT_PAIR", path,
+      "sill_height_mm and head_height_mm must be provided together")
+  end
+  if sill_present and head_present then
+    result.sill_height_mm = common.integer(
+      context, result.sill_height_mm, path .. ".sill_height_mm", 0,
+      common.limits.local_mm_max, common.limits.local_mm_max
+    )
+    result.head_height_mm = common.dimension(context, result.head_height_mm, path .. ".head_height_mm")
+    if result.sill_height_mm and result.head_height_mm
+      and result.head_height_mm <= result.sill_height_mm
+    then
+      common.add_error(context, "SCHEMA_WINDOW_HEIGHT_ORDER", path .. ".head_height_mm",
+        "must exceed sill_height_mm", result.head_height_mm)
+    end
+  end
+  return result
+end
 
 local SIDES = { north = true, east = true, south = true, west = true }
 local PLACEMENTS = { wall = true, floor = true }

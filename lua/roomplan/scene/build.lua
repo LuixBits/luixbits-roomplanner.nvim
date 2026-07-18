@@ -12,6 +12,7 @@ local M = {}
 M.layers = {
   grid = 10,
   room_interior = 20,
+  sunlight = 25,
   furniture = 30,
   door_swing = 40,
   wall = 50,
@@ -486,12 +487,19 @@ function M.build(model, validation, opts)
   local template_edit = opts.shape_edit and opts.shape_edit.kind == "template"
   local wall_scene = template_edit and walls.build({}, {}, {}, {})
     or walls.build(rooms, doors, windows, outlets)
+  local sunlight = opts.sun_study and opts.sun_study.active
+      and require("roomplan.analysis.sunlight").build(
+        model, wall_scene, opts.sun_study.calculation,
+        opts.sun_config and opts.sun_config.window_defaults
+      )
+    or { patches = {}, walls = {}, windows = {}, assumed_count = 0 }
   local scene = {
     primitives = {},
     bounds = bbox_new(),
     warnings = {},
     objects = {},
     wall_data = wall_scene,
+    sunlight = sunlight,
   }
   local object_points = {}
   local dimension_edges = {}
@@ -644,6 +652,13 @@ function M.build(model, validation, opts)
     end
   end
 
+  for index, patch in ipairs(sunlight.patches) do
+    patch.layer = M.layers.sunlight
+    patch.role = "sunlight_1"
+    patch.order = index
+    add_primitive(scene, patch, roles)
+  end
+
   for i = 1, #furniture do
     local item = furniture[i]
     local room = type(item) == "table" and wall_scene.rooms_by_id[item.room_id] or nil
@@ -731,6 +746,7 @@ function M.build(model, validation, opts)
       refs = segment.refs,
       contributors = segment.contributors,
       order = i,
+      role = sunlight.walls[segment] and "sun_wall" or nil,
     }, roles)
     bbox_point(scene.bounds, segment.x1, segment.y1)
     bbox_point(scene.bounds, segment.x2, segment.y2)
@@ -820,6 +836,7 @@ function M.build(model, validation, opts)
         ref = ref,
         connection_valid = aperture.connection_valid,
         connection_requested = aperture.connection_requested,
+        role = sunlight.windows[aperture.id] and "sun_window" or nil,
       }, roles)
       if high_detail then
         add_primitive(scene, labels.opening_dimension(aperture, ref, i), roles)

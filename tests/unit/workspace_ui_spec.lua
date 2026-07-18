@@ -272,7 +272,7 @@ describe("workspace UI", function()
     assert_equal("Living › Floor outlet · Power · 2 slots", outlet.breadcrumb.text)
     assert_equal("RoomPlanWorkspaceOutlet", outlet.breadcrumb.hl_group)
 
-    assert_equal("Living › Door · East → Bedroom", presenter.context({
+    assert_equal("Living › Door · Right → Bedroom", presenter.context({
       model = plan,
       selection = { kind = "door", id = "door-shared" },
       mode = "NAV",
@@ -281,7 +281,7 @@ describe("workspace UI", function()
       id = "window-north", room_id = "room-living", side = "north",
       connects_to_room_id = nil, offset_mm = 500, width_mm = 1200,
     }
-    assert_equal("Living › Window · North → outside", presenter.context({
+    assert_equal("Living › Window · Top → outside", presenter.context({
       model = plan,
       selection = { kind = "window", id = "window-north" },
       mode = "NAV",

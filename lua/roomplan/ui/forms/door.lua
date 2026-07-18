@@ -4,6 +4,7 @@ local config = require("roomplan.config")
 local model_helpers = require("roomplan.model")
 local util = require("roomplan.util")
 local common = require("roomplan.ui.forms.common")
+local directions = require("roomplan.directions")
 
 local M = {}
 
@@ -156,10 +157,7 @@ function M.add(session, opts)
       { key = "room_id", label = "Owner room", type = "object_ref", required = true, choices = function(ctx) return common.rooms(ctx) end },
       {
         key = "side", label = "Wall", type = "enum", required = true,
-        choices = {
-          { value = "north", label = "North" }, { value = "east", label = "East" },
-          { value = "south", label = "South" }, { value = "west", label = "West" },
-        },
+        choices = function(ctx) return directions.choices(ctx) end,
       },
       {
         key = "width_mm", label = "Width", type = "measurement", required = true,
@@ -213,7 +211,8 @@ function M.add(session, opts)
         or draft.connects_to_room_id
       return {
         lines = {
-          string.format("%s wall of %s: offset %d mm, width %d mm", draft.side, room.name or room.id, resolved, draft.width_mm),
+          string.format("%s wall of %s: offset %d mm, width %d mm",
+            directions.label(draft.side, ctx), room.name or room.id, resolved, draft.width_mm),
           string.format("Hinge at %s; opens %s; destination %s; angle %d degrees",
             draft.hinge, draft.opens_into, destination, draft.open_angle_deg),
         },
@@ -307,10 +306,7 @@ function M.edit(session, door, opts)
       { key = "room_id", label = "Owner room", type = "object_ref", required = true, choices = function(ctx) return common.rooms(ctx) end },
       {
         key = "side", label = "Wall", type = "enum", required = true,
-        choices = {
-          { value = "north", label = "North" }, { value = "east", label = "East" },
-          { value = "south", label = "South" }, { value = "west", label = "West" },
-        },
+        choices = function(ctx) return directions.choices(ctx) end,
       },
       {
         key = "width_mm", label = "Width", type = "measurement",
@@ -329,8 +325,9 @@ function M.edit(session, door, opts)
       { key = "open_angle_deg", label = "Open angle", type = "integer", min = 1, max = 180 },
       {
         key = "summary", label = "Result", type = "readonly",
-        value = function(_, draft)
-          return string.format("%s wall, offset %d mm, width %d mm", draft.side, draft.offset_mm, draft.width_mm)
+        value = function(ctx, draft)
+          return string.format("%s wall, offset %d mm, width %d mm",
+            directions.label(draft.side, ctx), draft.offset_mm, draft.width_mm)
         end,
       },
     },
@@ -366,8 +363,8 @@ function M.edit(session, door, opts)
       if not room then return nil, { code = "ROOM_REQUIRED", message = "choose an owner room" } end
       return {
         lines = {
-          string.format("%s wall of %s: offset %d mm, width %d mm", draft.side, room.name or room.id,
-            draft.offset_mm, draft.width_mm),
+          string.format("%s wall of %s: offset %d mm, width %d mm",
+            directions.label(draft.side, ctx), room.name or room.id, draft.offset_mm, draft.width_mm),
           string.format("Hinge %s; opens %s; angle %d degrees", draft.hinge, draft.opens_into, draft.open_angle_deg),
         },
       }

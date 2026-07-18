@@ -9,4 +9,5 @@ return {
   measurement = require("roomplan.ui.forms.measurement"),
   placement = require("roomplan.ui.forms.placement"),
   template = require("roomplan.ui.forms.template"),
+  site = require("roomplan.ui.forms.site"),
 }

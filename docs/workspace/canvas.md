@@ -16,7 +16,8 @@ truth.
 | `p`, then directions | Enter dedicated PAN mode |
 | `t` | Cycle high, middle, and no canvas detail |
 | `Alt-l` / `Alt-h` | Rotate the view clockwise / counter-clockwise |
-| `g0` | Restore north-up view |
+| `g0` | Restore the plan view/up projection |
+| `L` | Open the offline sunlight study |
 
 Zoom is limited by `canvas.min_mm_per_column` and
 `canvas.max_mm_per_column`. Terminal rows use `cell_aspect` times the
@@ -26,7 +27,9 @@ at the `canvas.scrolloff` margin, so zoomed navigation does not stop at the
 visible boundary.
 
 Wall outlets use inward-facing half circles; floor outlets use full circles.
-Both use the colorscheme-linked `RoomPlanOutlet` highlight.
+Both use the colorscheme-linked `RoomPlanOutlet` highlight. During a sun study,
+warm exterior walls/windows and clipped yellow-to-orange floor patches form a
+derived layer below furniture, walls, labels, selection, and diagnostics.
 
 ## Detail levels
 
@@ -44,7 +47,10 @@ Use `t` to cycle levels or
 `:RoomPlanCanvasDetail high|middle|none|cycle` to choose explicitly. The level
 belongs to the live session and never dirties or rewrites the plan.
 
-The header contains the plan state and, by default, a compact compass. The
+The header contains the plan state and, by default, a compact compass. It shows
+plan up (`P↑` and its rotated variants) before site setup, then geographic north
+(`N↗`, for example) after setup. An active study adds local time, azimuth, and
+elevation. The
 action bar below the canvas reports mode, saved/dirty/conflict state, snapping,
 and zoom. A selected object adds one compact breadcrumb, for example
 `Office › Floor outlet · Power · 2 slots`; it disappears with the selection

@@ -960,7 +960,7 @@ describe("scene extraction and rendering", function()
       show_compass = true,
       glyph_mode = "unicode",
     })
-    assert_equal("N→", compass_text(handle))
+    assert_equal("P→", compass_text(handle))
 
     handle.opts.glyph_mode = "ascii"
     assert(canvas.redraw(handle, scene, viewport.new({
@@ -970,7 +970,7 @@ describe("scene extraction and rendering", function()
       mm_per_row = 200,
       rotation_quarters = 3,
     })))
-    assert_equal("N<", compass_text(handle))
+    assert_equal("P<", compass_text(handle))
     assert_true(canvas.close(handle))
   end)
 

@@ -47,9 +47,12 @@ end
 | `set_aspect(ratio[, opts, callback])` | Set process-wide height/width ratio and refit live sessions |
 | `set_canvas_detail(level)` | Set resolved session detail to `high`, `middle`, or `none`; omit level to cycle |
 | `rotate_view(direction)` | Rotate resolved viewport; accepts `clockwise`, `counterclockwise`, or `reset` |
+| `sun_study()` | Open site setup or the transient sunlight study for the resolved session |
 
 `set_aspect` also accepts one options table containing `ratio`. Canvas detail,
-rotation, and aspect are display operations and do not add model history.
+rotation, and aspect are display operations and do not add model history. Sun
+study date/time/playback is also transient; its first site setup is a persisted,
+undoable plan edit.
 
 `roomplan.aspect` remains a compatibility alias for `set_aspect`; new
 configuration should use the canonical name above.

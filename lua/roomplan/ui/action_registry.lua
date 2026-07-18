@@ -61,8 +61,12 @@ local definitions = {
     handler = "rotate_view", args = { "counterclockwise" }, priority = 25,
   },
   reset_view = {
-    key = "g0", mapping = "reset_view", label = "Reset view north-up",
+    key = "g0", mapping = "reset_view", label = "Reset plan view/up",
     handler = "rotate_view", args = { "reset" }, priority = 20,
+  },
+  sun_study = {
+    key = "L", mapping = "sun_study", label = "Sun study",
+    handler = "sun_study", priority = 58,
   },
   validate = { key = "v", mapping = "validate", label = "Validate", handler = "validate", args = { true }, priority = 60 },
   next_issue = { key = "<A-j>", mapping = "next_issue", label = "Next issue", handler = "next_issue", args = { 1 }, priority = 30 },
@@ -156,7 +160,7 @@ local group_members = {
     "clear_marks" },
   view = {
     "pan", "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
-    "reset_view", "validate", "next_issue", "previous_issue",
+    "reset_view", "sun_study", "validate", "next_issue", "previous_issue",
     "toggle_snap", "bypass_snap",
     "measure", "aspect",
   },
@@ -295,7 +299,9 @@ local function availability(id, ctx)
   elseif id == "redo" and ctx.can_redo == false then
     return false, "Nothing to redo"
   elseif id == "reset_view" and (ctx.view_rotation or 0) == 0 then
-    return false, "View is already north-up"
+    return false, "View is already plan-up"
+  elseif id == "sun_study" and ctx.mode ~= nil and ctx.mode ~= "NAV" then
+    return false, "Finish the current interaction first"
   elseif id == "activate_focused" then
     local row = ctx.focused_row
     local selectable_object = row and (row.kind == "plan" or row.id ~= nil)
@@ -409,7 +415,7 @@ local pane_ids = {
 
 local safe_full_ids = {
   "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
-  "validate", "next_issue", "previous_issue",
+  "sun_study", "validate", "next_issue", "previous_issue",
   "toggle_snap", "bypass_snap",
   "measure", "aspect", "save", "save_as", "undo", "redo",
   "history_list", "reload", "close",

@@ -3,6 +3,7 @@ local config = require("roomplan.config")
 local model = require("roomplan.model")
 local common = require("roomplan.ui.forms.common")
 local wall = require("roomplan.ui.forms.wall_attachment")
+local directions = require("roomplan.directions")
 
 local M = {}
 
@@ -31,6 +32,19 @@ local function fields(runtime, editing)
     { key = "side", label = "Wall", type = "enum", required = true, choices = wall.side_choices },
     { key = "width_mm", label = "Width", type = "measurement", required = true,
       max = function(ctx, draft) return wall.edge_length(draft, ctx) or runtime.limits.max_dimension_mm end },
+    { key = "height_mode", label = "Window heights", type = "enum", required = true, choices = {
+      { value = "assumed", label = "Use plan defaults" },
+      { value = "explicit", label = "Set for this window" },
+    } },
+    { key = "assumed_heights", label = "Sun-study heights", type = "readonly",
+      visible = function(_, draft) return draft.height_mode == "assumed" end,
+      value = string.format("sill %d mm · head %d mm",
+        runtime.sun_study.window_defaults.sill_height_mm,
+        runtime.sun_study.window_defaults.head_height_mm) },
+    { key = "sill_height_mm", label = "Sill height", type = "measurement", allow_zero = true,
+      visible = function(_, draft) return draft.height_mode == "explicit" end },
+    { key = "head_height_mm", label = "Head height", type = "measurement",
+      visible = function(_, draft) return draft.height_mode == "explicit" end },
     { key = "placement", label = "Placement", type = "enum", required = true, choices = {
       { value = "centre", label = "Centred on wall" },
       { value = "cursor", label = "Centred at canvas cursor" },
@@ -47,8 +61,8 @@ local function fields(runtime, editing)
   if editing then
     result[#result + 1] = {
       key = "summary", label = "Result", type = "readonly",
-      value = function(_, draft)
-        return string.format("%s wall, %d mm wide", draft.side, draft.width_mm)
+      value = function(ctx, draft)
+        return string.format("%s wall, %d mm wide", directions.label(draft.side, ctx), draft.width_mm)
       end,
     }
   end
@@ -72,6 +86,15 @@ local function validate(draft, context, id)
   if not wall.connection_available(draft, context, draft.width_mm) then
     errors.connects_to_room_id = "connected room does not cover the complete opening"
   end
+  if draft.height_mode == "explicit" then
+    if type(draft.sill_height_mm) ~= "number" then errors.sill_height_mm = "enter a sill height" end
+    if type(draft.head_height_mm) ~= "number" then errors.head_height_mm = "enter a head height" end
+    if type(draft.sill_height_mm) == "number" and type(draft.head_height_mm) == "number"
+      and draft.head_height_mm <= draft.sill_height_mm
+    then
+      errors.head_height_mm = "must be higher than the sill"
+    end
+  end
   return errors
 end
 
@@ -83,9 +106,14 @@ local function preview(draft, context)
   local destination = draft.connects_to_room_id == "outside" and "outside"
     or ((common.find(context, "room", draft.connects_to_room_id) or {}).name or draft.connects_to_room_id)
   return { lines = {
-    string.format("%s wall of %s: offset %d mm, width %d mm", draft.side, owner.name or owner.id,
+    string.format("%s wall of %s: offset %d mm, width %d mm", directions.label(draft.side, context), owner.name or owner.id,
       offset, draft.width_mm),
     "Connects to " .. tostring(destination),
+    draft.height_mode == "explicit"
+        and string.format("Sun patch uses sill %d mm and head %d mm", draft.sill_height_mm, draft.head_height_mm)
+      or string.format("Sun patch uses configured defaults (%d/%d mm)",
+        config.get().sun_study.window_defaults.sill_height_mm,
+        config.get().sun_study.window_defaults.head_height_mm),
   } }
 end
 
@@ -116,6 +144,9 @@ function M.add(session, opts)
       part_id = opts.part_id or wall.first_part_id(room),
       side = opts.side or "north",
       width_mm = opts.width_mm or DEFAULT_WIDTH_MM,
+      height_mode = opts.height_mode or "assumed",
+      sill_height_mm = opts.sill_height_mm or runtime.sun_study.window_defaults.sill_height_mm,
+      head_height_mm = opts.head_height_mm or runtime.sun_study.window_defaults.head_height_mm,
       placement = opts.placement or "centre",
       offset_mm = opts.offset_mm or 0,
       connects_to_room_id = initial_connection(opts.connects_to_room_id),
@@ -133,17 +164,22 @@ function M.add(session, opts)
     if not owner then return nil, { code = "ROOM_REQUIRED", message = "the owner room no longer exists" } end
     local id, id_err = common.generate_id(ctx, "window", (owner.name or owner.id) .. " " .. draft.side)
     if not id then return nil, id_err end
+    local window_fields = {
+      id = id,
+      room_id = draft.room_id,
+      connects_to_room_id = connection_value(draft.connects_to_room_id),
+      part_id = draft.part_id,
+      side = draft.side,
+      offset_mm = offset,
+      width_mm = draft.width_mm,
+    }
+    if draft.height_mode == "explicit" then
+      window_fields.sill_height_mm = draft.sill_height_mm
+      window_fields.head_height_mm = draft.head_height_mm
+    end
     return {
       type = "add_window",
-      window = model.new_window({
-        id = id,
-        room_id = draft.room_id,
-        connects_to_room_id = connection_value(draft.connects_to_room_id),
-        part_id = draft.part_id,
-        side = draft.side,
-        offset_mm = offset,
-        width_mm = draft.width_mm,
-      }, { schema_version = schema_version(ctx) }),
+      window = model.new_window(window_fields, { schema_version = schema_version(ctx) }),
     }
   end
   return spec
@@ -167,6 +203,9 @@ function M.edit(session, window, opts)
       part_id = window.part_id,
       side = window.side,
       width_mm = window.width_mm,
+      height_mode = window.sill_height_mm ~= nil and window.head_height_mm ~= nil and "explicit" or "assumed",
+      sill_height_mm = window.sill_height_mm or runtime.sun_study.window_defaults.sill_height_mm,
+      head_height_mm = window.head_height_mm or runtime.sun_study.window_defaults.head_height_mm,
       placement = opts.placement or "exact",
       offset_mm = window.offset_mm,
       connects_to_room_id = initial_connection(window.connects_to_room_id),
@@ -183,18 +222,24 @@ function M.edit(session, window, opts)
     end
     local offset, err = wall.resolve_offset(draft, ctx, draft.width_mm)
     if offset == nil then return nil, err end
+    local patch = {
+      room_id = draft.room_id,
+      connects_to_room_id = connection_value(draft.connects_to_room_id),
+      part_id = draft.part_id,
+      side = draft.side,
+      offset_mm = offset,
+      width_mm = draft.width_mm,
+    }
+    if draft.height_mode == "explicit" then
+      patch.sill_height_mm = draft.sill_height_mm
+      patch.head_height_mm = draft.head_height_mm
+    end
     return {
       type = "edit_window",
       id = ctx.window_id,
       exact = true,
-      patch = {
-        room_id = draft.room_id,
-        connects_to_room_id = connection_value(draft.connects_to_room_id),
-        part_id = draft.part_id,
-        side = draft.side,
-        offset_mm = offset,
-        width_mm = draft.width_mm,
-      },
+      patch = patch,
+      clear_heights = draft.height_mode == "assumed",
     }
   end
   return spec

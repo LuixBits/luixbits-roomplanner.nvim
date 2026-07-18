@@ -26,8 +26,8 @@ value. Use `:checkhealth roomplan` to see the effective calibration.
 
 ## Rotating the view
 
-`Alt-l` rotates clockwise, `Alt-h` rotates counter-clockwise, and `g0` resets to
-north-up. The command form is:
+`Alt-l` rotates clockwise, `Alt-h` rotates counter-clockwise, and `g0` restores
+the original plan view/up projection. The command form is:
 
 ```vim
 :RoomPlanRotateView clockwise
@@ -37,9 +37,12 @@ north-up. The command form is:
 
 Rotation affects only the canvas projection. It does not rotate Neovim's
 windows, alter room/door/furniture coordinates, create history, or persist in
-the plan. The compass displays where world north points (`N↑`, `N→`, `N↓`, or
-`N←`). Movement and pan keys remain screen-relative and are converted to world
-directions before a model action is created.
+the plan. Before sunlight site setup, the compass displays plan up (`P↑`, `P→`,
+`P↓`, or `P←`). After setup it displays the exact saved geographic-north angle
+with eight arrow directions, such as `N↗`. Movement and pan keys remain
+screen-relative. Wall choices and feedback likewise say top/right/bottom/left
+for the current projection while their stable stored coordinates remain
+unchanged.
 
 Rotation occurs in 90-degree steps and preserves the world point under the
 logical cursor when possible. Aspect calibration remains height/width of the

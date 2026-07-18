@@ -56,6 +56,30 @@ describe("config", function()
     config.reset()
   end)
 
+  it("configures conservative sunlight defaults without adding unrelated knobs", function()
+    config.reset()
+    local defaults = config.defaults().sun_study
+    assert_equal(900, defaults.window_defaults.sill_height_mm)
+    assert_equal(2100, defaults.window_defaults.head_height_mm)
+    assert_equal(60, defaults.playback.step_minutes)
+    assert_equal(700, defaults.playback.frame_duration_ms)
+    local effective = config.setup({ sun_study = {
+      window_defaults = { sill_height_mm = 800, head_height_mm = 2200 },
+      playback = { step_minutes = 30, frame_duration_ms = 400 },
+    } }).sun_study
+    assert_equal(800, effective.window_defaults.sill_height_mm)
+    assert_equal(30, effective.playback.step_minutes)
+    for _, value in ipairs({
+      { window_defaults = { sill_height_mm = 2200, head_height_mm = 2200 } },
+      { playback = { step_minutes = 0 } },
+      { playback = { frame_duration_ms = 49 } },
+      { playback = { frame_duration_ms = 60001 } },
+    }) do
+      assert_true(not pcall(config.setup, { sun_study = value }))
+    end
+    config.reset()
+  end)
+
   it("validates unknown keys without replacing prior config", function()
     config.reset()
     config.setup({ canvas = { open = "split" } })

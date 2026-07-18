@@ -261,7 +261,7 @@ function M.attach(controller)
     })
     controller.refresh(resolved)
     if not opts.quiet then
-      compat.notify("RoomPlan view rotated: north points " .. rotation_labels[viewport_module.rotation(resolved.viewport)])
+      compat.notify("RoomPlan view rotated: plan top points " .. rotation_labels[viewport_module.rotation(resolved.viewport)])
     end
     return resolved.viewport
   end

@@ -57,6 +57,7 @@ ordinary `e`, `m`, `y`, and `d` edit/move/duplicate/delete mappings.
 | `u`, `Ctrl-r` | `undo`, `redo` | Semantic history |
 | `f`, `.`, `,` | `fit`, `zoom_in`, `zoom_out` | Fit/zoom |
 | `t` | `cycle_detail_level` | Cycle `high`, `middle`, and `none` canvas detail |
+| `L` | `sun_study` | Open the sunlight study in NAV; remains coarse-right in MOVE/PAN/RESIZE |
 | `Alt-h`, `Alt-l`, `g0` | `rotate_view_counterclockwise`, `rotate_view_clockwise`, `reset_view` | Rotate projection |
 | `gs`, `g!` | `toggle_snap`, `bypass_snap` | Snapping controls |
 | `s`, `S` | `save`, `save_as` | Save / Save As |
@@ -69,7 +70,9 @@ searchable in `?`, and can still receive a semantic override through
 
 Canvas direction keys (`h j k l`, uppercase variants, and Ctrl variants) can be
 overridden by their literal default left-hand sides. PAN uses the same keys in
-a different mode; `zh zj zk zl` are direct pan aliases.
+a different mode; `zh zj zk zl` are direct pan aliases. The semantic
+`sun_study` override may move or disable the NAV shortcut without removing
+uppercase `L` coarse movement from editing modes.
 
 ## Direct compound-shape resizing
 
@@ -112,6 +115,10 @@ prompt owns input while the fixed-size results window stays read-only, so
 filter redraws cannot move the cursor and completion providers stay disabled.
 `Backspace` removes a character. The small `a` Add menu keeps immediate one-key
 choices and does not expose search.
+
+The Sun Study is also a structured popup. Inside it, `h`/`l` step backward or
+forward and `Space` plays or pauses; its ordinary form keys still edit fields,
+apply, and cancel.
 
 Run `:checkhealth roomplan` to review overrides, explicitly disabled actions,
 and duplicate replacement keys.

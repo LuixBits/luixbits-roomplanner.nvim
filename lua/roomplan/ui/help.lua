@@ -25,7 +25,7 @@ local reference_lines = {
   "<C-h/j/k/l> fine move; u undo, <C-r>/U redo",
   ",/. zoom out/in, f fit, zh/zj/zk/zl pan",
   "t cycles canvas detail: high / middle / none",
-  "Alt-l/Alt-h rotate view, g0 restore north-up",
+  "L sunlight study; Alt-l/Alt-h rotate view; g0 restore plan view/up",
   "gs toggle snapping, g! bypass next snap, s save, S Save As",
   "q returns toward the canvas, then hides the retained session",
   "",

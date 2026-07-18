@@ -26,6 +26,13 @@ local HIGHLIGHTS = {
   wall = "RoomPlanWall",
   door = "RoomPlanDoor",
   window = "RoomPlanWindow",
+  sun_wall = "RoomPlanSunWall",
+  sun_window = "RoomPlanSunWindow",
+  sunlight_1 = "RoomPlanSunlight1",
+  sunlight_2 = "RoomPlanSunlight2",
+  sunlight_3 = "RoomPlanSunlight3",
+  sunlight_4 = "RoomPlanSunlight4",
+  sunlight_5 = "RoomPlanSunlight5",
   outlet = "RoomPlanOutlet",
   furniture = "RoomPlanFurniture",
   room = "RoomPlanMuted",
@@ -144,15 +151,16 @@ local function session_header(session, canvas_config)
   if session.shape_edit then
     local edit = session.shape_edit
     local _, index = require("roomplan.room_shape").selected(edit)
-    local snap = require("roomplan.room_shape").snap_summary(edit)
-    local edge = require("roomplan.room_shape").edge_summary(edit)
+    local directions = require("roomplan.directions")
+    local snap = directions.replace_cardinals(require("roomplan.room_shape").snap_summary(edit), session)
+    local edge = directions.replace_cardinals(require("roomplan.room_shape").edge_summary(edit), session)
     display_mode = edit.kind == "template" and "TEMPLATE RESIZE" or "RESIZE"
     shape_notice = string.format(" · %s · section %d/%d · edge %s",
       display_mode,
       index or 0, #(edit.footprint.parts or {}), edge or "choose with h/j/k/l")
     if snap then shape_notice = shape_notice .. " · SNAP " .. snap end
   elseif session.mode == "MOVE" then
-    local snap = snapping.summary(session.snap_guides)
+    local snap = require("roomplan.directions").replace_cardinals(snapping.summary(session.snap_guides), session)
     if session.move_feedback then shape_notice = " · " .. session.move_feedback end
     if snap then shape_notice = shape_notice .. " · SNAP " .. snap end
   end
@@ -168,8 +176,14 @@ local function session_header(session, canvas_config)
     if status ~= "" then context_parts[#context_parts + 1] = status end
   end
   local context_status = #context_parts > 0 and (" · " .. table.concat(context_parts, " ")) or ""
+  local sun_status = ""
+  if session.sun_study and session.sun_study.calculation then
+    local sun = session.sun_study.calculation
+    sun_status = string.format(" · SUN %s %s · az %.1f° el %.1f°",
+      session.sun_study.date or "", session.sun_study.time or "", sun.azimuth_deg, sun.elevation_deg)
+  end
   return {
-    string.format("RoomPlan · %s%s%s%s", subject, shape_notice, context_status, issues),
+    string.format("RoomPlan · %s%s%s%s%s", subject, shape_notice, sun_status, context_status, issues),
     string.format(
       "%s · %s · %s · %d rooms · %d doors · %d windows · %d outlets · %d items · zoom %.2f · snap %s · detail %s",
       source,
@@ -201,7 +215,8 @@ local function session_footer(session)
     local _, index = require("roomplan.room_shape").selected(edit)
     local snap = require("roomplan.room_shape").snap_summary(edit)
       or (session.snap_enabled == false and "off" or "ready")
-    local edge = require("roomplan.room_shape").edge_summary(edit) or "choose h/j/k/l"
+    local edge = require("roomplan.directions").replace_cardinals(
+      require("roomplan.room_shape").edge_summary(edit), session) or "choose h/j/k/l"
     local label = edit.kind == "template" and "TEMPLATE RESIZE"
       or edit.kind == "furniture" and "FURNITURE RESIZE" or "ROOM RESIZE"
     return string.format(
@@ -215,7 +230,7 @@ local function session_footer(session)
   if session.mode == "PAN" then
     return " PAN | [h/j/k/l] Pan  [H/J/K/L] Pan far  [Esc] Navigation  [f] Fit "
   elseif session.mode == "MOVE" then
-    local snap = snapping.summary(session.snap_guides)
+    local snap = require("roomplan.directions").replace_cardinals(snapping.summary(session.snap_guides), session)
     return " MOVE" .. (session.move_feedback and (" · " .. session.move_feedback) or "")
       .. (snap and (" · snap " .. snap) or "")
       .. " | [h/j/k/l] Move  [H/J/K/L] Coarse  [Ctrl-h/j/k/l] Fine  [Esc] Done "
@@ -232,7 +247,7 @@ local function session_footer(session)
   elseif kind == "outlet" then
     return " OUTLET | [e] Edit  [m] Move  [f] Fit  [y] Duplicate  [d] Delete  [a] Add "
   end
-  return " NAV | [a] Add  [Enter] Select  [Tab] Next  [f] Fit  [t] Detail  [v] Validate  [?] Help  [q] Hide "
+  return " NAV | [a] Add  [Enter] Select  [Tab] Next  [f] Fit  [L] Sun  [v] Validate  [?] Help  [q] Hide "
 end
 
 local function options_for_session(session, callbacks)
@@ -254,14 +269,20 @@ local function options_for_session(session, callbacks)
     fit_on_open = session.viewport == nil,
   }
   options.get_scene = function()
-    return require("roomplan.scene.build").build(current_model(session), session.validation, {
+    local scene = require("roomplan.scene.build").build(current_model(session), session.validation, {
       selected = session.shape_edit and nil or session.selection,
       shape_edit = session.shape_edit,
       snap_guides = session.shape_edit and session.shape_edit.snap_guides or session.snap_guides,
       measurement = session.measurement,
       show_grid = canvas_config.show_grid,
       detail_level = session.canvas_detail_level or canvas_config.detail_level,
+      sun_study = session.sun_study,
+      sun_config = configured.sun_study,
     })
+    if session.sun_study and scene.sunlight then
+      session.sun_study.assumed_count = scene.sunlight.assumed_count or 0
+    end
+    return scene
   end
   options.get_viewport = function()
     return session.viewport
@@ -271,6 +292,10 @@ local function options_for_session(session, callbacks)
   end
   options.get_footer = function()
     return session_footer(session)
+  end
+  options.get_compass = function(_, ascii)
+    return require("roomplan.directions").compass(current_model(session).site and current_model(session).site.north_deg,
+      session, ascii)
   end
   options.get_counts = function()
     local plan = current_model(session)
@@ -632,10 +657,9 @@ local function apply_highlights(handle, output, header_count, footer_count)
       end
     end
     if handle.opts.show_compass ~= false then
-      local arrows = output.glyph_mode == "ascii"
-          and { "^", ">", "v", "<" }
-        or { "↑", "→", "↓", "←" }
-      local label = "N" .. arrows[viewport_module.rotation(output.viewport) + 1]
+      local label = type(handle.opts.get_compass) == "function"
+          and handle.opts.get_compass(handle, output.glyph_mode == "ascii")
+        or require("roomplan.directions").compass(nil, output.viewport, output.glyph_mode == "ascii")
       vim.api.nvim_buf_set_extmark(handle.buf, handle.namespace, 0, 0, {
         virt_text = { { label, "RoomPlanCompass" } },
         virt_text_pos = "right_align",
