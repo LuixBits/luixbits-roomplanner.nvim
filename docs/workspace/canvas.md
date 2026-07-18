@@ -21,7 +21,9 @@ truth.
 Zoom is limited by `canvas.min_mm_per_column` and
 `canvas.max_mm_per_column`. Terminal rows use `cell_aspect` times the
 millimetres-per-column scale so plan proportions look correct in non-square
-terminal cells.
+terminal cells. Normal and coarse `h/j/k/l` cursor movement automatically pans
+at the `canvas.scrolloff` margin, so zoomed navigation does not stop at the
+visible boundary.
 
 Wall outlets use inward-facing half circles; floor outlets use full circles.
 Both use the colorscheme-linked `RoomPlanOutlet` highlight.

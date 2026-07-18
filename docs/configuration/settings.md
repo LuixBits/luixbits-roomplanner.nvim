@@ -74,6 +74,7 @@ canvas = {
   max_mm_per_column = 100000,
   fit_margin_cells = 2,
   header_lines = 1,
+  scrolloff = 3,
   pan_step_cells = 5,
   pan_coarse_step_cells = 20,
   show_grid = false,
@@ -92,6 +93,13 @@ snapping = {
 scene. Snap tolerance begins in displayed cells, converts through the current
 viewport, then is capped in millimetres. The priority resolves equal
 candidates deterministically.
+
+`scrolloff` follows Neovim's option name and keeps that many drawable canvas
+cells between the logical cursor and every viewport edge while navigating with
+`h/j/k/l`. At the margin, further movement pans the RoomPlan viewport instead
+of trapping the cursor. The same behavior applies to coarse directions and
+rotated views. Set it to `0` to wait until the cursor reaches the actual edge.
+It is transient view state and never changes the plan or undo history.
 
 During room resizing, snapping is axis-local: only the edge being resized is
 corrected. Nearby edges from the same room and exterior walls from other rooms

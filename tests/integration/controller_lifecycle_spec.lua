@@ -752,6 +752,54 @@ describe("controller lifecycle", function()
     cleanup()
   end)
 
+  it("scrolls the zoomed canvas when NAV movement reaches canvas.scrolloff", function()
+    cleanup()
+    local runtime_config = require("roomplan.config")
+    local viewport = require("roomplan.render.viewport")
+    local canvas = require("roomplan.render.canvas")
+    runtime_config.setup({ canvas = { scrolloff = 3 } })
+    local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
+    local handle = h.truthy(session.canvas.handle)
+    session.viewport = viewport.new({
+      world_left_mm = 0,
+      world_top_mm = 0,
+      mm_per_column = 100,
+      mm_per_row = 200,
+    })
+    h.truthy(canvas.redraw(handle, nil, session.viewport, { reason = "scrolloff-test" }))
+    local width, height = handle.last_raster.width, handle.last_raster.height
+    h.truthy(width > 8 and height > 8)
+
+    local right_edge = width - 1 - 3
+    h.truthy(canvas.set_logical_cursor(session, math.floor(height / 2), right_edge))
+    local before = h.truthy(canvas.world_at_cursor(session))
+    h.truthy(controller.direction(session, 1, 0, "normal"))
+    local cursor = h.truthy(canvas.logical_cursor(session))
+    local after = h.truthy(canvas.world_at_cursor(session))
+    h.eq(right_edge, cursor.column)
+    h.eq(before.x + 100, after.x)
+    h.eq(100, session.viewport.world_left_mm)
+
+    for _ = 1, 5 do h.truthy(controller.direction(session, 1, 0, "normal")) end
+    cursor = h.truthy(canvas.logical_cursor(session))
+    h.eq(right_edge, cursor.column)
+    h.eq(600, session.viewport.world_left_mm)
+
+    local bottom_edge = height - 1 - 3
+    h.truthy(canvas.set_logical_cursor(session, bottom_edge, math.floor(width / 2)))
+    before = h.truthy(canvas.world_at_cursor(session))
+    h.truthy(controller.direction(session, 0, -1, "normal"))
+    cursor = h.truthy(canvas.logical_cursor(session))
+    after = h.truthy(canvas.world_at_cursor(session))
+    h.eq(bottom_edge, cursor.row)
+    h.eq(before.y - 200, after.y)
+    h.eq(-200, session.viewport.world_top_mm)
+
+    controller.close(session, { bang = true })
+    runtime_config.reset()
+    cleanup()
+  end)
+
   it("keeps canvas detail transient while cycling every level", function()
     cleanup()
     local path = temp(".roomplan.json")

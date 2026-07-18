@@ -269,6 +269,47 @@ describe("scene extraction and rendering", function()
     assert_equal(zoomed.world_top_mm - 3 * zoomed.mm_per_row, panned.world_top_mm)
   end)
 
+  it("keeps a followed world point inside a symmetric scrolloff", function()
+    local original = viewport.new({
+      world_left_mm = 0,
+      world_top_mm = 0,
+      mm_per_column = 100,
+      mm_per_row = 200,
+    })
+    local inside_x, inside_y = viewport.screen_to_world(original, 6, 4)
+    local unchanged = viewport.ensure_visible(original, inside_x, inside_y, 10, 8, 2)
+    assert_equal(original.world_left_mm, unchanged.world_left_mm)
+    assert_equal(original.world_top_mm, unchanged.world_top_mm)
+
+    local target_x, target_y = viewport.screen_to_world(original, 11, 9)
+    local followed = viewport.ensure_visible(original, target_x, target_y, 10, 8, 2)
+    local column, row = viewport.world_to_screen(followed, target_x, target_y)
+    assert_close(7, column)
+    assert_close(5, row)
+
+    local tiny = viewport.ensure_visible(original, target_x, target_y, 4, 3, 20)
+    column, row = viewport.world_to_screen(tiny, target_x, target_y)
+    assert_close(2, column)
+    assert_close(1, row)
+
+    for rotation = 0, 3 do
+      local turned = viewport.new({
+        world_left_mm = -300,
+        world_top_mm = 700,
+        mm_per_column = 80,
+        mm_per_row = 160,
+        rotation_quarters = rotation,
+      })
+      for _, screen in ipairs({ { -4, 3 }, { 15, 3 }, { 4, -5 }, { 4, 12 } }) do
+        local world_x, world_y = viewport.screen_to_world(turned, screen[1], screen[2])
+        local visible = viewport.ensure_visible(turned, world_x, world_y, 10, 8, 2)
+        local visible_column, visible_row = viewport.world_to_screen(visible, world_x, world_y)
+        assert_true(visible_column >= 2 and visible_column <= 7)
+        assert_true(visible_row >= 2 and visible_row <= 5)
+      end
+    end
+  end)
+
   it("round-trips screen coordinates and maps cardinals through every view rotation", function()
     local east = {
       [0] = { 1, 0 }, [1] = { 0, 1 }, [2] = { -1, 0 }, [3] = { 0, -1 },

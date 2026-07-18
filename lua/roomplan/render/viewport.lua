@@ -397,12 +397,18 @@ end
 ---Shift the viewport just enough to include a world point plus a cell margin.
 function M.ensure_visible(viewport, x, y, columns, rows, margin_cells)
   local result = M.copy(viewport)
-  margin_cells = math.max(0, margin_cells or 1)
+  margin_cells = math.max(0, math.floor(margin_cells or 1))
+  columns = math.max(1, math.floor(columns or 1))
+  rows = math.max(1, math.floor(rows or 1))
   local column, row = M.world_to_screen(result, x, y)
-  local min_column = math.min(margin_cells, math.max(0, columns - 1))
-  local max_column = math.max(min_column, columns - 1 - margin_cells)
-  local min_row = math.min(margin_cells, math.max(0, rows - 1))
-  local max_row = math.max(min_row, rows - 1 - margin_cells)
+  -- Match 'scrolloff' expectations in tiny windows: when both requested
+  -- margins cannot fit, keep the cursor as central as the drawable axis allows.
+  local column_margin = math.min(margin_cells, math.floor((columns - 1) / 2))
+  local row_margin = math.min(margin_cells, math.floor((rows - 1) / 2))
+  local min_column = column_margin
+  local max_column = columns - 1 - column_margin
+  local min_row = row_margin
+  local max_row = rows - 1 - row_margin
   local target_column = math.max(min_column, math.min(max_column, column))
   local target_row = math.max(min_row, math.min(max_row, row))
   result.world_left_mm, result.world_top_mm = origin_for_anchor(
