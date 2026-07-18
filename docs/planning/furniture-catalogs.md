@@ -83,4 +83,10 @@ its explicit geometry, but validation warns if its template ID cannot be
 resolved in another installation. Share the JSON file with the project when
 stable template identity matters across machines.
 
+Only project-local templates are editable from the plan. Their direct shape
+editor changes future placements; a placed item can explicitly update both
+itself and its project template from the save-scope popup. Imported and built-in
+catalogue definitions remain read-only, and no template edit rewrites other
+already placed items.
+
 ← [Furniture](furniture.md) | [Documentation home](../README.md) | [Appearance](../display/appearance.md) →

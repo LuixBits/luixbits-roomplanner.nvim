@@ -29,10 +29,11 @@ canvas resizing can also add, resize, and remove rectangular sections while
 preserving valid union topology. The furniture form currently creates
 one-part rectangles. Placed furniture can use the direct canvas section editor
 from the full action popup while preserving its explicit anchor through every
-quarter turn. Compound project templates are preserved across supported
-operations, but their direct shape editor and update-template workflow are
-still planned. Rectangle-only form resizing remains disabled for compound
-objects.
+quarter turn. Project templates use the same editor in an isolated local
+preview. A placed item that references a project template chooses item-only or
+item-plus-template scope in a popup; other placed items are never implicitly
+rewritten. Rectangle-only form resizing remains disabled for compound or
+custom-anchor objects.
 
 ## Deliberately not represented
 

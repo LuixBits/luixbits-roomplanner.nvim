@@ -123,6 +123,47 @@ describe("compound scene extraction", function()
     assert_equal(2, selected_parts)
   end)
 
+  it("renders project-template edits as an isolated local preview", function()
+    local model = {
+      settings = { grid_mm = 100 },
+      rooms = { compound_room() },
+      doors = {}, windows = {}, outlets = {}, furniture = {},
+      custom_templates = {
+        {
+          id = "custom:sectional", name = "Sectional",
+          default_footprint = {
+            kind = "rect_union",
+            parts = {
+              part("part-main", 0, 0, 1000, 500),
+              part("part-return", 0, 500, 500, 300),
+            },
+          },
+        },
+      },
+    }
+    local edit = {
+      kind = "template", entity_id = "custom:sectional", selected_part_id = "part-return",
+      footprint = model.custom_templates[1].default_footprint,
+      snap_guides = {},
+    }
+    local scene = scene_builder.build(model, nil, {
+      shape_edit = edit, show_grid = true, detail_level = "high",
+    })
+    assert_equal(0, #scene.wall_data.segments)
+    assert_equal(1, #scene.objects)
+    assert_equal("template", scene.objects[1].type)
+    assert_equal("custom:sectional", scene.objects[1].id)
+    assert_equal(2, count_kind(scene, "furniture_interior"))
+    assert_equal(2, count_kind(scene, "furniture_outline"))
+    assert_equal(0, scene.bounds.left)
+    assert_equal(1000, scene.bounds.right)
+    local selected = 0
+    for _, primitive in ipairs(scene.primitives) do
+      if primitive.part_id == "part-return" and primitive.role == "selected" then selected = selected + 1 end
+    end
+    assert_equal(2, selected)
+  end)
+
   it("accepts only part-local door apertures that lie on the union exterior", function()
     local room = compound_room()
     local internal = {

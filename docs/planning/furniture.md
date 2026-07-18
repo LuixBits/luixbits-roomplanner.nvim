@@ -50,19 +50,35 @@ would leave the anchor outside the footprint. Snapping is calculated in world
 space against other sections, room walls, furniture, and the plan grid, then
 converted back to the item's local rotated geometry.
 
-Editing a placed item changes only that item. Its source project/imported
-template is not silently rewritten; direct project-template shape editing and
-an explicit update-template workflow remain separate roadmap work.
+For furniture based on a project-local template, `s` opens a compact RoomPlan
+popup with two explicit scopes:
+
+- **This item only** changes the selected item and leaves every template and
+  peer item unchanged.
+- **Item + project template** changes the selected item and the default used by
+  future placements as one undo step. Other already placed items remain
+  unchanged because they own explicit geometry.
+
+Built-in and imported templates are process-level read-only catalogue entries,
+so their placed items use the item-only path. Cancelling the save-scope popup
+returns to the active shape draft; it neither commits nor saves anything.
 
 ## Project templates
 
 Enable **Save as project template** while adding furniture to create a
 `custom:*` template with the current footprint and height. Project templates
 are saved inside that plan, appear as top-level Objects rows, and can be edited
-with `e`. Existing placed furniture keeps explicit geometry when its template
-is edited. Loaded compound project templates are preserved; their
-rectangle-only size controls are hidden until direct template shape editing is
-implemented.
+with `e`. Select a template, open `?`, search for `shape`, and choose **Edit
+template shape** to edit its rectangular sections in an isolated local canvas
+preview. The usual `Enter`/`Tab`, directions, `a`, `d`, `s`, and `Esc` controls
+apply. The plan viewport is restored afterwards, and the template anchor stays
+fixed and valid.
+
+Saving a direct template edit changes future placements only. Existing placed
+furniture keeps its explicit geometry. Use the placed-item save-scope popup
+when the current item and template should receive the same shape atomically.
+The scalar `e` form remains the compact editor for template name, category,
+height, and canonical rectangle dimensions.
 
 For reusable personal or team defaults that should not be copied into every
 plan, use [Furniture catalogues](furniture-catalogs.md).

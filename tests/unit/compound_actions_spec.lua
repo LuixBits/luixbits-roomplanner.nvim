@@ -1,4 +1,5 @@
 local actions = require("roomplan.actions")
+local catalog = require("roomplan.catalog")
 local geometry = require("roomplan.geometry")
 local json = require("roomplan.codec.json")
 local model = require("roomplan.model")
@@ -148,6 +149,58 @@ describe("schema-v2 compound actions", function()
     })
     assert_true(snapped.position_mm ~= nil)
     assert_equal(nil, snapped.center_mm)
+  end)
+
+  it("updates one item and its project template atomically without propagating to peers", function()
+    local value = assert(model.new({ name = "Template propagation" }))
+    value.rooms[1] = model.new_room({
+      id = "room-main", name = "Main", origin_mm = { 0, 0 }, size_mm = { 4000, 3000 },
+    })
+    value.custom_templates[1] = model.new_custom_template({
+      id = "custom:sectional", name = "Sectional", category = "seating",
+      default_anchor2_mm = { 1000, 500 }, default_height_mm = 800,
+      default_footprint = model.rectangle_footprint({ 1000, 500 }),
+    })
+    for index, id in ipairs({ "furniture-edited", "furniture-peer" }) do
+      value.furniture[index] = model.new_furniture({
+        id = id, room_id = "room-main", template_id = "custom:sectional",
+        name = id, category = "seating", position_mm = { index * 1200, 1000 },
+        anchor2_mm = { 1000, 500 }, height_mm = 800,
+        footprint = model.rectangle_footprint({ 1000, 500 }),
+      })
+    end
+    local changed, result = apply(value, {
+      type = "edit_furniture_template_shape",
+      id = "furniture-edited",
+      template_id = "custom:sectional",
+      footprint = footprint({
+        part("part-main", 0, 0, 1100, 500),
+        part("part-return", 0, 500, 500, 300),
+      }),
+    })
+    assert_equal({ kind = "furniture", id = "furniture-edited" }, result.touched[1])
+    assert_equal({ kind = "template", id = "custom:sectional" }, result.touched[2])
+    assert_equal(2, #changed.furniture[1].footprint.parts)
+    assert_equal(2, #changed.custom_templates[1].default_footprint.parts)
+    assert_equal(1, #changed.furniture[2].footprint.parts)
+    assert_equal(1000, changed.furniture[2].footprint.parts[1].size_mm[1])
+    assert_equal(value.furniture[2].position_mm, changed.furniture[2].position_mm)
+
+    local encoded = assert(model.encode(changed))
+    local reopened = assert(model.decode(encoded))
+    local resolved = assert(catalog.resolve(reopened, "custom:sectional"))
+    assert_equal(2, #resolved.default_footprint.parts)
+    assert_equal(1100, resolved.default_footprint.parts[1].size_mm[1])
+
+    local stale, stale_err = actions.apply(value, {
+      type = "edit_furniture_template_shape",
+      id = "furniture-edited",
+      template_id = "custom:missing",
+      footprint = model.rectangle_footprint({ 1100, 500 }),
+    })
+    assert_equal(nil, stale)
+    assert_equal("NOT_FOUND", stale_err.code)
+    assert_equal(1000, value.furniture[1].footprint.parts[1].size_mm[1])
   end)
 
   it("auto-places a duplicated compound room from the complete footprint", function()

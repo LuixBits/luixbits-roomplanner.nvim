@@ -45,11 +45,14 @@ first defends structural invariants, then evaluates layout relationships and
 returns deterministic diagnostics.
 
 `room_shape` owns pure transient section selection and topology-safe add,
-remove, and resize operations; `room_shape/snapping.lua` derives its
-axis-local structural/grid candidates and display-only guides. `controller/shape.lua`
-publishes the draft through `Session:current_model()` for rendering, while
-persistence and history continue to see the durable model. Applying emits one
-ordinary `edit_room` action; cancelling emits none.
+remove, and resize operations for rooms, placed furniture, and project
+templates; `room_shape/snapping.lua` derives its axis-local structural/grid
+candidates and display-only guides. `controller/shape.lua` publishes the draft
+through `Session:current_model()` for rendering, while persistence and history
+continue to see the durable model. Template drafts use an isolated local scene
+instead of acquiring an artificial plan position. Applying emits one ordinary
+entity action or one atomic furniture-plus-template action; cancelling emits
+none.
 
 ## Persistence
 

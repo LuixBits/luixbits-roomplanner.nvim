@@ -1,6 +1,7 @@
--- Pure snapping for transient room and furniture section drafts. All matching
--- happens in world space; resolved deltas are converted back to the edited
--- object's local quarter-turned axes before changing persisted geometry.
+-- Pure snapping for transient room, furniture, and project-template section
+-- drafts. All matching happens in world space; resolved deltas are converted
+-- back to the edited object's local quarter-turned axes before changing
+-- persisted geometry.
 
 local footprint = require("roomplan.geometry.footprint")
 local number = require("roomplan.geometry.number")
@@ -54,12 +55,17 @@ local function target_features(edit, model, context)
     if part.id ~= edit.selected_part_id then
       append_edges(targets, part_features(
         part,
-        edit.kind == "furniture" and "furniture_edge" or "room_edge",
+        edit.kind == "furniture" and "furniture_edge"
+          or edit.kind == "template" and "template_edge" or "room_edge",
         tostring(edit.entity_id or edit.room_id) .. "/" .. tostring(part.id),
         "Section " .. index
       ))
     end
   end
+  -- A project template is edited in an isolated local preview. Its own section
+  -- boundaries and the grid are meaningful; plan walls and placed objects are
+  -- deliberately not presented as template geometry constraints.
+  if edit.kind == "template" then return targets end
   for _, other in ipairs(model.rooms or {}) do
     if edit.kind ~= "room" or other.id ~= (edit.entity_id or edit.room_id) then
       local shape = footprint.from_room(other)
@@ -99,7 +105,8 @@ local function moving_features(edit, context, dx, dy)
   local part = runtime_part(shape, edit.selected_part_id)
   if not part then return { x = {}, y = {} } end
   local features = part_features(part,
-    edit.kind == "furniture" and "furniture_edge" or "room_edge",
+    edit.kind == "furniture" and "furniture_edge"
+      or edit.kind == "template" and "template_edge" or "room_edge",
     tostring(edit.entity_id or edit.room_id) .. "/" .. tostring(part.id), "Selected section")
   local edges = edit.resize_edges or {}
   local side_map = rotated_sides[edit.rotation_deg or 0] or rotated_sides[0]

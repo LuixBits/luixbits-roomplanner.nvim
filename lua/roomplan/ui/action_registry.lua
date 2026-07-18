@@ -29,7 +29,7 @@ local definitions = {
   },
   edit = { key = "e", mapping = "edit", label = "Edit", handler = "edit_selected", priority = 100 },
   edit_shape = {
-    mapping = "edit_shape", label = "Edit furniture shape",
+    mapping = "edit_shape", label = "Edit compound shape",
     handler = "edit_selected_shape", priority = 85,
   },
   move = { key = "m", mapping = "move_mode", label = "Move", handler = "set_mode", args = { "MOVE" }, priority = 95 },
@@ -207,7 +207,9 @@ local function availability(id, ctx)
       return false, "Select a movable object first"
     end
   elseif id == "edit_shape" then
-    if kind ~= "furniture" then return false, "Select placed furniture first" end
+    if kind ~= "furniture" and kind ~= "template" then
+      return false, "Select placed furniture or a project template first"
+    end
   elseif id == "align" then
     if kind ~= "room" then return false, "Select a room first" end
     if room_count(ctx) < 2 then return false, "Add another room first" end
@@ -258,6 +260,8 @@ function M.get(id, ctx)
       result.handler = "edit_template"
       result.args = { ctx.selection.id }
     end
+  elseif id == "edit_shape" and ctx.selection then
+    result.label = ctx.selection.kind == "template" and "Edit template shape" or "Edit furniture shape"
   elseif id == "toggle_snap" then
     result.label = ctx.snap_enabled == false and "Enable snapping" or "Disable snapping"
   elseif id == "cycle_detail_level" then
@@ -320,7 +324,7 @@ local function ids_for(ctx)
   elseif kind == "window" or kind == "outlet" then
     return { "edit", "move", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
   elseif kind == "template" then
-    return { "edit", "duplicate", "delete", "save", "undo", "redo", "help" }
+    return { "edit", "edit_shape", "duplicate", "delete", "save", "undo", "redo", "help" }
   end
   return { "add", "select", "fit", "validate", "save", "pan", "undo", "redo", "help", "hide" }
 end
@@ -539,7 +543,9 @@ function M.mode_label(ctx)
   end
   if mode == "PAN" then return "PAN · h/j/k/l pan" end
   if mode == "RESIZE" then
-    return string.format("RESIZE · section %d/%d · edge %s · snap %s",
+    local label = ctx.selection and ctx.selection.kind == "template" and "TEMPLATE RESIZE" or "RESIZE"
+    return string.format("%s · section %d/%d · edge %s · snap %s",
+      label,
       ctx.shape_section_index or 0, ctx.shape_section_count or 0,
       ctx.shape_edge or "choose with h/j/k/l",
       ctx.shape_snap or (ctx.snap_enabled == false and "off" or "ready"))

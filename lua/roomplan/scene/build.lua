@@ -195,6 +195,46 @@ local function add_primitive(scene, primitive, roles)
   return primitive
 end
 
+local function add_snap_guides(scene, roles, snap_guides)
+  if scene.bounds.empty then return end
+  for index, guide in ipairs(snap_guides or {}) do
+    local primitive = {
+      kind = "snap_guide",
+      layer = M.layers.guide,
+      role = "snap",
+      order = index,
+      target_label = guide.target_label,
+    }
+    if guide.axis == "x" then
+      local padding = math.max(1, (scene.bounds.top - scene.bounds.bottom) * 0.08)
+      primitive.x1, primitive.y1 = guide.value_mm, scene.bounds.bottom - padding
+      primitive.x2, primitive.y2 = guide.value_mm, scene.bounds.top + padding
+    elseif guide.axis == "y" then
+      local padding = math.max(1, (scene.bounds.right - scene.bounds.left) * 0.08)
+      primitive.x1, primitive.y1 = scene.bounds.left - padding, guide.value_mm
+      primitive.x2, primitive.y2 = scene.bounds.right + padding, guide.value_mm
+    end
+    if primitive.x1 then add_primitive(scene, primitive, roles) end
+    if guide.overlap_start_mm and guide.overlap_finish_mm then
+      local overlap = {
+        kind = "snap_overlap",
+        layer = M.layers.snap_overlap,
+        role = "snap_overlap",
+        order = index,
+        target_label = guide.target_label,
+      }
+      if guide.axis == "x" then
+        overlap.x1, overlap.y1 = guide.value_mm, guide.overlap_start_mm
+        overlap.x2, overlap.y2 = guide.value_mm, guide.overlap_finish_mm
+      else
+        overlap.x1, overlap.y1 = guide.overlap_start_mm, guide.value_mm
+        overlap.x2, overlap.y2 = guide.overlap_finish_mm, guide.value_mm
+      end
+      add_primitive(scene, overlap, roles)
+    end
+  end
+end
+
 local function valid_furniture(item, room)
   if not (type(item) == "table"
     and type(item.id) == "string"
@@ -409,7 +449,9 @@ function M.build(model, validation, opts)
   local outlets = type(model.outlets) == "table" and model.outlets or {}
   local furniture = type(model.furniture) == "table" and model.furniture or {}
   local roles = diagnostic_roles(validation, opts.selected or opts.selected_ref or opts.selected_id)
-  local wall_scene = walls.build(rooms, doors, windows, outlets)
+  local template_edit = opts.shape_edit and opts.shape_edit.kind == "template"
+  local wall_scene = template_edit and walls.build({}, {}, {}, {})
+    or walls.build(rooms, doors, windows, outlets)
   local scene = {
     primitives = {},
     bounds = bbox_new(),
@@ -419,6 +461,77 @@ function M.build(model, validation, opts)
   }
   local object_points = {}
   local dimension_edges = {}
+
+  -- Project templates have no plan position. During direct shape editing they
+  -- therefore receive a deliberately isolated local-coordinate preview rather
+  -- than being placed into an arbitrary room or overlaid on the floor plan.
+  if template_edit then
+    local edit = opts.shape_edit
+    if opts.show_grid then
+      add_primitive(scene, {
+        kind = "grid",
+        layer = M.layers.grid,
+        spacing_mm = opts.grid_mm or (model.settings and model.settings.grid_mm) or 100,
+        role = "grid",
+      }, roles)
+    end
+    local shape, shape_err = footprint.from_persisted(edit.footprint)
+    if not shape then
+      scene.warnings[#scene.warnings + 1] = {
+        code = "SCENE_TEMPLATE_SKIPPED",
+        object_id = edit.entity_id,
+        message = shape_err and shape_err.message or "Project template geometry cannot be rendered safely",
+      }
+      return scene
+    end
+    local template
+    for _, candidate in ipairs(model.custom_templates or {}) do
+      if candidate.id == edit.entity_id then template = candidate; break end
+    end
+    template = template or { id = edit.entity_id, name = edit.entity_id }
+    local bounds = geometry_bounds(shape)
+    local ref = spatial_ref("template", template, 1, "preview")
+    scene.objects[1] = ref
+    bbox_rect(scene.bounds, bounds.left, bounds.bottom, bounds.right, bounds.top)
+    local rectangles = shape_rectangles(shape)
+    for part_index, rectangle in ipairs(rectangles) do
+      local selected = edit.selected_part_id == rectangle.part_id
+      add_primitive(scene, {
+        kind = "furniture_interior",
+        layer = M.layers.furniture,
+        left = rectangle.left,
+        bottom = rectangle.bottom,
+        right = rectangle.right,
+        top = rectangle.top,
+        part_id = rectangle.part_id,
+        part_index = part_index,
+        ref = ref,
+        role = selected and "selected" or nil,
+      }, roles)
+      add_primitive(scene, {
+        kind = "furniture_outline",
+        layer = M.layers.furniture + 1,
+        left = rectangle.left,
+        bottom = rectangle.bottom,
+        right = rectangle.right,
+        top = rectangle.top,
+        part_id = rectangle.part_id,
+        part_index = part_index,
+        ref = ref,
+        role = selected and "selected" or nil,
+      }, roles)
+    end
+    if show_labels then
+      add_primitive(scene, labels.furniture(template, bounds, ref, 1, footprint.label_anchor(shape)), roles)
+    end
+    if high_detail then
+      for _, dimension in ipairs(labels.furniture_dimensions(bounds, ref, 1)) do
+        add_primitive(scene, dimension, roles)
+      end
+    end
+    add_snap_guides(scene, roles, opts.snap_guides or edit.snap_guides)
+    return scene
+  end
 
   local function dimension_edge_key(edge)
     return table.concat({
@@ -718,45 +831,7 @@ function M.build(model, validation, opts)
     end
   end
 
-  local snap_guides = opts.snap_guides or (opts.shape_edit and opts.shape_edit.snap_guides) or {}
-  if not scene.bounds.empty then
-    for index, guide in ipairs(snap_guides) do
-      local primitive = {
-        kind = "snap_guide",
-        layer = M.layers.guide,
-        role = "snap",
-        order = index,
-        target_label = guide.target_label,
-      }
-      if guide.axis == "x" then
-        local padding = math.max(1, (scene.bounds.top - scene.bounds.bottom) * 0.08)
-        primitive.x1, primitive.y1 = guide.value_mm, scene.bounds.bottom - padding
-        primitive.x2, primitive.y2 = guide.value_mm, scene.bounds.top + padding
-      elseif guide.axis == "y" then
-        local padding = math.max(1, (scene.bounds.right - scene.bounds.left) * 0.08)
-        primitive.x1, primitive.y1 = scene.bounds.left - padding, guide.value_mm
-        primitive.x2, primitive.y2 = scene.bounds.right + padding, guide.value_mm
-      end
-      if primitive.x1 then add_primitive(scene, primitive, roles) end
-      if guide.overlap_start_mm and guide.overlap_finish_mm then
-        local overlap = {
-          kind = "snap_overlap",
-          layer = M.layers.snap_overlap,
-          role = "snap_overlap",
-          order = index,
-          target_label = guide.target_label,
-        }
-        if guide.axis == "x" then
-          overlap.x1, overlap.y1 = guide.value_mm, guide.overlap_start_mm
-          overlap.x2, overlap.y2 = guide.value_mm, guide.overlap_finish_mm
-        else
-          overlap.x1, overlap.y1 = guide.overlap_start_mm, guide.value_mm
-          overlap.x2, overlap.y2 = guide.overlap_finish_mm, guide.value_mm
-        end
-        add_primitive(scene, overlap, roles)
-      end
-    end
-  end
+  add_snap_guides(scene, roles, opts.snap_guides or (opts.shape_edit and opts.shape_edit.snap_guides))
 
   -- Add textual diagnostic markers at deterministic object points.  The
   -- object's ordinary primitives already carry the same highlight role.

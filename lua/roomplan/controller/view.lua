@@ -112,7 +112,9 @@ function M.attach(controller)
     local width, height = canvas_size(resolved)
     local options = config.get().canvas
     local scene = require("roomplan.scene.build").build(resolved:current_model(), resolved.validation, {
-      selected = resolved.selection,
+      selected = resolved.shape_edit and nil or resolved.selection,
+      shape_edit = resolved.shape_edit,
+      snap_guides = resolved.shape_edit and resolved.shape_edit.snap_guides or resolved.snap_guides,
       show_grid = options.show_grid,
       detail_level = resolved.canvas_detail_level or options.detail_level,
     })
