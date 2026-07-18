@@ -399,6 +399,14 @@ function M.edit(session, furniture, opts)
     }
   end
   spec.fields[#spec.fields + 1] = {
+    key = "edit_footprint",
+    label = "Edit footprint",
+    type = "action",
+    action = "edit_shape",
+    action_label = "Edit sections",
+    value = "Edit sections on canvas…",
+  }
+  spec.fields[#spec.fields + 1] = {
     key = "height_mm", label = "Height", type = "measurement", max = runtime.limits.max_dimension_mm,
   }
   spec.fields[#spec.fields + 1] = {

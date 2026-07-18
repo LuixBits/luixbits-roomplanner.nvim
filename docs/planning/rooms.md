@@ -33,13 +33,14 @@ Select a room and press `e` for this compact form. On a wide editor, a live
 shape preview opens in a separate panel to its right. On a narrow editor the
 preview is omitted so the fields and command footer remain visible. The editor
 does not expose internal part coordinates or approximate angled walls with tiny
-rectangles.
+rectangles. **Edit footprint** opens the direct canvas section controls; `r`
+is a shortcut to the same controls when no scalar property edit is needed.
 
 ### Direct canvas resizing
 
-Select a room and press `r`. Its first section is highlighted on the canvas and
-the workspace enters `RESIZE`. This is a direct normal-canvas action; it does
-not require opening the `e` form first.
+Activate **Edit footprint** from the room's `e` popup, or select a room and press
+`r` as a shortcut. Its first section is highlighted on the canvas and the
+workspace enters `RESIZE`.
 
 | Key | Shape action |
 | --- | --- |

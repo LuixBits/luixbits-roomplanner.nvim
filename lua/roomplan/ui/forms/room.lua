@@ -340,6 +340,14 @@ function M.edit(session, room, opts)
     spec.on_change = room_sections.on_change
   end
   spec.fields[#spec.fields + 1] = {
+    key = "edit_footprint",
+    label = "Edit footprint",
+    type = "action",
+    action = "edit_shape",
+    action_label = "Edit sections",
+    value = "Edit sections on canvas…",
+  }
+  spec.fields[#spec.fields + 1] = {
     key = "attached", label = "Attached", type = "readonly",
     value = function(ctx) return dependency_summary(ctx, room.id) end,
   }

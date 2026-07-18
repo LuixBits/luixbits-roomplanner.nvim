@@ -245,7 +245,7 @@ function M.new(spec, context, opts)
   local draft = util.deepcopy(draft_source or {})
   local provisional = { spec = spec, context = context, draft = draft, field_index = index }
   for _, field in ipairs(spec.fields) do
-    if field.type ~= "readonly" and draft[field.key] == nil then
+    if field.type ~= "readonly" and field.type ~= "action" and draft[field.key] == nil then
       local value = field_helpers.default(field, context, draft, provisional)
       if value ~= nil then draft[field.key] = util.deepcopy(value) end
     end

@@ -37,7 +37,7 @@ function M.edit(session, template)
     title = "Edit custom furniture template",
     mode = "TEMPLATE EDIT",
     description = can_resize and "Furniture already using this template keeps its explicit dimensions."
-      or "Shape geometry is preserved here; use More → Edit template shape for direct canvas editing.",
+      or "Shape geometry is preserved until Edit footprint opens the canvas section editor.",
     apply_label = "Apply template changes",
     context = context,
     initial = {
@@ -71,6 +71,14 @@ function M.edit(session, template)
       end,
     }
   end
+  spec.fields[#spec.fields + 1] = {
+    key = "edit_footprint",
+    label = "Edit footprint",
+    type = "action",
+    action = "edit_shape",
+    action_label = "Edit sections",
+    value = "Edit sections on canvas…",
+  }
   spec.fields[#spec.fields + 1] = {
     key = "height_mm", label = "Default height", type = "measurement", max = maximum,
   }

@@ -29,8 +29,9 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   semantic colours, and responsive workspace drawers. Wall outlets use
   view-aware inward-facing half circles; floor outlets use full circles and
   remain strictly inside their owner room.
-- Placed furniture and project templates reuse the direct compound section
-  editor from the full action popup without adding a mapping. Quarter-turned
+- Rooms, placed furniture, and project templates reach the shared direct
+  compound-section editor from **Edit footprint** in their ordinary `e`
+  popup without adding a mapping; `r` remains the room shortcut. Quarter-turned
   furniture movement and snapping operate in world space; templates use an
   isolated local preview. Explicit doubled-mm anchors stay fixed. A compact
   popup chooses item-only or item-plus-template scope, commits one undo step,

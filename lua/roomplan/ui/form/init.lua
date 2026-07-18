@@ -204,6 +204,13 @@ function M.cancel(handle, reason, opts)
   return done
 end
 
+---Close a form as part of a deliberate transition to another RoomPlan editor.
+---Unlike cancel/apply this does not invoke either user callback.
+function M.transition(handle, reason)
+  if not M.is_current(handle) then return false end
+  return finish(handle, reason or "transition")
+end
+
 function M.refresh(handle)
   local ok, err = guarded(handle)
   if not ok then return nil, err end
@@ -287,6 +294,29 @@ function M.edit(handle)
   local key = handle.state.active_key
   local field = key and form_state.field(handle.state, key) or nil
   if not field then return nil, util.err("FORM_FIELD_MISSING", "no editable form field is active") end
+  if field.type == "action" then
+    local callback = field.on_activate or handle.callbacks.on_action
+    if type(callback) ~= "function" then
+      return nil, util.err("FORM_ACTION_UNAVAILABLE", (field.label or key) .. " is unavailable")
+    end
+    local called, result, action_err = pcall(
+      callback,
+      field.action or key,
+      handle.state,
+      handle,
+      field
+    )
+    if not called or result == false or (result == nil and action_err ~= nil) then
+      local failure = not called and result or action_err or "the action could not be opened"
+      if M.is_current(handle) then
+        handle.state = form_state.reduce(handle.state, { type = "form_error", error = failure })
+        M.render(handle)
+      end
+      return nil, type(failure) == "table" and failure
+        or util.err("FORM_ACTION_FAILED", tostring(failure))
+    end
+    return result == nil and true or result
+  end
   if field.type == "toggle" then return M.cycle(handle, 1) end
   handle.edit_token = handle.edit_token + 1
   local token = handle.edit_token
