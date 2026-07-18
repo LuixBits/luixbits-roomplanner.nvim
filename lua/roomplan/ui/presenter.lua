@@ -133,6 +133,11 @@ function M.objects(value, opts)
   local model = model_of(value)
   local compound_geometry = model.schema_version >= 2
   local selection = selection_of(value, opts)
+  local marked = opts.marked or (type(value) == "table" and value.marked_objects) or {}
+  local selection_set = require("roomplan.selection_set")
+  local function is_marked(kind, id)
+    return id ~= nil and marked[selection_set.key(kind, id)] ~= nil
+  end
   local diagnostics = diagnostics_of(value, opts)
   local indexed = issue_index(diagnostics)
   local expanded = opts.expanded or {}
@@ -211,6 +216,7 @@ function M.objects(value, opts)
       label = model.metadata and model.metadata.name or "Untitled plan",
       depth = 0,
       selected = selection and selection.kind == "plan" or false,
+      marked = false,
       counts = { errors = 0, warnings = 0, info = 0, items = {} },
     },
   }
@@ -230,12 +236,14 @@ function M.objects(value, opts)
       expandable = #(children[room.id] or {}) > 0,
       expanded = expanded[room.id] ~= false,
       selected = selected(selection, "room", room.id),
+      marked = is_marked("room", room.id),
       counts = counts_for(indexed, "room", room.id),
     }
     local presented_children = {}
     for _, row in ipairs(children[room.id] or {}) do
       row.depth = 1
       row.selected = selected(selection, row.kind, row.id)
+      row.marked = is_marked(row.kind, row.id)
       row.counts = counts_for(indexed, row.kind, row.id)
       if matches_filter(row, query) then presented_children[#presented_children + 1] = row end
     end
@@ -261,6 +269,7 @@ function M.objects(value, opts)
       object = template,
       depth = 0,
       selected = selected(selection, "template", template.id),
+      marked = is_marked("template", template.id),
       counts = counts_for(indexed, "template", template.id),
     }
     if matches_filter(row, query) then rows[#rows + 1] = row end
@@ -270,6 +279,7 @@ function M.objects(value, opts)
     row.depth = 0
     row.orphan = true
     row.selected = selected(selection, row.kind, row.id)
+    row.marked = is_marked(row.kind, row.id)
     row.counts = counts_for(indexed, row.kind, row.id)
     if matches_filter(row, query) then rows[#rows + 1] = row end
   end
@@ -293,6 +303,7 @@ function M.objects(value, opts)
     },
     room_count = #(model.rooms or {}),
     rows = rows,
+    marked_count = #selection_set.list(model, marked),
     filter = opts.filter or "",
   }
 end

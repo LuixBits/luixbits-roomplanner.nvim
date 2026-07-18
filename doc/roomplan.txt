@@ -91,7 +91,10 @@ west/east or south/north edge; the opposite direction then shrinks that same
 edge. Nearby section or room edges snap with a light alignment guide
 and a strong highlight on the overlapping edge. `gs` toggles snapping and `g!`
 bypasses one change. Moving away from a snap releases it immediately, including
-with fine steps. Use `t` to cycle canvas detail.
+with fine steps. Every simultaneous wall contact is highlighted, and the fine
+step cleans up deep-zoom millimetre residuals without another setting. Use `t`
+to cycle canvas detail. The `?` window includes exact measurement, selected-
+furniture wall placement, and named undo-history browsing.
 
 With a room present, `W` adds a window and `O` adds a wall or floor outlet. The
 `a` Add menu offers the same objects with lowercase `w` and `o`.
@@ -226,7 +229,9 @@ until explicitly toggled again.
 Navigator shows rooms with nested doors, windows, outlets, and furniture.
 Issues filters and selects diagnostics. Details presents compact, collapsible
 sections whose contents change with the selection. `?` always exposes the full
-action set, including disabled actions and their reasons.
+action set, including disabled actions and their reasons. In Navigator, Space
+marks an object; atomic move, duplicate, delete, and clear actions for the
+marked set live in `?` and create one history entry.
 
 Structured forms keep their complete draft visible. A form is revision-bound:
 if the plan changes elsewhere, the stale form cannot apply over newer data.
@@ -246,6 +251,7 @@ Workspace:
   <Tab>          next pane
   <S-Tab>        previous pane
   <CR>           select a Navigator/Issue row; toggle Details section
+  <Space>        mark / unmark an object row for batch actions
   /              filter Navigator or Issues
   h / l          collapse / expand a room or Details section
   ?              complete action window or contextual help
@@ -275,6 +281,9 @@ Canvas and editing:
   Alt-l / Alt-h / g0
                   rotate view clockwise / counterclockwise / north-up
   gs / g!        toggle snapping / bypass the next snap
+
+Measurement, furniture wall placement, marked-object batch actions, and named
+history browsing are searchable in `?` and have no default canvas mapping.
 
 In NAV, directional movement keeps travelling beyond the visible canvas. Once
 the cursor reaches the configured canvas.scrolloff margin, RoomPlan pans the

@@ -85,7 +85,7 @@ function M.attach(controller)
     if type(direction) == "table" then direction = direction.direction end
     direction = direction == -1 and -1 or 1
     local diagnostics = controller.validate(resolved)
-    if #diagnostics == 0 then compat.notify("RoomPlan has no validation issues"); return end
+    if #diagnostics == 0 then compat.notify("RoomPlan has no validation issues") return end
     resolved.validation_index = ((resolved.validation_index or (direction < 0 and 1 or 0)) - 1 + direction) % #diagnostics + 1
     local diagnostic = diagnostics[resolved.validation_index]
     if diagnostic.object then resolved.selection = { kind = diagnostic.object.kind, id = diagnostic.object.id } end
@@ -313,6 +313,9 @@ function M.attach(controller)
     end
     common.clear_snap_feedback(resolved)
     resolved.move_feedback = nil
+    if mode ~= "MOVE" then
+      resolved.batch_move = nil
+    end
     resolved.mode = mode
     local workspace_ok, workspace = pcall(require, "roomplan.ui.workspace")
     if workspace_ok and resolved.workspace then
@@ -394,7 +397,83 @@ function M.attach(controller)
     })
     resolved.snap_guides = {}
     local action
-    if selection.kind == "room" then
+    local batch_snap
+    if resolved.batch_move and #resolved.batch_move > 0 then
+      local raw_delta = { dx * step, dy * step }
+      local plan = resolved:model()
+      local anchor = resolved.batch_move[1]
+      local marked_rooms, marked_furniture = {}, {}
+      for _, reference in ipairs(resolved.batch_move) do
+        if reference.kind == "room" then
+          marked_rooms[reference.id] = true
+        end
+        if reference.kind == "furniture" then
+          marked_furniture[reference.id] = true
+        end
+      end
+      local snap_options = common.snapping_options(resolved)
+      if snap_options and anchor.kind == "room" then
+        local room = model.find(plan, "room", anchor.id)
+        local proposed = room and util.deepcopy(room) or nil
+        if proposed then
+          proposed.origin_mm = { proposed.origin_mm[1] + raw_delta[1], proposed.origin_mm[2] + raw_delta[2] }
+          local targets = {}
+          for _, candidate in ipairs(plan.rooms or {}) do
+            if not marked_rooms[candidate.id] then
+              targets[#targets + 1] = candidate
+            end
+          end
+          batch_snap = snapping.snap_room(proposed, targets, snap_options)
+          raw_delta = {
+            batch_snap.origin_mm[1] - room.origin_mm[1],
+            batch_snap.origin_mm[2] - room.origin_mm[2],
+          }
+        end
+      elseif snap_options and anchor.kind == "furniture" then
+        local furniture = model.find(plan, "furniture", anchor.id)
+        local owner = furniture and model.find(plan, "room", furniture.room_id) or nil
+        local proposed = furniture and util.deepcopy(furniture) or nil
+        if owner and proposed then
+          local field = (proposed.position_mm ~= nil or proposed.footprint ~= nil) and "position_mm" or "center_mm"
+          proposed[field] = { proposed[field][1] + raw_delta[1], proposed[field][2] + raw_delta[2] }
+          local pairs, apertures = {}, {}
+          for _, candidate in ipairs(plan.furniture or {}) do
+            if not marked_furniture[candidate.id] then
+              local candidate_owner = model.find(plan, "room", candidate.room_id)
+              if candidate_owner then
+                pairs[#pairs + 1] = { furniture = candidate, room = candidate_owner }
+              end
+            end
+          end
+          local door_geometry = require("roomplan.geometry.door")
+          for _, door in ipairs(plan.doors or {}) do
+            local door_owner = model.find(plan, "room", door.room_id)
+            if door_owner then
+              apertures[#apertures + 1] = door_geometry.aperture(door_owner, door)
+            end
+          end
+          batch_snap = snapping.snap_furniture(owner, proposed, pairs, apertures, snap_options)
+          raw_delta = {
+            batch_snap[field][1] - furniture[field][1],
+            batch_snap[field][2] - furniture[field][2],
+          }
+        end
+      end
+      local actions = {}
+      for _, reference in ipairs(resolved.batch_move) do
+        actions[#actions + 1] = {
+          type = reference.kind == "room" and "move_room" or "move_furniture",
+          id = reference.id,
+          delta_mm = raw_delta,
+          exact = true,
+        }
+      end
+      action = {
+        type = "batch",
+        actions = actions,
+        label = string.format("Move %d marked objects", #actions),
+      }
+    elseif selection.kind == "room" then
       action = { type = "move_room", id = selection.id, delta_mm = { dx * step, dy * step } }
     elseif selection.kind == "furniture" then
       action = { type = "move_furniture", id = selection.id, delta_mm = { dx * step, dy * step } }
@@ -430,14 +509,16 @@ function M.attach(controller)
     end
     local result, action_err = controller.dispatch(resolved, action)
     if not result then return notify_error(action_err) end
-    local snap_result = result.result and result.result.metadata and result.result.metadata.snapping
+    local snap_result = batch_snap or result.result and result.result.metadata and result.result.metadata.snapping
     if snap_result then
       resolved.snap_exclusions = snap_result.snap_exclusions or {}
       resolved.snap_guides = snapping.guides(snap_result)
     else
       common.clear_snap_feedback(resolved)
     end
-    resolved.move_feedback = string.format("%s %d mm", direction_label, step)
+    resolved.move_feedback = string.format(
+      "%s %d mm%s", direction_label, step,
+      resolved.batch_move and string.format(" · %d marked", #resolved.batch_move) or "")
     controller.refresh(resolved)
     return result
   end
@@ -457,7 +538,7 @@ function M.attach(controller)
     common.clear_snap_feedback(resolved)
     resolved.move_feedback = nil
     hits = hits or {}
-    if #hits == 0 then resolved.selection = nil; controller.refresh(resolved); return end
+    if #hits == 0 then resolved.selection = nil controller.refresh(resolved) return end
     resolved.selection_cycle = resolved.selection_cycle or {}
     local current = resolved.selection_cycle.key == cycle_key and resolved.selection or nil
     local index = 1
@@ -494,7 +575,7 @@ function M.attach(controller)
     resolved.move_feedback = nil
     local scene = require("roomplan.scene.build").build(resolved:model(), resolved.validation, { selected = resolved.selection })
     local objects = scene.objects or {}
-    if #objects == 0 then resolved.selection = nil; return nil end
+    if #objects == 0 then resolved.selection = nil return nil end
     local current_index = direction < 0 and 1 or 0
     for index, object in ipairs(objects) do
       if resolved.selection and object.id == resolved.selection.id and object.type == resolved.selection.kind then
@@ -537,6 +618,7 @@ function M.attach(controller)
     elseif resolved.mode ~= "NAV" then
       common.clear_snap_feedback(resolved)
       resolved.mode = "NAV"
+      resolved.batch_move = nil
     else
       common.clear_snap_feedback(resolved)
       resolved.selection = nil

@@ -14,6 +14,15 @@ Use `j` / `k` to move, `Enter` to select, `h` / `l` to collapse or expand a
 room, and `/` to filter by kind, ID, name, label, or room. Selecting a row
 normally returns focus to the canvas while retaining the selection.
 
+Press `Space` on an object row to mark or unmark it without adding global
+canvas keys. The Navigator header and row marker show the active set. Open `?`
+to move, duplicate, delete, or clear the marked objects. Each operation is one
+atomic history entry: a failure changes nothing, and one Undo reverts the whole
+batch. Group movement supports rooms and furniture while preserving their
+relative spacing; furniture already owned by a marked room moves with that room
+and is not applied twice. Doors keep their placement popup and are not batch
+duplicated.
+
 ## Navigator: Issues
 
 Issues shows the latest validation result with severity, code, object, and

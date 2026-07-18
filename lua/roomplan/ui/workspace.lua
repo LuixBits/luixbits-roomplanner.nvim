@@ -36,6 +36,10 @@ function M.select_focused(session)
   return interaction.select_focused(M, session)
 end
 
+function M.toggle_mark_focused(session)
+  return interaction.toggle_mark_focused(M, session)
+end
+
 function M.set_filter(session, pane, value)
   return interaction.set_filter(M, session, pane, value)
 end

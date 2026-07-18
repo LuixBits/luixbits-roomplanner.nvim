@@ -197,6 +197,7 @@ end
 
 local function add_snap_guides(scene, roles, snap_guides)
   if scene.bounds.empty then return end
+  local guide_lines = {}
   for index, guide in ipairs(snap_guides or {}) do
     local primitive = {
       kind = "snap_guide",
@@ -214,7 +215,11 @@ local function add_snap_guides(scene, roles, snap_guides)
       primitive.x1, primitive.y1 = scene.bounds.left - padding, guide.value_mm
       primitive.x2, primitive.y2 = scene.bounds.right + padding, guide.value_mm
     end
-    if primitive.x1 then add_primitive(scene, primitive, roles) end
+    local line_key = tostring(guide.axis) .. ":" .. tostring(guide.value2 or guide.value_mm)
+    if primitive.x1 and not guide_lines[line_key] then
+      guide_lines[line_key] = true
+      add_primitive(scene, primitive, roles)
+    end
     if guide.overlap_start_mm and guide.overlap_finish_mm then
       local overlap = {
         kind = "snap_overlap",
@@ -233,6 +238,35 @@ local function add_snap_guides(scene, roles, snap_guides)
       add_primitive(scene, overlap, roles)
     end
   end
+end
+
+local function add_measurement(scene, roles, measurement)
+  local closest = measurement and measurement.closest
+  if not closest or not closest.from or not closest.to then
+    return
+  end
+  local from, to = closest.from, closest.to
+  add_primitive(scene, {
+    kind = "snap_guide",
+    layer = M.layers.guide,
+    role = "snap",
+    order = 1000000,
+    x1 = from[1],
+    y1 = from[2],
+    x2 = to[1],
+    y2 = to[2],
+    target_label = "Measured clearance",
+  }, roles)
+  add_primitive(
+    scene,
+    labels.at(
+      require("roomplan.geometry.measurement").format_mm(measurement.nearest_mm),
+      (from[1] + to[1]) / 2,
+      (from[2] + to[2]) / 2,
+      { role = "snap", layer = M.layers.guide, priority = 100, order = 1000000 }
+    ),
+    roles
+  )
 end
 
 local function valid_furniture(item, room)
@@ -832,6 +866,7 @@ function M.build(model, validation, opts)
   end
 
   add_snap_guides(scene, roles, opts.snap_guides or (opts.shape_edit and opts.shape_edit.snap_guides))
+  add_measurement(scene, roles, opts.measurement)
 
   -- Add textual diagnostic markers at deterministic object points.  The
   -- object's ordinary primitives already carry the same highlight role.

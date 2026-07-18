@@ -50,7 +50,7 @@ properties remain in Details rather than being repeated in the footer.
 
 The ordinary `e` popup is a discoverable entry point for compound-shape
 editing. Room, furniture, and project-template forms include **Edit footprint**;
-row; pressing `Enter` there opens the shared canvas section controls. If other
+pressing `Enter` there opens the shared canvas section controls. If other
 popup fields changed first, RoomPlan validates and applies them before the
 transition. Project templates use an isolated local preview. When a placed item
 references a project-local template, saving opens a second compact popup for
@@ -64,6 +64,24 @@ open Door, Window, Outlet, and Furniture directly; the `a` Add menu uses
 lowercase `d`, `w`, `o`, and `f`. Deleting a room summarizes and confirms its
 cascading doors, windows, outlets, and furniture when deletion confirmation is
 enabled.
+
+## Popup tools without extra global keys
+
+Several less-frequent tools live in the searchable `?` action window instead
+of consuming default canvas mappings:
+
+- **Measure exact clearance** chooses any two rooms or furniture items. Nearest
+  clearance, horizontal/vertical projected gaps, centre offset, and the closest
+  path update inside the popup and on the canvas. It is transient and creates no
+  history entry.
+- **Place furniture against wall** appears for selected furniture. Choose an
+  exact exterior wall segment, start/centre/end alignment, and clearance, then
+  apply the resulting position as one undo entry.
+- **Browse undo history** shows retained named revisions newest-first, marks the
+  current and saved revisions, and asks for confirmation before restoring one.
+  Editing after an older restore branches normally and replaces its redo path.
+- Marked-object actions move, duplicate, or delete the complete set atomically.
+  They are described in [Workspace panels](panels.md).
 
 Add Room and Align include **Allow invalid draft** for deliberate repair work.
 It never hides the resulting diagnostics, and ordinary save rules still

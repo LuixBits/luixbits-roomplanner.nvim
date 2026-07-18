@@ -6,5 +6,7 @@ return {
   window = require("roomplan.ui.forms.window"),
   outlet = require("roomplan.ui.forms.outlet"),
   alignment = require("roomplan.ui.forms.alignment"),
+  measurement = require("roomplan.ui.forms.measurement"),
+  placement = require("roomplan.ui.forms.placement"),
   template = require("roomplan.ui.forms.template"),
 }

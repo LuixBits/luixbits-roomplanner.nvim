@@ -277,6 +277,43 @@ function History:model_at_revision(revision_id)
   return node and node.model or nil
 end
 
+---Return detached history metadata for UI presentation without exposing the
+---retained model snapshots themselves.
+function History:entries()
+  touch(self)
+  local result = {}
+  for index = #self.nodes, 1, -1 do
+    local node = self.nodes[index]
+    result[#result + 1] = {
+      revision_id = node.revision_id,
+      label = node.label,
+      touched = model.deep_copy(node.touched or {}),
+      current = index == self.cursor,
+      saved = node.revision_id == self.durable_savepoint_revision_id,
+      direction = index < self.cursor and "older" or index > self.cursor and "newer" or "current",
+    }
+  end
+  return result
+end
+
+---Move the history cursor to any retained revision. The next semantic edit
+---branches normally and discards newer nodes, exactly like undo followed by
+---an edit.
+function History:checkout(revision_id)
+  if self.disposed then
+    return nil, { code = "HISTORY_DISPOSED", message = "history has been disposed" }
+  end
+  for index, node in ipairs(self.nodes) do
+    if node.revision_id == revision_id then
+      self.cursor = index
+      touch(self)
+      return node.model, node
+    end
+  end
+  touch(self)
+  return nil, { code = "HISTORY_REVISION_MISSING", message = "that history revision is no longer retained" }
+end
+
 -- A later native :write may durably persist a staged older revision while the
 -- history cursor has already moved on. Keep that exact savepoint when retained.
 function History:mark_saved_revision(revision_id)

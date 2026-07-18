@@ -38,6 +38,65 @@ function M.feature(axis, value2, kind, id, name, span)
   return result
 end
 
+local function feature_key(feature)
+  return table.concat({
+    tostring(feature.axis),
+    tostring(feature.value2),
+    tostring(feature.start2),
+    tostring(feature.finish2),
+    tostring(feature.kind),
+    tostring(feature.id),
+    tostring(feature.name),
+  }, "\31")
+end
+
+---Build exact snapping edges from a rectilinear footprint silhouette.  Unlike
+---bounds-based features, these retain every wall of an L/U-shaped object.
+function M.boundary_features(shape, kind, id, label, noun)
+  local boundary, boundary_error = footprint.exterior_boundary2(shape)
+  if not boundary then
+    return nil, boundary_error
+  end
+  local bounds, bounds_error = footprint.bounds2(shape)
+  if not bounds then
+    return nil, bounds_error
+  end
+  local result = { x = {}, y = {} }
+  noun = noun or "edge"
+  for index, segment in ipairs(boundary) do
+    -- Boundary axis is the direction along the segment. Snapping axis is the
+    -- perpendicular coordinate held by fixed2.
+    local axis = segment.axis == "x" and "y" or "x"
+    -- Keep identity independent of the current coordinates. Snap-release uses
+    -- it on the following movement to let an object escape a wall instead of
+    -- being pulled straight back to the previous coordinate.
+    local segment_id = table.concat({ tostring(id or ""), tostring(segment.side), tostring(index) }, ":")
+    result[axis][#result[axis] + 1] = M.feature(
+      axis,
+      segment.fixed2,
+      kind,
+      segment_id,
+      string.format("%s %s %s", tostring(label or id or "Object"), tostring(segment.side), noun),
+      { segment.start2, segment.finish2 }
+    )
+  end
+  result.x[#result.x + 1] = M.feature(
+    "x",
+    bounds.center_x2,
+    kind == "room_edge" and "room_center" or "furniture_center",
+    tostring(id or "") .. ":center-x",
+    tostring(label or id or "Object") .. " horizontal centre"
+  )
+  result.y[#result.y + 1] = M.feature(
+    "y",
+    bounds.center_y2,
+    kind == "room_edge" and "room_center" or "furniture_center",
+    tostring(id or "") .. ":center-y",
+    tostring(label or id or "Object") .. " vertical centre"
+  )
+  return result
+end
+
 local function normalized_feature(feature)
   return {
     axis = feature.axis,
@@ -51,7 +110,20 @@ local function normalized_feature(feature)
 end
 
 local function spans_overlap(left, right)
-  if left.start2 == nil or left.finish2 == nil or right.start2 == nil or right.finish2 == nil then
+  local left_has_span = left.start2 ~= nil and left.finish2 ~= nil
+  local right_has_span = right.start2 ~= nil and right.finish2 ~= nil
+  if not left_has_span and not right_has_span then
+    return true
+  end
+  -- Centres are useful against other centres and grid/point targets, but a
+  -- centre must never masquerade as a coincident wall.  Besides producing a
+  -- misleading full-height guide, that could win an untouched axis while the
+  -- actual placement correction happened on the other one.
+  if left_has_span ~= right_has_span then
+    local point = left_has_span and right or left
+    if point.kind == "room_center" or point.kind == "furniture_center" then
+      return false
+    end
     return true
   end
   return math.max(left.start2, right.start2) < math.min(left.finish2, right.finish2)
@@ -186,22 +258,116 @@ function M.guide(candidate)
   return result
 end
 
+local function contact_less(left, right)
+  if left.target.axis ~= right.target.axis then
+    return left.target.axis < right.target.axis
+  end
+  if left.target.value2 ~= right.target.value2 then
+    return left.target.value2 < right.target.value2
+  end
+  if left.target.id ~= right.target.id then
+    return left.target.id < right.target.id
+  end
+  if left.target.name ~= right.target.name then
+    return left.target.name < right.target.name
+  end
+  if left.moving.id ~= right.moving.id then
+    return left.moving.id < right.moving.id
+  end
+  return left.moving.name < right.moving.name
+end
+
+---Return every exact positive-length edge contact after a snap has been
+---applied. Centres, grid lines, and point targets intentionally have no spans
+---and are therefore excluded from placement highlighting.
+function M.contacts(moving_features, target_features)
+  local candidates, seen = {}, {}
+  for _, axis in ipairs({ "x", "y" }) do
+    for _, raw_moving in ipairs(moving_features and moving_features[axis] or {}) do
+      local moving = normalized_feature(raw_moving)
+      if moving.start2 ~= nil and moving.finish2 ~= nil then
+        for _, raw_target in ipairs(target_features and target_features[axis] or {}) do
+          local target = normalized_feature(raw_target)
+          if
+            target.start2 ~= nil
+            and target.finish2 ~= nil
+            and moving.value2 == target.value2
+            and spans_overlap(moving, target)
+          then
+            local start2 = math.max(moving.start2, target.start2)
+            local finish2 = math.min(moving.finish2, target.finish2)
+            local key = table.concat({
+              feature_key(moving),
+              feature_key(target),
+              tostring(start2),
+              tostring(finish2),
+            }, "\30")
+            if not seen[key] then
+              seen[key] = true
+              candidates[#candidates + 1] = {
+                moving = moving,
+                target = target,
+                delta2 = 0,
+                delta_mm = 0,
+                screen_distance = 0,
+                priority = 0,
+              }
+            end
+          end
+        end
+      end
+    end
+  end
+  table.sort(candidates, contact_less)
+  return candidates
+end
+
+local function guide_key(guide)
+  return table.concat({
+    tostring(guide.axis),
+    tostring(guide.value2),
+    tostring(guide.target_id),
+    tostring(guide.overlap_start_mm),
+    tostring(guide.overlap_finish_mm),
+  }, "\31")
+end
+
 function M.guides(resolved)
-  local result = {}
+  local result, seen = {}, {}
   -- Do not iterate `{ resolved.x, resolved.y }` with ipairs: a Y-only snap
-  -- leaves index 1 nil, which ends the iteration before the Y guide.
+  -- leaves index 1 nil, which ends the iteration before the Y guide. Primary
+  -- candidates go first so resize release retains the active handle identity.
   for _, axis in ipairs({ "x", "y" }) do
     local candidate = resolved and resolved[axis]
     local value = M.guide(candidate)
-    if value then result[#result + 1] = value end
+    local key = value and guide_key(value)
+    if value and not seen[key] then
+      seen[key] = true
+      result[#result + 1] = value
+    end
+  end
+  for _, candidate in ipairs(resolved and resolved.contacts or {}) do
+    local value = M.guide(candidate)
+    local key = value and guide_key(value)
+    if value and not seen[key] then
+      seen[key] = true
+      result[#result + 1] = value
+    end
   end
   return result
 end
 
 function M.summary(guides)
-  local labels = {}
+  local labels, seen = {}, {}
   for _, guide in ipairs(guides or {}) do
-    labels[#labels + 1] = string.format("%s → %s", guide.axis:upper(), guide.target_label)
+    local label = string.format("%s → %s", guide.axis:upper(), guide.target_label)
+    if not seen[label] then
+      seen[label] = true
+      labels[#labels + 1] = label
+    end
+  end
+  if #labels > 3 then
+    return table.concat({ labels[1], labels[2], labels[3] }, " · ") .. string.format(" · +%d contacts", #labels - 3)
   end
   return #labels > 0 and table.concat(labels, " · ") or nil
 end
@@ -260,22 +426,29 @@ end
 local function room_features(room)
   local shape, shape_error = footprint.from_room(room)
   if not shape then return nil, shape_error end
-  local bounds, bounds_error = footprint.bounds2(shape)
-  if not bounds then return nil, bounds_error end
   local id = room.id or ""
   local label = tostring(room.name or id)
-  return {
-    x = {
-      M.feature("x", bounds.left2, "room_edge", id, label .. " west wall", { bounds.bottom2, bounds.top2 }),
-      M.feature("x", bounds.right2, "room_edge", id, label .. " east wall", { bounds.bottom2, bounds.top2 }),
-      M.feature("x", bounds.center_x2, "room_center", id, label .. " horizontal centre"),
-    },
-    y = {
-      M.feature("y", bounds.bottom2, "room_edge", id, label .. " south wall", { bounds.left2, bounds.right2 }),
-      M.feature("y", bounds.top2, "room_edge", id, label .. " north wall", { bounds.left2, bounds.right2 }),
-      M.feature("y", bounds.center_y2, "room_center", id, label .. " vertical centre"),
-    },
-  }
+  return M.boundary_features(shape, "room_edge", id, label, "wall")
+end
+
+local function translated_features(features, dx, dy)
+  local result = { x = {}, y = {} }
+  local delta2 = { x = 2 * (dx or 0), y = 2 * (dy or 0) }
+  for _, axis in ipairs({ "x", "y" }) do
+    for _, raw in ipairs(features and features[axis] or {}) do
+      local feature = normalized_feature(raw)
+      feature.value2 = feature.value2 + delta2[axis]
+      local span_delta = delta2[axis == "x" and "y" or "x"]
+      if feature.start2 ~= nil then
+        feature.start2 = feature.start2 + span_delta
+      end
+      if feature.finish2 ~= nil then
+        feature.finish2 = feature.finish2 + span_delta
+      end
+      result[axis][#result[axis] + 1] = feature
+    end
+  end
+  return result
 end
 
 local function unsnapped(field, point, geometry_error)
@@ -317,11 +490,16 @@ function M.snap_room(proposed_room, other_rooms, options)
     tolerance_mm = options.tolerance_mm, mm_per_screen_unit = options.mm_per_screen_unit,
     priority = options.priority, bypass = options.bypass,
     exclude_targets = options.exclude_targets,
+    require_overlap = true,
   })
   result.origin_mm = {
     proposed_room.origin_mm[1] + result.delta_mm[1],
     proposed_room.origin_mm[2] + result.delta_mm[2],
   }
+  result.contacts = M.contacts(translated_features(moving, result.delta_mm[1], result.delta_mm[2]), {
+    x = tx,
+    y = ty,
+  })
   result.geometry_error = geometry_error
   return result
 end
@@ -329,22 +507,9 @@ end
 local function furniture_features(room, furniture)
   local shape, shape_error = footprint.from_furniture(room, furniture)
   if not shape then return nil, shape_error end
-  local bounds, bounds_error = footprint.bounds2(shape)
-  if not bounds then return nil, bounds_error end
   local id = furniture.id or ""
   local label = tostring(furniture.name or id)
-  return {
-    x = {
-      M.feature("x", bounds.left2, "furniture_edge", id, label .. " west edge", { bounds.bottom2, bounds.top2 }),
-      M.feature("x", bounds.right2, "furniture_edge", id, label .. " east edge", { bounds.bottom2, bounds.top2 }),
-      M.feature("x", bounds.center_x2, "furniture_center", id, label .. " horizontal centre"),
-    },
-    y = {
-      M.feature("y", bounds.bottom2, "furniture_edge", id, label .. " south edge", { bounds.left2, bounds.right2 }),
-      M.feature("y", bounds.top2, "furniture_edge", id, label .. " north edge", { bounds.left2, bounds.right2 }),
-      M.feature("y", bounds.center_y2, "furniture_center", id, label .. " vertical centre"),
-    },
-  }
+  return M.boundary_features(shape, "furniture_edge", id, label, "edge")
 end
 
 local function furniture_position(furniture)
@@ -403,11 +568,16 @@ function M.snap_furniture(room, proposed, furniture_with_rooms, door_apertures, 
     tolerance_mm = options.tolerance_mm, mm_per_screen_unit = options.mm_per_screen_unit,
     priority = options.priority, bypass = options.bypass,
     exclude_targets = options.exclude_targets,
+    require_overlap = true,
   })
   result[position_field] = {
     position[1] + result.delta_mm[1],
     position[2] + result.delta_mm[2],
   }
+  result.contacts = M.contacts(translated_features(moving, result.delta_mm[1], result.delta_mm[2]), {
+    x = tx,
+    y = ty,
+  })
   result.geometry_error = geometry_error
   return result
 end

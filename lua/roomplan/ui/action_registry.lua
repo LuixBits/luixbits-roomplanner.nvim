@@ -35,6 +35,13 @@ local definitions = {
   move = { key = "m", mapping = "move_mode", label = "Move", handler = "set_mode", args = { "MOVE" }, priority = 95 },
   pan = { key = "p", mapping = "pan_mode", label = "Pan", handler = "set_mode", args = { "PAN" }, priority = 30 },
   align = { key = "A", mapping = "align", label = "Align", handler = "align_room", priority = 90 },
+  place_furniture = {
+    mapping = "place_furniture",
+    label = "Place furniture against wall",
+    handler = "place_furniture",
+    priority = 70,
+  },
+  measure = { mapping = "measure", label = "Measure exact clearance", handler = "measure", priority = 55 },
   rotate = { key = "R", mapping = "rotate", label = "Rotate", handler = "rotate_selected", priority = 90 },
   duplicate = { key = "y", mapping = "duplicate", label = "Duplicate", handler = "duplicate_selected", priority = 45 },
   delete = { key = "d", mapping = "delete", label = "Delete", handler = "delete_selected", priority = 40 },
@@ -67,6 +74,7 @@ local definitions = {
   save_as = { key = "S", mapping = "save_as", label = "Save As", handler = "save_as_prompt", priority = 45 },
   undo = { key = "u", mapping = "undo", label = "Undo", handler = "undo", priority = 40 },
   redo = { key = "<C-r>", mapping = "redo", label = "Redo", handler = "redo", priority = 35 },
+  history_list = { mapping = "history_list", label = "Browse undo history", handler = "history", priority = 30 },
   reload = { mapping = "reload", label = "Reload source", handler = "reload", priority = 20 },
   close = { mapping = "close", label = "Close session", handler = "close", priority = 10 },
   help = { key = "?", mapping = "help", label = "More", handler = "help", priority = 10 },
@@ -110,6 +118,28 @@ local definitions = {
     key = "/", mapping = "workspace_filter_focused", label = "Filter",
     workspace_action = "filter_focused", priority = 70, scopes = { "objects", "issues" },
   },
+  toggle_mark = {
+    key = "<Space>",
+    mapping = "workspace_toggle_mark_focused",
+    label = "Mark",
+    workspace_action = "toggle_mark_focused",
+    priority = 90,
+    scopes = { "objects" },
+  },
+  move_marked = { mapping = "move_marked", label = "Move marked objects", handler = "move_marked", priority = 68 },
+  duplicate_marked = {
+    mapping = "duplicate_marked",
+    label = "Duplicate marked objects",
+    handler = "duplicate_marked",
+    priority = 48,
+  },
+  delete_marked = {
+    mapping = "delete_marked",
+    label = "Delete marked objects",
+    handler = "delete_marked",
+    priority = 43,
+  },
+  clear_marks = { mapping = "clear_marks", label = "Clear marked objects", handler = "clear_marks", priority = 20 },
   toggle_details_section = {
     key = "<CR>", mapping = "workspace_toggle_details_section", label = "Toggle section",
     workspace_action = "toggle_details_section", priority = 100, scopes = { "properties" },
@@ -118,19 +148,26 @@ local definitions = {
 
 local group_members = {
   create = { "add", "add_room", "add_door", "add_window", "add_outlet", "add_furniture" },
-  selection = { "select", "edit", "resize_dimensions", "move", "align", "rotate", "duplicate", "delete" },
+  selection = { "select", "edit", "resize_dimensions", "move", "align",
+    "place_furniture", "rotate", "duplicate", "delete",
+    "move_marked",
+    "duplicate_marked",
+    "delete_marked",
+    "clear_marks" },
   view = {
     "pan", "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
     "reset_view", "validate", "next_issue", "previous_issue",
-    "toggle_snap", "bypass_snap", "aspect",
+    "toggle_snap", "bypass_snap",
+    "measure", "aspect",
   },
-  history = { "save", "save_as", "undo", "redo" },
+  history = { "save", "save_as", "undo", "redo", "history_list" },
   session = { "reload", "close" },
   workspace = { "help", "hide", "objects", "canvas", "properties", "issues" },
   form = { "previous_field", "next_field", "edit_field", "apply", "reset", "cancel" },
   mode = { "shape_apply", "shape_previous", "shape_next", "leave_mode" },
   pane = {
-    "activate_focused", "collapse_focused", "expand_focused", "filter_focused",
+    "activate_focused",
+    "toggle_mark", "collapse_focused", "expand_focused", "filter_focused",
     "toggle_details_section",
   },
 }
@@ -172,6 +209,7 @@ local friendly_keys = {
   ["<Esc>"] = "Esc",
   ["<C-s>"] = "Ctrl-s",
   ["<C-r>"] = "Ctrl-r",
+  ["<Space>"] = "Space",
   ["<Tab>"] = "Tab",
   ["<S-Tab>"] = "S-Tab",
   ["<A-h>"] = "Alt-h",
@@ -215,6 +253,41 @@ local function availability(id, ctx)
     if room_count(ctx) < 2 then return false, "Add another room first" end
   elseif id == "rotate" then
     if kind ~= "furniture" then return false, "Select furniture first" end
+  elseif id == "place_furniture" then
+    if kind ~= "furniture" then
+      return false, "Select furniture first"
+    end
+  elseif id == "measure" then
+    local plan = ctx.model or {}
+    if #(plan.rooms or {}) + #(plan.furniture or {}) < 2 then
+      return false, "Add at least two rooms or furniture items"
+    end
+  elseif id == "toggle_mark" then
+    local row = ctx.focused_row
+    if not row or row.kind == "plan" or not row.id then
+      return false, "Focus an object row"
+    end
+  elseif id == "move_marked" then
+    if (ctx.marked_count or 0) == 0 then
+      return false, "Mark objects in Navigator first"
+    end
+    if (ctx.marked_move_unsupported or 0) > 0 then
+      return false, "Group movement supports rooms and furniture"
+    end
+    if (ctx.marked_move_count or 0) == 0 then
+      return false, "No marked object can be moved as a group"
+    end
+  elseif id == "duplicate_marked" then
+    if (ctx.marked_count or 0) == 0 then
+      return false, "Mark objects in Navigator first"
+    end
+    if (ctx.marked_duplicate_unsupported or 0) > 0 then
+      return false, "Doors need their placement popup and cannot be batch duplicated"
+    end
+  elseif id == "delete_marked" or id == "clear_marks" then
+    if (ctx.marked_count or 0) == 0 then
+      return false, "Mark objects in Navigator first"
+    end
   elseif id == "save" and ctx.conflicted then
     return false, "Resolve the source conflict first"
   elseif id == "undo" and ctx.can_undo == false then
@@ -264,6 +337,12 @@ function M.get(id, ctx)
     local detail = require("roomplan.canvas_detail")
     local current = detail.normalize(ctx.detail_level) or detail.default
     result.label = string.format("Canvas detail: %s → %s", current, detail.next(current))
+  elseif id == "move_marked" or id == "duplicate_marked" or id == "delete_marked" then
+    local verb = id == "move_marked" and "Move" or id == "duplicate_marked" and "Duplicate" or "Delete"
+    result.label =
+      string.format("%s %d marked object%s", verb, ctx.marked_count or 0, ctx.marked_count == 1 and "" or "s")
+  elseif id == "toggle_mark" then
+    result.label = ctx.focused_row and ctx.focused_row.marked and "Unmark" or "Mark"
   elseif ctx.mode == "RESIZE" then
     if id == "select" then result.label = "Select section"
     elseif id == "add" then result.label = "Add section"
@@ -323,7 +402,7 @@ local function ids_for(ctx)
 end
 
 local pane_ids = {
-  objects = { "activate_focused", "collapse_focused", "expand_focused", "filter_focused" },
+  objects = { "activate_focused", "toggle_mark", "collapse_focused", "expand_focused", "filter_focused" },
   issues = { "activate_focused", "filter_focused", "validate" },
   properties = { "toggle_details_section" },
 }
@@ -331,10 +410,17 @@ local pane_ids = {
 local safe_full_ids = {
   "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
   "validate", "next_issue", "previous_issue",
-  "toggle_snap", "bypass_snap", "aspect", "save", "save_as", "undo", "redo", "reload", "close",
+  "toggle_snap", "bypass_snap",
+  "measure", "aspect", "save", "save_as", "undo", "redo",
+  "history_list", "reload", "close",
 }
 
-local selection_full_ids = { "edit", "move", "align", "rotate", "duplicate", "delete" }
+local selection_full_ids = { "edit", "move", "align",
+  "place_furniture", "rotate", "duplicate", "delete",
+  "move_marked",
+  "duplicate_marked",
+  "delete_marked",
+  "clear_marks" }
 
 local function create_full_ids(ctx)
   if room_count(ctx) == 0 then
@@ -357,7 +443,7 @@ local function primary_ids_for(ctx)
 
   local focus = focused_pane(ctx)
   if focus == "objects" then
-    return { "activate_focused", "collapse_focused", "expand_focused", "filter_focused", "help" }
+    return { "activate_focused", "toggle_mark", "collapse_focused", "expand_focused", "filter_focused", "help" }
   elseif focus == "issues" then
     return { "activate_focused", "filter_focused", "validate", "help" }
   elseif focus == "properties" then

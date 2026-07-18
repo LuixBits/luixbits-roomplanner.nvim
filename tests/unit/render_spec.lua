@@ -792,6 +792,48 @@ describe("scene extraction and rendering", function()
     assert_equal(".", output.cells[3][3].char)
   end)
 
+  it("keeps every overlap when contacts share one guide line", function()
+    local scene = scene_builder.build({
+      rooms = {
+        { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
+      },
+      doors = {},
+      windows = {},
+      outlets = {},
+      furniture = {},
+    }, {}, {
+      snap_guides = {
+        {
+          axis = "x",
+          value2 = 2000,
+          value_mm = 1000,
+          overlap_start_mm = 0,
+          overlap_finish_mm = 500,
+          target_label = "Lower wall",
+        },
+        {
+          axis = "x",
+          value2 = 2000,
+          value_mm = 1000,
+          overlap_start_mm = 500,
+          overlap_finish_mm = 1000,
+          target_label = "Upper wall",
+        },
+      },
+    })
+    local lines, overlaps = 0, 0
+    for _, primitive in ipairs(scene.primitives) do
+      if primitive.kind == "snap_guide" then
+        lines = lines + 1
+      end
+      if primitive.kind == "snap_overlap" then
+        overlaps = overlaps + 1
+      end
+    end
+    assert_equal(1, lines)
+    assert_equal(2, overlaps)
+  end)
+
   it("opens, redraws, maps byte columns, and wipes a scratch canvas", function()
     local canvas = require("roomplan.render.canvas")
     local closed = false

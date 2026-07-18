@@ -4,6 +4,23 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Reworked movement and resize snapping around exact compound silhouettes.
+  After one correction, every positive-length room/furniture wall contact is
+  retained and highlighted instead of only the winning edge; coincident guide
+  lines are deduplicated without dropping their separate overlap segments.
+  Centre targets no longer masquerade as wall contact. At deep zoom the plan's
+  existing fine step provides a magnetic tolerance floor, capped by the
+  existing maximum, so millimetre residuals clean up without a new setting.
+- Added popup-first exact clearance measurement and selected-furniture wall
+  placement to the searchable `?` window. Measurement updates derived gaps and
+  the closest canvas path without editing the plan. Wall placement chooses an
+  exact exterior segment, alignment, and clearance, then applies one undoable
+  move.
+- Added transient Navigator marking with pane-local `Space` and atomic group
+  move, duplicate, delete, and clear actions in `?`. Group movement preserves
+  spacing, batch changes create one named history entry, and one Undo restores
+  the whole set. Also added a searchable named history browser with saved/current
+  markers and confirmed restore to any retained revision.
 - Unified room, furniture, and project-template shape editing under the
   ordinary `e` popup. Each editor now has an explicit **Edit footprint** row
   that transitions to the shared canvas section controls without a duplicate

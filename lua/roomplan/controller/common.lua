@@ -54,9 +54,14 @@ function M.snapping_options(session)
   local viewport_module = require("roomplan.render.viewport")
   local world_x_scale, world_y_scale = viewport_module.world_axis_scales(M.ensure_viewport(session))
   local cap = options.max_distance_mm
+  -- At deep zoom levels a cell can represent less than the plan's fine move
+  -- step. Keep that step inside the magnetic range so a small millimetre
+  -- remainder is cleaned up by ordinary movement instead of requiring
+  -- repeated Ctrl-h/j/k/l corrections.
+  local fine_step = session:model().settings.fine_step_mm or 0
   options.tolerance_mm = {
-    x = math.min(cap, options.tolerance_cells * world_x_scale),
-    y = math.min(cap, options.tolerance_cells * world_y_scale),
+    x = math.min(cap, math.max(fine_step, options.tolerance_cells * world_x_scale)),
+    y = math.min(cap, math.max(fine_step, options.tolerance_cells * world_y_scale)),
   }
   options.mm_per_screen_unit = { x = world_x_scale, y = world_y_scale }
   options.grid_mm = session:model().settings.grid_mm

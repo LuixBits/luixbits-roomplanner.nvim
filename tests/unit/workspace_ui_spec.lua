@@ -206,6 +206,15 @@ describe("workspace UI", function()
     assert_equal("room-living", filtered.rows[2].id)
     assert_equal("sofa-1", filtered.rows[3].id)
 
+    local reference = { kind = "furniture", id = "sofa-1" }
+    local marked = { [require("roomplan.selection_set").key(reference)] = reference }
+    local marked_view = presenter.objects(model, { marked = marked })
+    assert_equal(1, marked_view.marked_count)
+    assert_equal(true, marked_view.rows[4].marked)
+    local marked_panel = objects_panel.render(marked_view, 48, 10)
+    assert_true(marked_panel.lines[1]:find("1 marked", 1, true) ~= nil)
+    assert_true(marked_panel.lines[5]:find("●", 1, true) ~= nil)
+
     model.custom_templates[1] = {
       id = "custom:desk", name = "My desk", category = "work",
       default_size_mm = { 1600, 800, 740 },
@@ -557,7 +566,8 @@ describe("workspace UI", function()
       "cycle_focus", "escape", "expand_focused", "filter_focused", "filter_prompt",
       "focus", "hide", "invoke", "invoke_key", "is_visible", "layout", "mount",
       "owns_window", "reflow", "refresh", "select_focused", "set_details_section",
-      "set_filter", "set_interaction", "toggle", "toggle_details_section", "update_cursor",
+      "set_filter", "set_interaction", "toggle", "toggle_details_section",
+      "toggle_mark_focused", "update_cursor",
     }) do
       assert_equal("function", type(workspace[name]), "missing workspace method " .. name)
     end
@@ -652,7 +662,7 @@ describe("workspace UI", function()
     vim.api.nvim_win_set_cursor(shell.windows.left, { room_row, 0 })
     workspace.refresh(session, "action_bar")
     local row_footer = vim.api.nvim_buf_get_lines(shell.buffers.action_bar, 0, 1, false)[1] or ""
-    assert_true(row_footer:find("Collapse", 1, true) ~= nil, "object footer: " .. row_footer)
+    assert_true(row_footer:find("Mark", 1, true) ~= nil, "object footer: " .. row_footer)
     assert_true(row_footer:find("Expand", 1, true) == nil, "object footer: " .. row_footer)
     assert_equal({ kind = "room", id = "room-living" }, workspace.select_focused(session))
 

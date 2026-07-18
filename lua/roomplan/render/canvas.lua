@@ -258,6 +258,7 @@ local function options_for_session(session, callbacks)
       selected = session.shape_edit and nil or session.selection,
       shape_edit = session.shape_edit,
       snap_guides = session.shape_edit and session.shape_edit.snap_guides or session.snap_guides,
+      measurement = session.measurement,
       show_grid = canvas_config.show_grid,
       detail_level = session.canvas_detail_level or canvas_config.detail_level,
     })

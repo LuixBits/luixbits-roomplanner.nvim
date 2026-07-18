@@ -25,9 +25,18 @@ Select furniture and use:
 - `y` to duplicate it;
 - `d` to delete it.
 
+The searchable `?` window adds **Place furniture against wall** without taking
+another default key. Its popup lists exact exterior segments of the owner room,
+offers start/centre/end or current along-wall alignment, and accepts a clearance
+in the same measurement syntax as other forms. Apply is one exact move and one
+undo entry. **Measure exact clearance** in the same window compares furniture
+or rooms without changing the plan.
+
 Movement and rotation are semantic actions with undo/redo and validation.
 Snapping can target room edges/centres, doors, furniture, and grid according
-to the configured priority.
+to the configured priority. The final preview highlights every room or
+furniture edge segment the complete silhouette touches, including simultaneous
+contacts on compound footprints.
 
 Built-in and imported rectangle templates become canonical one-part footprints
 when placed. Loaded compound furniture can be moved, rotated, duplicated,

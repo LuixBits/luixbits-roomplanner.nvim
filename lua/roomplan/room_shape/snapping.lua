@@ -43,9 +43,10 @@ local function append_edges(targets, features)
   append(targets.y, { features.south, features.north })
 end
 
-local function append_bounds(targets, bounds, kind, id, label)
-  if not bounds then return end
-  append_edges(targets, part_features(bounds, kind, id, label))
+local function append_feature_sets(targets, features)
+  if not features then return end
+  append(targets.x, features.x)
+  append(targets.y, features.y)
 end
 
 local function target_features(edit, model, context)
@@ -86,8 +87,10 @@ local function target_features(edit, model, context)
         if candidate.id == other.room_id then owner = candidate; break end
       end
       local shape = owner and footprint.from_furniture(owner, other) or nil
-      append_bounds(targets, shape and footprint.bounds2(shape), "furniture_edge", other.id,
-        tostring(other.name or other.id))
+      local features = shape and snapping.boundary_features(shape, "furniture_edge", other.id,
+        tostring(other.name or other.id), "edge")
+        or nil
+      append_feature_sets(targets, features)
     end
   end
   return targets
@@ -192,6 +195,27 @@ function M.apply(edit, part, dx, dy, context)
     part.size_mm[2] = part.size_mm[2] + delta_y
   end
   edit.snap_exclusions = resolved.snap_exclusions or {}
+  local contact_shape = persisted_world_shape(edit, context)
+  local contact_kind = edit.kind == "furniture" and "furniture_edge"
+    or edit.kind == "template" and "template_edge"
+    or "room_edge"
+  local contact_label = edit.kind == "furniture" and "Furniture" or edit.kind == "template" and "Template" or "Room"
+  local contact_moving = contact_shape
+      and snapping.boundary_features(
+        contact_shape,
+        contact_kind,
+        tostring(edit.entity_id or edit.room_id),
+        contact_label,
+        edit.kind == "room" and "wall" or "edge"
+      )
+    or nil
+  if contact_moving then
+    -- Rebuild targets after applying the correction. This captures all
+    -- simultaneous contacts around the complete edited silhouette, not just
+    -- the handle whose candidate won the snap.
+    local contact_targets = target_features(edit, model, context)
+    resolved.contacts = snapping.contacts(contact_moving, contact_targets)
+  end
   edit.snap_guides = snapping.guides(resolved)
   return edit
 end
