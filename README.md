@@ -24,9 +24,9 @@ rounding can never corrupt the saved plan.
 - Compound footprints for L-, T-, and U-shaped rooms and furniture, with
   seam-free walls and one logical selection per object. The room form creates
   configurable L shapes; direct canvas editing can add, resize, and remove
-  rectangular room, placed-furniture, and project-template sections without
-  adding another key. A compact save popup makes item-only versus template
-  updates explicit and never bulk-rewrites other placed items.
+  rectangular room, placed-furniture, and project-template sections through
+  the same live resize controls. A compact save popup makes item-only versus
+  template updates explicit and never bulk-rewrites other placed items.
 - View-only 90-degree rotation and runtime terminal-cell aspect calibration;
   neither operation changes saved geometry.
 - Strict, deterministic JSON with preserved extension fields, plus marked Neorg
@@ -75,8 +75,9 @@ Initialize a standalone source without overwriting an existing file:
 :RoomPlanInit ~/plans/flat.roomplan.json
 ```
 
-Then press `a` to add a room, `m` to move the selected room and its furniture,
-`r` to resize its sections, or `e` for exact properties. Save with `s`. Press
+Then press `a` to add a room, `m` to move the selected object, `r` to resize
+room or furniture dimensions live, `R` to rotate furniture, or `e` for exact
+properties. Save with `s`. Press
 `t` to cycle canvas detail, `1` to focus or toggle the
 Navigator, and `3` to do the same for Details. `?` opens every currently
 available action; press `/` there and type to filter it live inside the popup.

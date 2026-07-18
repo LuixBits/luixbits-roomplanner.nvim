@@ -56,7 +56,8 @@ offsets, hinges, and swing direction are explained in
 ## 5. Add furniture
 
 Press `F`, choose Living room and Sofa, then accept or edit its dimensions and
-placement. Press `m` to move the selected sofa, `r` to rotate it, and `Esc` to
+placement. Press `m` to move the selected sofa, `r` to resize it live, `R` to
+rotate it, and `Esc` to
 leave MOVE mode.
 
 ## 6. Add a window and outlet

@@ -35,7 +35,8 @@ commands or your own buffer mappings in that case.
 | `Enter` | `workspace_toggle_details_section` | Toggle a Details section |
 | `a`, `D`, `W`, `O`, `F` | `add`, `add_door`, `add_window`, `add_outlet`, `add_furniture` | Add objects |
 | `e`, `d`, `y` | `edit`, `delete`, `duplicate` | Edit supported properties, delete, duplicate |
-| `m`, `A`, `r` | `move_mode`, `align`, `rotate` | Move room/object, align room, resize room/rotate furniture |
+| `m`, `A` | `move_mode`, `align` | Move room/object, align room |
+| `r`, `R` | `resize_dimensions`, `rotate` | Live-resize room/furniture dimensions, rotate furniture |
 | `Enter` | `select` | Select under Canvas cursor |
 | `q`, `Esc`, `?` | `hide`, `escape`, `help` | Hide, leave context, show actions |
 
@@ -65,10 +66,11 @@ a different mode; `zh zj zk zl` are direct pan aliases.
 
 ## Direct compound-shape resizing
 
-Select a room, placed furniture item, or project template, press `e`, focus
-**Edit footprint**, and press `Enter`. The existing `r` mapping remains a direct
-room shortcut. There is no second global mapping or duplicate action in `?`;
-all three object kinds share the controls below.
+Select a room, placed furniture item, or project template and press `r` to
+enter the highlighted live resize immediately. The same controls remain
+discoverable through **Edit footprint** in the `e` popup, but that popup is not
+required. Uppercase `R` rotates selected furniture. There is no duplicate
+hidden shape action in `?`; all three object kinds share the controls below.
 
 | Default | Semantic name | Action |
 | --- | --- | --- |

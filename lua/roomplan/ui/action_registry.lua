@@ -28,10 +28,14 @@ local definitions = {
     priority = 75, scopes = { "canvas" },
   },
   edit = { key = "e", mapping = "edit", label = "Edit", handler = "edit_selected", priority = 100 },
+  resize_dimensions = {
+    key = "r", mapping = "resize_dimensions", label = "Resize dimensions",
+    handler = "edit_selected_shape", priority = 92,
+  },
   move = { key = "m", mapping = "move_mode", label = "Move", handler = "set_mode", args = { "MOVE" }, priority = 95 },
   pan = { key = "p", mapping = "pan_mode", label = "Pan", handler = "set_mode", args = { "PAN" }, priority = 30 },
   align = { key = "A", mapping = "align", label = "Align", handler = "align_room", priority = 90 },
-  rotate = { key = "r", mapping = "rotate", label = "Rotate", handler = "rotate_selected", priority = 90 },
+  rotate = { key = "R", mapping = "rotate", label = "Rotate", handler = "rotate_selected", priority = 90 },
   duplicate = { key = "y", mapping = "duplicate", label = "Duplicate", handler = "duplicate_selected", priority = 45 },
   delete = { key = "d", mapping = "delete", label = "Delete", handler = "delete_selected", priority = 40 },
   fit = { key = "f", mapping = "fit", label = "Fit", handler = "fit", priority = 65 },
@@ -114,7 +118,7 @@ local definitions = {
 
 local group_members = {
   create = { "add", "add_room", "add_door", "add_window", "add_outlet", "add_furniture" },
-  selection = { "select", "edit", "move", "align", "rotate", "duplicate", "delete" },
+  selection = { "select", "edit", "resize_dimensions", "move", "align", "rotate", "duplicate", "delete" },
   view = {
     "pan", "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
     "reset_view", "validate", "next_issue", "previous_issue",
@@ -196,6 +200,10 @@ local function availability(id, ctx)
     then
       return false, "This object cannot be duplicated"
     end
+  elseif id == "resize_dimensions" then
+    if kind ~= "room" and kind ~= "furniture" and kind ~= "template" then
+      return false, "Select a room, furniture item, or project template first"
+    end
   elseif id == "move" then
     if kind ~= "room" and kind ~= "door" and kind ~= "window"
       and kind ~= "outlet" and kind ~= "furniture"
@@ -206,9 +214,7 @@ local function availability(id, ctx)
     if kind ~= "room" then return false, "Select a room first" end
     if room_count(ctx) < 2 then return false, "Add another room first" end
   elseif id == "rotate" then
-    if kind ~= "furniture" and kind ~= "room" then
-      return false, "Select a room or furniture first"
-    end
+    if kind ~= "furniture" then return false, "Select furniture first" end
   elseif id == "save" and ctx.conflicted then
     return false, "Resolve the source conflict first"
   elseif id == "undo" and ctx.can_undo == false then
@@ -260,11 +266,8 @@ function M.get(id, ctx)
     result.label = string.format("Canvas detail: %s → %s", current, detail.next(current))
   elseif ctx.mode == "RESIZE" then
     if id == "select" then result.label = "Select section"
-    elseif id == "rotate" then result.label = "Resize section"
     elseif id == "add" then result.label = "Add section"
     elseif id == "delete" then result.label = "Remove section" end
-  elseif id == "rotate" and ctx.selection and ctx.selection.kind == "room" then
-    result.label = "Resize room"
   elseif id == "leave_mode" and ctx.mode == "RESIZE" then
     result.label = "Cancel resize"
   end
@@ -301,12 +304,12 @@ local function ids_for(ctx)
     return { "edit", "add", "fit", "validate", "save", "undo", "redo", "help", "hide" }
   elseif kind == "room" then
     return {
-      "edit", "move", "rotate", "align", "add", "fit", "duplicate",
+      "edit", "resize_dimensions", "move", "align", "add", "fit", "duplicate",
       "delete", "validate", "save", "undo", "redo", "help",
     }
   elseif kind == "furniture" then
     return {
-      "edit", "move", "rotate", "fit", "duplicate", "delete",
+      "edit", "resize_dimensions", "move", "rotate", "fit", "duplicate", "delete",
       "validate", "save", "undo", "redo", "help",
     }
   elseif kind == "door" then
@@ -314,7 +317,7 @@ local function ids_for(ctx)
   elseif kind == "window" or kind == "outlet" then
     return { "edit", "move", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
   elseif kind == "template" then
-    return { "edit", "duplicate", "delete", "save", "undo", "redo", "help" }
+    return { "edit", "resize_dimensions", "duplicate", "delete", "save", "undo", "redo", "help" }
   end
   return { "add", "select", "fit", "validate", "save", "pan", "undo", "redo", "help", "hide" }
 end
@@ -368,15 +371,15 @@ local function primary_ids_for(ctx)
   elseif kind == "plan" then
     return { "edit", "add", "fit", "help" }
   elseif kind == "room" then
-    return { "edit", "move", "rotate", "align", "add", "help" }
+    return { "edit", "resize_dimensions", "move", "align", "add", "help" }
   elseif kind == "furniture" then
-    return { "edit", "move", "rotate", "delete", "help" }
+    return { "edit", "resize_dimensions", "move", "rotate", "delete", "help" }
   elseif kind == "door" then
     return { "edit", "move", "delete", "help" }
   elseif kind == "window" or kind == "outlet" then
     return { "edit", "move", "delete", "help" }
   elseif kind == "template" then
-    return { "edit", "duplicate", "delete", "help" }
+    return { "edit", "resize_dimensions", "duplicate", "delete", "help" }
   end
   return { "add", "select", "fit", "help" }
 end

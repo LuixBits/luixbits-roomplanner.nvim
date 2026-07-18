@@ -30,7 +30,7 @@ describe("action registry", function()
   it("keeps persistent actions compact and sensitive to pane and selection", function()
     local furniture = { kind = "furniture", id = "chair-1" }
     local canvas = registry.primary(context("canvas", furniture))
-    assert_equal({ "edit", "move", "rotate", "delete", "help" }, ids(canvas))
+    assert_equal({ "edit", "resize_dimensions", "move", "rotate", "delete", "help" }, ids(canvas))
     assert_true(canvas[#canvas].count > 0)
 
     local objects = registry.primary(context("objects", furniture))
@@ -61,7 +61,9 @@ describe("action registry", function()
     assert_equal({
       "shape_apply", "select", "shape_next", "add", "delete", "toggle_snap", "leave_mode", "help",
     }, ids(registry.primary(ctx)))
-    assert_equal("Resize room", registry.get("rotate", context("canvas", { kind = "room", id = "room-1" })).label)
+    local resize = registry.get("resize_dimensions", context("canvas", { kind = "room", id = "room-1" }))
+    assert_equal("Resize dimensions", resize.label)
+    assert_equal("r", resize.key)
     assert_equal("s", registry.get("shape_apply", ctx).key_label)
     assert_true(registry.mode_label(ctx):find("RESIZE · section 2/3", 1, true) ~= nil)
     assert_true(registry.mode_label(ctx):find("edge west", 1, true) ~= nil)
@@ -160,7 +162,7 @@ describe("action registry", function()
     assert_equal("Add a room first", registry.get("add_outlet", empty).reason)
   end)
 
-  it("keeps shape editing in the unified edit popup instead of duplicating it in More", function()
+  it("publishes one direct dimension shortcut without restoring the old hidden shape action", function()
     assert_equal(nil, registry.get("edit_shape", context("canvas", {
       kind = "furniture", id = "sofa-1",
     })))
@@ -169,10 +171,22 @@ describe("action registry", function()
       { kind = "furniture", id = "sofa-1" },
       { kind = "template", id = "custom:sectional" },
     }) do
-      for _, candidate in ipairs(registry.full(context("canvas", selection))) do
+      local ctx = context("canvas", selection)
+      local resize = registry.get("resize_dimensions", ctx)
+      assert_equal(true, resize.enabled)
+      assert_equal("r", resize.key)
+      assert_equal("edit_selected_shape", resize.handler)
+      local found = false
+      for _, candidate in ipairs(registry.full(ctx)) do
         assert_true(candidate.id ~= "edit_shape")
+        if candidate.id == "resize_dimensions" then found = true end
       end
+      assert_equal(true, found)
     end
+    local rotate = registry.get("rotate", context("canvas", { kind = "furniture", id = "sofa-1" }))
+    assert_equal("R", rotate.key)
+    assert_equal(true, rotate.enabled)
+    assert_equal(false, registry.get("rotate", context("canvas", { kind = "room", id = "room-main" })).enabled)
   end)
 
   it("prioritizes pane-local keys and respects mapping overrides", function()

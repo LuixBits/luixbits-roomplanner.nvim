@@ -265,7 +265,7 @@ Canvas and editing:
   A              align room
   e              exact edit
   d / y          delete / duplicate selection
-  r              resize a room / rotate furniture
+  r / R          live-resize room/furniture / rotate furniture
   v / Alt-j / Alt-k
                   validate / next issue / previous issue
   u / <C-r>      undo / redo
@@ -396,17 +396,17 @@ mounting height. See docs/planning/windows-and-outlets.md.
 ==============================================================================
 9. FURNITURE CATALOGUES                                 *roomplan-furniture*
 
-Placed furniture has direct compound shape editing without another permanent
-mapping. Select it, press e, focus Edit footprint, and press Enter. RESIZE
-uses Enter/Tab to select sections, h/j/k/l to choose and move visible edges,
-a/d to add/remove, s to apply and save, and Esc to cancel. Its explicit anchor
-and position stay fixed. Invalid anchor-removing edits are rejected. When it
-references a project template, s opens a RoomPlan popup: update this item only,
-or update the item plus the future-placement template as one undo step. Other
-placed items never change.
+Placed furniture has direct compound shape editing. Select it and press r to
+enter RESIZE immediately; R rotates it instead. RESIZE uses Enter/Tab to select
+sections, h/j/k/l to choose and move visible edges, a/d to add/remove, s to
+apply and save, and Esc to cancel. Its explicit anchor and position stay fixed.
+Invalid anchor-removing edits are rejected. When it references a project
+template, s opens a RoomPlan popup: update this item only, or update the item
+plus the future-placement template as one undo step. Other placed items never
+change. Edit footprint in the e popup opens the same controls.
 
-Project templates use the same Edit footprint row in their e popup. Select a
-top-level template row and activate it to edit an isolated local preview.
+Project templates use the same r shortcut and Edit footprint row. Select a
+top-level template row and use either path to edit an isolated local preview.
 Saving changes future placements only and restores the plan viewport; existing
 furniture keeps explicit geometry.
 

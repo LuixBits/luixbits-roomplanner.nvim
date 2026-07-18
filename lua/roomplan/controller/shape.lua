@@ -263,9 +263,6 @@ function M.attach(controller)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
     if active(resolved) then return active(resolved) end
-    if resolved.selection and resolved.selection.kind == "room" then
-      return controller.start_room_resize(resolved, resolved.selection.id)
-    end
     return base.rotate_selected(resolved)
   end
   controller.add_menu = function(session)
