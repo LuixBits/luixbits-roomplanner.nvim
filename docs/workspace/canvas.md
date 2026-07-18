@@ -21,7 +21,9 @@ truth.
 
 Starting playback dismisses the study form so it cannot cover the plan. While
 the study is on the canvas, `h`/`l` step, `Space` plays or pauses, `L` reopens
-settings, and `Esc` closes the transient overlay.
+settings, and `Esc` closes the transient overlay. Press `3` to show the same
+controls with the current time and play/pause state in Details, or `?` to find
+them in the **Current mode** group.
 
 Zoom is limited by `canvas.min_mm_per_column` and
 `canvas.max_mm_per_column`. Terminal rows use `cell_aspect` times the
@@ -61,6 +63,11 @@ and zoom. A selected object adds one compact breadcrumb, for example
 instead of occupying another pane. Empty plans show a first-room card; if
 geometry is outside the viewport, the canvas explicitly suggests `f` instead
 of appearing blank.
+
+When Details is visible, its dynamic Canvas-controls section becomes the
+command reference and the action bar keeps only this status and feedback. This
+avoids two competing copies while preserving the footer when the pane is
+hidden.
 
 ## Selection and movement
 

@@ -4,6 +4,12 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Details now opens with a dynamic NAV/MOVE/PAN/RESIZE/SUN STUDY heading and
+  one registry-backed Canvas controls section. The same configured commands
+  feed Details, the footer, and `?`; every active mode names its finish or
+  cancel key. When Details is visible, the footer keeps status, selection,
+  snapping, and zoom without repeating the command list. No setup mappings or
+  saved-plan keys were added.
 - Sun-study playback now dismisses its setup form and focuses the unobstructed
   canvas. Contextual `h`/`l`, `Space`, `L`, and `Esc` controls step, play/pause,
   reopen settings, and close the overlay. The hidden quit guard now keeps a

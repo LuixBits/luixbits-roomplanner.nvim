@@ -62,12 +62,20 @@ function M.open(session, opts)
   if not workspace then return M.reference(session) end
 
   local ctx = opts.context or context(session, workspace)
-  local actions = action_registry.full(ctx, { include_disabled = true, exclude = { "help" } })
+  local actions, contextual = {}, {}
+  for _, control in ipairs(action_registry.context_controls(ctx)) do contextual[control.id] = true end
+  for _, control in ipairs(action_registry.informational_controls(ctx)) do actions[#actions + 1] = control end
+  for _, action in ipairs(action_registry.full(ctx, { include_disabled = true, exclude = { "help" } })) do
+    if ctx.mode ~= nil and ctx.mode ~= "NAV" and contextual[action.id] then action.show_key = true end
+    actions[#actions + 1] = action
+  end
   local on_action = opts.on_action or function(action)
     return require("roomplan.ui.workspace").invoke(session, action.id)
   end
   for _, action in ipairs(actions) do
-    action.callback = function(chosen) return on_action(chosen) end
+    if not action.informational then
+      action.callback = function(chosen) return on_action(chosen) end
+    end
   end
 
   local focus = focus_labels[ctx.focus] or tostring(ctx.focus or "canvas"):gsub("^%l", string.upper)

@@ -1,4 +1,5 @@
 local presenter = require("roomplan.ui.presenter")
+local action_registry = require("roomplan.ui.action_registry")
 local state = require("roomplan.state")
 local util = require("roomplan.ui.workspace.util")
 
@@ -9,6 +10,17 @@ local action_bar = require("roomplan.ui.panels.action_bar")
 
 local M = {}
 local roles = { "objects", "issues", "properties", "action_bar" }
+
+local function update_pane_title(workspace, role, title)
+  if not title or title == "" then return end
+  workspace.pane_titles = workspace.pane_titles or {}
+  workspace.pane_titles[role] = title
+  local winid = role == "properties" and workspace.windows.properties or nil
+  if not util.valid_window(winid) or vim.api.nvim_win_get_config(winid).relative ~= "" then return end
+  local active = workspace.state and workspace.state.focused_pane == role
+  local group = active and "RoomPlanWorkspaceActiveTitle" or "RoomPlanWorkspaceInactiveTitle"
+  vim.wo[winid].winbar = string.format("%%#%s# %s %%*", group, title)
+end
 
 local function configure_buffer(bufnr, role)
   vim.bo[bufnr].buftype = "nofile"
@@ -48,6 +60,7 @@ local function write_buffer(workspace, role, rendered)
       vim.api.nvim_buf_set_extmark(bufnr, namespace, row, start_col, options)
     end
   end
+  update_pane_title(workspace, role, rendered.pane_title)
 end
 
 local function create_buffer(session, workspace, role)
@@ -135,6 +148,10 @@ function M.context(session, workspace)
   if ctx.focus == "objects" or ctx.focus == "issues" or ctx.focus == "properties" then
     ctx.focused_row = M.selected_row(session, ctx.focus)
   end
+  local windows = workspace and workspace.windows or {}
+  ctx.details_visible = util.valid_window(windows.properties)
+    or workspace and workspace.drawer_role == "properties" and util.valid_window(windows.drawer)
+    or false
   return ctx
 end
 
@@ -162,7 +179,18 @@ local function render_one(session, workspace, role)
     local view = presenter.issues(session, { filter = workspace.state.filters.issues })
     rendered = issues_panel.render(view, width, height)
   elseif role == "properties" then
+    local ctx = M.context(session, workspace)
+    local control_ctx = vim.deepcopy(ctx)
+    if not control_ctx.form then
+      control_ctx.focus = "canvas"
+      control_ctx.focused_row = nil
+    end
     local view = presenter.properties(session)
+    view.context_title = action_registry.context_title(control_ctx)
+    view.controls = action_registry.context_controls(control_ctx)
+    view.controls_note = ctx.focus == "properties"
+      and "Press 2 to use canvas controls · Enter toggles sections"
+      or nil
     rendered = properties_panel.render(view, width, height, {
       collapsed_sections = workspace.state.collapsed_sections,
       ascii = workspace.opts.ascii,

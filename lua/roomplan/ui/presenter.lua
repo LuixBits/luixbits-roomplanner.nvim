@@ -641,6 +641,17 @@ function M.context(value, ui_state)
     zoom = zoom,
     view_rotation = viewport and (tonumber(viewport.rotation_quarters) or 0) % 4 or 0,
   }
+  local study = type(value) == "table" and value.sun_study or nil
+  if study then
+    context.sun_study = {
+      date = study.date,
+      time = study.time,
+      step_minutes = study.step_minutes,
+      frame_duration_ms = study.frame_duration_ms,
+      playing = study.playing == true,
+      viewing = study.viewing == true,
+    }
+  end
   for key, item in pairs(shape_context(value)) do context[key] = item end
   context.breadcrumb = M.breadcrumb(model, context)
   return context

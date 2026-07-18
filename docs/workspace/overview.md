@@ -8,7 +8,8 @@ The workspace has four areas:
 - **Canvas** renders rooms, doors, windows, outlets, furniture, selection,
   dimensions, and the compass.
 - **Navigator** uses one side slot for either Objects or Issues.
-- **Details** shows compact, accordion-style information about the selection.
+- **Details** shows the current mode, its Canvas controls, and compact,
+  accordion-style information about the selection.
 - **Action bar** shows only the most useful actions for the current pane and
   mode. Press `?` for the complete grouped action window, including disabled
   actions and their reasons, then `/` to start its in-popup live search.
@@ -41,5 +42,12 @@ the full lifecycle.
 The fastest pane controls are `1` for Navigator, `2` for Canvas, `3` for
 Details, and `!` for Issues. Pressing the active side-pane key again hides that
 pane and returns to Canvas.
+
+Details uses headings such as **NAV**, **MOVE**, **RESIZE**, and **SUN STUDY**.
+Its Canvas controls come from the same registry as the action bar and `?`, and
+always include the key that finishes or cancels an active mode. If Details has
+focus, press `2` before using those Canvas controls; its own `Enter`, `Space`,
+`h`, and `l` remain section-navigation keys. While Details is visible, the
+action bar keeps status and feedback but does not duplicate the command list.
 
 ← [Core concepts](../getting-started/concepts.md) | [Documentation home](../README.md) | [Navigation](navigation.md) →

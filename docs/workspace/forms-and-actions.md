@@ -34,6 +34,9 @@ refuses to apply rather than overwriting newer state.
 The one-line action bar changes with focus, selection, and mode. It hides
 irrelevant or unmapped actions to remain compact. `?` opens the full grouped
 action window and explains why actions such as Align or Rotate are unavailable.
+MOVE, PAN, RESIZE, and SUN STUDY also put their literal directional/playback
+controls in the **Current mode** group and explicitly show how to finish or
+cancel that mode.
 Press `/` in that window to search labels, descriptions, groups, IDs, and keys;
 the search row stays inside the popup and reduces the visible actions after
 every character. It is a dedicated native prompt over a fixed, read-only
@@ -47,6 +50,9 @@ MOVE and RESIZE extend it with direction, distance, section/edge, and snap
 feedback. It adds no mapping, never replaces an action hint that already fits,
 and is clipped with the rest of the one-line status on narrow layouts. Complete
 properties remain in Details rather than being repeated in the footer.
+Details also shows the same compact Canvas command set beneath a dynamic mode
+heading. When that pane is visible, the footer becomes status-only instead of
+repeating those commands; hiding Details restores the usual footer hints.
 
 The ordinary `e` popup is a discoverable entry point for compound-shape
 editing. Room, furniture, and project-template forms include **Edit footprint**;

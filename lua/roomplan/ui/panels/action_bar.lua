@@ -18,16 +18,7 @@ local function sorted(actions)
 end
 
 local function compact_mode(ctx)
-  local mode = tostring(ctx.mode or "NAV"):gsub("_", " ")
-  if mode == "MOVE" then return "MOVE hjkl · HJKL coarse" end
-  if mode == "PAN" then return "PAN hjkl" end
-  if mode == "SUN STUDY" then return "SUN h/l step · Space play · L settings · Esc close" end
-  if mode == "RESIZE" then
-    return string.format("RESIZE ROOM · SECTION %d/%d · EDGE %s",
-      ctx.shape_section_index or 0, ctx.shape_section_count or 0,
-      tostring(ctx.shape_edge or "H/J/K/L")):upper()
-  end
-  return mode
+  return registry.context_title(ctx)
 end
 
 local function breadcrumb_text(ctx)
@@ -103,7 +94,48 @@ end
 function M.render(ctx, width, opts)
   ctx = ctx or {}
   opts = opts or {}
-  local actions = sorted(opts.actions or registry.primary(ctx))
+  local actions = sorted(opts.actions or registry.context_controls(ctx))
+  local status_text = status(ctx)
+  if ctx.details_visible and not ctx.form then
+    local document = common.document(width)
+    local highlights = { { start_col = 0, end_col = -1, hl_group = "RoomPlanWorkspaceMuted" } }
+    local mode = compact_mode(ctx)
+    local mode_at = status_text:find(mode, 1, true)
+    if mode_at then
+      highlights[#highlights + 1] = {
+        start_col = mode_at - 1,
+        end_col = mode_at - 1 + #mode,
+        hl_group = "RoomPlanWorkspaceTitle",
+      }
+    end
+    local breadcrumb = breadcrumb_text(ctx)
+    local breadcrumb_at = breadcrumb and status_text:find(breadcrumb, 1, true) or nil
+    if breadcrumb_at then
+      highlights[#highlights + 1] = {
+        start_col = breadcrumb_at - 1,
+        end_col = breadcrumb_at - 1 + #breadcrumb,
+        hl_group = type(ctx.breadcrumb) == "table" and ctx.breadcrumb.hl_group or "RoomPlanWorkspaceStatus",
+      }
+    end
+    local alert = ctx.conflicted and "CONFLICT" or (ctx.dirty and "DIRTY" or nil)
+    local alert_at = alert and status_text:find(alert, 1, true) or nil
+    if alert_at then
+      highlights[#highlights + 1] = {
+        start_col = alert_at - 1,
+        end_col = alert_at - 1 + #alert,
+        hl_group = ctx.conflicted and "RoomPlanWorkspaceError" or "RoomPlanWorkspaceWarning",
+      }
+    end
+    common.line(document, status_text, { highlights = highlights })
+    document.actions = actions
+    document.shown_actions = {}
+    document.overflow_actions = actions
+    document.overflow_count = #actions
+    document.status = status_text
+    document.breadcrumb = ctx.breadcrumb
+    document.details_visible = true
+    return common.finish(document, opts.height or 1)
+  end
   local candidates = {}
   for _, action in ipairs(actions) do
     if is_primary(action) then candidates[#candidates + 1] = action end
@@ -111,7 +143,6 @@ function M.render(ctx, width, opts)
 
   local shown = {}
   for index = 1, math.min(opts.max_actions or 5, #candidates) do shown[index] = candidates[index] end
-  local status_text = status(ctx)
   local fitting_status = status(ctx, false)
   local fitting_line = compose(shown, actions, fitting_status, ctx)
   while #shown > 0 and common.width(fitting_line) > width do

@@ -244,7 +244,7 @@ local function session_footer(session)
   if kind == "room" then
     return " ROOM | [e] Edit  [m] Move  [r] Resize  [A] Align  [f] Fit  [y] Duplicate  [d] Delete  [a] Add "
   elseif kind == "furniture" then
-    return " FURNITURE | [e] Edit  [m] Move  [f] Fit  [r] Rotate  [y] Duplicate  [d] Delete "
+    return " FURNITURE | [e] Edit  [m] Move  [r] Resize  [R] Rotate  [f] Fit  [y] Duplicate  [d] Delete "
   elseif kind == "door" then
     return " DOOR | [e] Edit  [m] Move  [f] Fit  [y] Duplicate  [d] Delete  [a] Add "
   elseif kind == "window" then

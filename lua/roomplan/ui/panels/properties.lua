@@ -95,7 +95,11 @@ local function add_field(document, field, border)
     highlights = {
       { start_col = 0, end_col = #border.v, hl_group = "RoomPlanWorkspaceMuted" },
       { start_col = #line - #border.v, end_col = -1, hl_group = "RoomPlanWorkspaceMuted" },
-      { start_col = #border.v + 1, end_col = #border.v + 1 + #label, hl_group = "RoomPlanWorkspaceMuted" },
+      {
+        start_col = #border.v + 1,
+        end_col = #border.v + 1 + #label,
+        hl_group = field.key and "RoomPlanWorkspaceKey" or "RoomPlanWorkspaceMuted",
+      },
       {
         start_col = #border.v + #prefix,
         end_col = #border.v + #prefix + #value,
@@ -103,6 +107,34 @@ local function add_field(document, field, border)
       },
     },
   })
+end
+
+local function add_static_header(document, title, first, border)
+  local section = { title = title, fields = {} }
+  local line, caption_start, caption_end = section_header(section, true, document.width, first, border)
+  common.line(document, line, {
+    highlights = {
+      { start_col = 0, end_col = -1, hl_group = "RoomPlanWorkspaceMuted" },
+      { start_col = caption_start, end_col = caption_end, hl_group = "RoomPlanWorkspaceSection" },
+    },
+  })
+end
+
+local function add_controls(document, view, border)
+  local controls = view.controls or {}
+  if #controls == 0 then return false end
+  add_static_header(document, "Canvas controls", true, border)
+  if view.controls_note then
+    add_field(document, { label = "Use", value = view.controls_note }, border)
+  end
+  for _, control in ipairs(controls) do
+    add_field(document, {
+      label = control.key_label or "-",
+      value = control.label or control.id or "Command",
+      key = control.key_label ~= nil,
+    }, border)
+  end
+  return true
 end
 
 local function add_diagnostic(document, diagnostic, border)
@@ -157,16 +189,29 @@ function M.render(view, width, height, opts)
   local border = opts.ascii == true and borders.ascii or borders.unicode
   local title = view.title or "Details"
   local subtitle = view.subtitle and view.subtitle ~= "" and (" · " .. view.subtitle) or ""
-  common.line(document, title .. subtitle, {
-    highlights = {
-      { start_col = 0, end_col = #title, hl_group = "RoomPlanWorkspaceTitle" },
-      { start_col = #title, end_col = -1, hl_group = "RoomPlanWorkspaceMuted" },
-    },
-  })
+  local context_title = tostring(view.context_title or "NAV")
+  if context_title == "NAV" then
+    local line = title .. subtitle .. " · NAV"
+    common.line(document, line, {
+      highlights = {
+        { start_col = 0, end_col = #title, hl_group = "RoomPlanWorkspaceTitle" },
+        { start_col = #title, end_col = -1, hl_group = "RoomPlanWorkspaceMuted" },
+      },
+    })
+  else
+    common.line(document, context_title, {
+      highlights = { { start_col = 0, end_col = -1, hl_group = "RoomPlanWorkspaceTitle" } },
+    })
+    common.line(document, title .. subtitle, {
+      highlights = { { start_col = 0, end_col = -1, hl_group = "RoomPlanWorkspaceMuted" } },
+    })
+  end
+
+  local has_controls = add_controls(document, view, border)
 
   for index, section in ipairs(sections(view)) do
     local collapsed = is_collapsed(section, index, opts)
-    add_section_header(document, section, not collapsed, index == 1, border)
+    add_section_header(document, section, not collapsed, index == 1 and not has_controls, border)
     if not collapsed then
       for _, field in ipairs(section.fields or {}) do add_field(document, field, border) end
       for _, diagnostic in ipairs(section.diagnostics or {}) do add_diagnostic(document, diagnostic, border) end
@@ -179,6 +224,7 @@ function M.render(view, width, height, opts)
       highlights = { { start_col = 0, end_col = -1, hl_group = "RoomPlanWorkspaceMuted" } },
     })
   end
+  document.pane_title = "Details · " .. context_title
   return common.finish(document, height)
 end
 
