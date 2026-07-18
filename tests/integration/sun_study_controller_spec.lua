@@ -6,7 +6,7 @@ local controller = require("roomplan.controller")
 local session_module = require("roomplan.session")
 
 describe("sun-study controller", function()
-  it("opens one structured popup, steps, plays, and clears all transient state", function()
+  it("dismisses the popup for canvas playback and keeps contextual controls available", function()
     config.reset()
     config.setup({ sun_study = { playback = { step_minutes = 30, frame_duration_ms = 50 } } })
     local plan = h.truthy(model.new({ name = "Sun controller" }))
@@ -20,18 +20,34 @@ describe("sun-study controller", function()
     local handle = h.truthy(controller.sun_study(session))
     h.eq("sun-study", handle.spec.id)
     h.truthy(session.sun_study and session.sun_study.calculation)
-    local before = handle.state.draft.time
+    local form = require("roomplan.ui.form")
+    h.truthy(form.set_value(handle, "time", "12:00", { raw = false, trusted = true }))
+    local before = session.sun_study.time
     vim.api.nvim_set_current_win(handle.winid)
     vim.api.nvim_feedkeys("l", "x", false)
-    h.truthy(handle.state.draft.time ~= before)
-    local after_step = handle.state.draft.time
+    h.truthy(session.sun_study.time ~= before)
+    local after_step = session.sun_study.time
     vim.api.nvim_feedkeys(" ", "x", false)
+    h.truthy(vim.wait(500, function()
+      return handle.closed and session.sun_study and session.sun_study.viewing
+        and session.canvas and session.canvas.winid and vim.api.nvim_win_is_valid(session.canvas.winid)
+    end, 10))
+    h.falsy(vim.api.nvim_win_is_valid(handle.winid))
+    h.eq(session.canvas.winid, vim.api.nvim_get_current_win())
     h.truthy(vim.wait(250, function()
-      return not session.sun_study or handle.state.draft.time ~= after_step
+      return session.sun_study and session.sun_study.time ~= after_step
     end, 10))
     vim.api.nvim_feedkeys(" ", "x", false)
     h.eq(false, session.sun_study.playing)
-    h.truthy(require("roomplan.ui.form").cancel(handle, "test complete"))
+    local paused = session.sun_study.time
+    vim.api.nvim_feedkeys("h", "x", false)
+    h.truthy(session.sun_study.time ~= paused)
+    vim.api.nvim_feedkeys("L", "x", false)
+    h.truthy(vim.wait(500, function()
+      return session.form and session.form.spec.id == "sun-study"
+    end, 10))
+    h.eq(session.sun_study.time, session.form.state.draft.time)
+    h.truthy(form.cancel(session.form, "test complete"))
     h.eq(nil, session.sun_study)
     h.truthy(session:destroy({ force = true }))
     if vim.api.nvim_buf_is_valid(source_buffer) then vim.api.nvim_buf_delete(source_buffer, { force = true }) end

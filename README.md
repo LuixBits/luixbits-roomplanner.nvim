@@ -103,6 +103,9 @@ with `W` or an outlet with `O`; the outlet form chooses wall or floor placement.
 From the Add menu use `a` followed by lowercase `w` or `o`.
 Press `L` for the sunlight study. Its first use asks for plan north, location,
 and UTC offset in one popup; later uses open the date/time playback directly.
+`Space` starts playback and dismisses the popup so the whole canvas remains
+visible. On the canvas use `h`/`l` to step, `Space` to pause or resume, `L` to
+reopen settings, and `Esc` to close the study.
 
 Open the plan again with:
 

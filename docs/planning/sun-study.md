@@ -19,10 +19,16 @@ the view changes those screen labels and the compass, never the saved site.
 ## Popup controls
 
 The study popup keeps date, local time, minute step, and milliseconds per step
-together. `h` and `l` move one step; `Space` plays or pauses. Playback advances
-only across the calculated daylight interval and stops at sunset. `Ctrl-s`
-closes the study. **Edit location and plan north** returns to the persisted
+together. `h` and `l` move one step. `Space` starts playback, closes the popup,
+and focuses the unobstructed canvas; `Ctrl-s` does the same without starting
+the timer. **View current time on canvas** and **Play on canvas** expose both
+choices explicitly. **Edit location and plan north** returns to the persisted
 site popup.
+
+While viewing the canvas, `h` and `l` step backward and forward, `Space` pauses
+or resumes, `L` pauses and reopens the same settings, and `Esc` closes the
+study. Playback advances only across the calculated daylight interval and
+stops at sunset. These contextual controls do not add more setup keys.
 
 The default step is 60 minutes and each frame remains visible for 700 ms. Both
 are editable for the current popup and configurable for later studies:
@@ -42,8 +48,9 @@ require("roomplan").setup({
 })
 ```
 
-Date, time, and playback position are transient. Closing the popup stops its
-timer and removes the overlay; it does not add history or dirty the plan.
+Date, time, and playback position are transient. Cancelling the popup or
+closing the canvas study stops its timer and removes the overlay; it does not
+add history or dirty the plan.
 
 ## Window heights and display
 

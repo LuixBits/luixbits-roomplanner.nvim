@@ -21,6 +21,7 @@ local function compact_mode(ctx)
   local mode = tostring(ctx.mode or "NAV"):gsub("_", " ")
   if mode == "MOVE" then return "MOVE hjkl · HJKL coarse" end
   if mode == "PAN" then return "PAN hjkl" end
+  if mode == "SUN STUDY" then return "SUN h/l step · Space play · L settings · Esc close" end
   if mode == "RESIZE" then
     return string.format("RESIZE ROOM · SECTION %d/%d · EDGE %s",
       ctx.shape_section_index or 0, ctx.shape_section_count or 0,

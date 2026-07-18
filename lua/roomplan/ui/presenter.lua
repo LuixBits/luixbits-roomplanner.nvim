@@ -603,6 +603,9 @@ end
 function M.mode(value, ui_state)
   local interaction = ui_state and ui_state.interaction
   if interaction and interaction ~= "NAV" then return interaction end
+  if type(value) == "table" and value.sun_study and value.sun_study.viewing then
+    return "SUN STUDY"
+  end
   local workflow = type(value) == "table" and value.workflow and value.workflow.kind
   if workflow then return workflow:gsub("%-", "_"):upper() end
   return type(value) == "table" and value.mode or "NAV"

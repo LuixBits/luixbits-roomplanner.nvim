@@ -4,6 +4,11 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Sun-study playback now dismisses its setup form and focuses the unobstructed
+  canvas. Contextual `h`/`l`, `Space`, `L`, and `Esc` controls step, play/pause,
+  reopen settings, and close the overlay. The hidden quit guard now keeps a
+  conflicted plan protected while opening the normal conflict-resolution flow
+  instead of exposing a Lua callback traceback.
 - Added a complete offline sunlight study. `L`, `:RoomPlanSunStudy`, and the
   searchable action popup open one structured workflow for exact plan north,
   location, fixed UTC offset, date/time, step size, frame duration, and
