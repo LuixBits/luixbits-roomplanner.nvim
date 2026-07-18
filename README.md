@@ -14,9 +14,10 @@ rounding can never corrupt the saved plan.
 ## Highlights
 
 - Canvas-first responsive workspace with toggleable Navigator and Details
-  panes, contextual actions, validation issues, semantic highlighting, and a
-  north compass. Three transient detail levels keep labels and measurements
-  as sparse or complete as the current task needs.
+  panes, contextual actions, a compact selection/MOVE/RESIZE breadcrumb,
+  validation issues, semantic highlighting, and a north compass. Three
+  transient detail levels keep labels and measurements as sparse or complete
+  as the current task needs.
 - Structured forms for rooms, furniture, doors, windows, outlets, alignment,
   plan settings, and project furniture templates, including palette-based room
   and furniture colors.

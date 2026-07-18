@@ -38,8 +38,11 @@ belongs to the live session and never dirties or rewrites the plan.
 
 The header contains the plan state and, by default, a compact compass. The
 action bar below the canvas reports mode, saved/dirty/conflict state, snapping,
-and zoom. Empty plans show a first-room card; if geometry is outside the
-viewport, the canvas explicitly suggests `f` instead of appearing blank.
+and zoom. A selected object adds one compact breadcrumb, for example
+`Office › Floor outlet · Power · 2 slots`; it disappears with the selection
+instead of occupying another pane. Empty plans show a first-room card; if
+geometry is outside the viewport, the canvas explicitly suggests `f` instead
+of appearing blank.
 
 ## Selection and movement
 
@@ -51,7 +54,8 @@ label.
 In MOVE mode, changes are expressed in world millimetres and recorded as model
 actions. View rotation only changes how direction keys are projected, so
 moving right on screen still looks right. Grid and geometric snapping are
-view-scale aware and capped by `snapping.max_distance_mm`.
+view-scale aware and capped by `snapping.max_distance_mm`. The breadcrumb adds
+the active object, last visible direction and distance, and named snap target.
 
 ## Room resizing
 
@@ -62,7 +66,8 @@ plan steps. The first horizontal/vertical key chooses the corresponding west,
 east, south, or north edge; the status keeps that handle visible while opposite
 directions grow or shrink it. `a` adds an adjoining section and `d` removes one. `s` commits the
 whole preview as one history action and saves the plan; `Esc` discards it. The header/action
-bar identifies `RESIZE` and the active section. Nearby section edges and
+bar identifies `RESIZE`, the active section and edge, the last step, and any
+named snap target. Nearby section edges and
 other-room walls take snap precedence over the grid; a light guide shows the
 alignment and extends just beyond the target wall so horizontal and vertical
 connections stay visible. The matching edge overlap is strongly highlighted,

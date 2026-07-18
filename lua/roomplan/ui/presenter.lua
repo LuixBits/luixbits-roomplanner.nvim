@@ -45,6 +45,7 @@ local function shape_context(value)
     shape_section_index = index or 0,
     shape_section_count = #(edit.footprint.parts or {}),
     shape_edge = require("roomplan.room_shape").edge_summary(edit),
+    shape_feedback = edit.move_feedback,
     shape_snap = require("roomplan.room_shape").snap_summary(edit),
   }
 end
@@ -335,6 +336,95 @@ local function find(model, selection)
   end
 end
 
+local breadcrumb_highlights = {
+  room = "RoomPlanWorkspaceRoom",
+  door = "RoomPlanWorkspaceDoor",
+  window = "RoomPlanWorkspaceWindow",
+  outlet = "RoomPlanWorkspaceOutlet",
+  furniture = "RoomPlanWorkspaceFurniture",
+  template = "RoomPlanWorkspaceValue",
+}
+
+local function capitalized(value, fallback)
+  value = tostring(value or fallback or "")
+  if value == "" then return value end
+  return value:sub(1, 1):upper() .. value:sub(2)
+end
+
+local function room_name(rooms, id, fallback)
+  local owner = type(id) == "string" and rooms[id] or nil
+  if owner then return tostring(owner.name or owner.id) end
+  if type(id) == "string" then return id end
+  return fallback
+end
+
+local function selection_breadcrumb(model, selection, object)
+  if not selection or selection.kind == "plan" or not object then return nil end
+  local rooms = room_lookup(model)
+  local kind = selection.kind
+  local values = {}
+
+  if kind == "room" then
+    values[1] = tostring(object.name or object.id)
+  elseif kind == "furniture" then
+    values[1] = room_name(rooms, object.room_id, "Unknown room")
+    values[2] = tostring(object.name or object.id or "Furniture")
+    if object.category then values[2] = values[2] .. " · " .. tostring(object.category) end
+  elseif kind == "door" or kind == "window" then
+    values[1] = room_name(rooms, object.room_id, "Unknown room")
+    local destination = room_name(rooms, object.connects_to_room_id, "outside")
+    values[2] = string.format("%s · %s → %s",
+      kind == "door" and "Door" or "Window", capitalized(object.side, "wall"), destination)
+  elseif kind == "outlet" then
+    values[1] = room_name(rooms, object.room_id, "Unknown room")
+    local placement = object.placement == "floor" and "Floor outlet" or "Wall outlet"
+    local outlet = outlet_types.label(object.outlet_type) or capitalized(object.outlet_type, "Outlet")
+    local slots = tonumber(object.slots) or 0
+    values[2] = string.format("%s · %s · %d slot%s", placement, outlet, slots, slots == 1 and "" or "s")
+  elseif kind == "template" then
+    values[1] = "Project template"
+    values[2] = tostring(object.name or object.id)
+    if object.category then values[2] = values[2] .. " · " .. tostring(object.category) end
+  else
+    return nil
+  end
+
+  return {
+    text = table.concat(values, " › "),
+    selection_text = table.concat(values, " › "),
+    kind = kind,
+    hl_group = breadcrumb_highlights[kind] or "RoomPlanWorkspaceStatus",
+  }
+end
+
+---Build one compact, display-only selection path. MOVE and RESIZE append only
+---the feedback needed to understand the active interaction; Details remains the
+---authority for complete object properties.
+function M.breadcrumb(value, ctx)
+  ctx = ctx or {}
+  local model = model_of(value)
+  local selection = ctx.selection ~= nil and ctx.selection or selection_of(value)
+  local object = ctx.selected_object or find(model, selection)
+  local result = selection_breadcrumb(model, selection, object)
+  if not result then return nil end
+
+  local values = { result.selection_text }
+  if ctx.mode == "MOVE" then
+    values[#values + 1] = "MOVE"
+    if ctx.move_feedback then values[#values + 1] = ctx.move_feedback end
+    if ctx.snap_summary then values[#values + 1] = "snap: " .. ctx.snap_summary end
+  elseif ctx.mode == "RESIZE" then
+    values[#values + 1] = string.format("RESIZE section %d/%d",
+      ctx.shape_section_index or 0, ctx.shape_section_count or 0)
+    values[#values + 1] = ctx.shape_edge and (ctx.shape_edge .. " edge") or "choose edge"
+    if ctx.shape_feedback then values[#values + 1] = ctx.shape_feedback end
+    if ctx.shape_snap then values[#values + 1] = "snap: " .. ctx.shape_snap end
+  end
+  result.text = table.concat(values, " · ")
+  result.interactive = ctx.mode == "MOVE" or ctx.mode == "RESIZE"
+  return result
+end
+
 local function field(label, value, raw)
   return { label = label, value = tostring(value or "-"), raw = raw }
 end
@@ -529,6 +619,7 @@ function M.context(value, ui_state)
     view_rotation = viewport and (tonumber(viewport.rotation_quarters) or 0) % 4 or 0,
   }
   for key, item in pairs(shape_context(value)) do context[key] = item end
+  context.breadcrumb = M.breadcrumb(model, context)
   return context
 end
 

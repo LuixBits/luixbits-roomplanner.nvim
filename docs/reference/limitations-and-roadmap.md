@@ -48,10 +48,10 @@ pure model and geometry, validation, scene/raster representation, structured
 forms, fixtures, and recovery documentation.
 
 Palette-based room and furniture colors, compound footprints, wall-anchored
-windows, and wall outlets are implemented. Likely next candidates include a
-transient companion cat that is never saved in the plan or undo history, and
-an approximate sunlight preview based on plan north, location, date, time, and
-windows.
+windows, wall outlets, and the contextual selection/MOVE/RESIZE breadcrumb are
+implemented. Likely next candidates include a transient companion cat that is
+never saved in the plan or undo history, and an approximate sunlight preview
+based on plan north, location, date, time, and windows.
 
 Related UX candidates are layer toggles, recent furniture and colors,
 duplicate-and-place-again actions, live placement previews, diagnostic object

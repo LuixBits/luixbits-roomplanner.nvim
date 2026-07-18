@@ -20,6 +20,10 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   trapping fine-step movement. Direction-selected resize edges and visible-cell
   normal movement with explicit distance feedback keep terminal interaction
   coherent at every zoom. Guide tails expose both horizontal and vertical snaps.
+- A compact colorscheme-linked selection breadcrumb shares the existing action
+  bar instead of adding another pane. It identifies room ownership and object
+  type, then adds active object, direction, distance, edge, section, and snap
+  target feedback during MOVE and RESIZE without displacing existing actions.
 - Doors, wall windows, typed multi-slot wall/floor outlets, furniture
   catalogues, canvas detail levels, view rotation, compass, aspect calibration,
   semantic colours, and responsive workspace drawers. Wall outlets use
@@ -37,20 +41,7 @@ writer. Compound footprints are connected, hole-free unions of at most 256
 axis-aligned rectangles. Angled walls and arbitrary polygons are deliberately
 outside the current model.
 
-## Next — compact contextual status
-
-- Add one short selection breadcrumb, such as
-  `Office › Floor outlet · Power · 2 slots`, to existing header/action-bar
-  space; do not add another permanent pane or popup.
-- Change the breadcrumb with selection and interaction mode so MOVE and RESIZE
-  communicate their active object, axis/edge, step, and snap target without
-  duplicating Details.
-- Reuse presenter data and colorscheme-linked highlight groups, keeping narrow
-  layouts to one clipped line and hiding the breadcrumb when nothing useful is
-  selected.
-- Cover wide, medium, and compact layouts before treating the slice as shipped.
-
-## Then — extend compound authoring
+## Next — extend compound authoring
 
 - Reuse that interaction for placed furniture and project templates, including
   explicit anchor handling and catalogue round trips.

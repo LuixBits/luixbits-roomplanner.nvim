@@ -29,20 +29,37 @@ local function compact_mode(ctx)
   return mode
 end
 
-local function status(ctx)
-  local values = { compact_mode(ctx) }
+local function breadcrumb_text(ctx)
+  if type(ctx.breadcrumb) == "table" then return ctx.breadcrumb.text end
+  if type(ctx.breadcrumb) == "string" then return ctx.breadcrumb end
+end
+
+local function status(ctx, show_breadcrumb)
+  local breadcrumb = show_breadcrumb ~= false and breadcrumb_text(ctx) or nil
+  local contextual_mode = breadcrumb and (ctx.mode == "MOVE" or ctx.mode == "RESIZE")
+  local values = {}
+  if contextual_mode then
+    values[#values + 1] = breadcrumb
+    values[#values + 1] = "hjkl/HJKL"
+  elseif breadcrumb and (ctx.mode == nil or ctx.mode == "NAV") then
+    values[#values + 1] = breadcrumb
+    values[#values + 1] = compact_mode(ctx)
+  else
+    values[#values + 1] = compact_mode(ctx)
+    if breadcrumb then values[#values + 1] = breadcrumb end
+  end
   if ctx.conflicted then
     values[#values + 1] = "CONFLICT"
   else
     values[#values + 1] = ctx.dirty and "DIRTY" or "SAVED"
   end
-  if ctx.mode == "MOVE" and ctx.move_feedback then values[#values + 1] = ctx.move_feedback end
+  if ctx.mode == "MOVE" and ctx.move_feedback and not contextual_mode then values[#values + 1] = ctx.move_feedback end
   if ctx.mode == "RESIZE" then
     values[#values + 1] = ctx.snap_enabled and "SNAP ON" or "SNAP OFF"
-    if ctx.shape_snap then values[#values + 1] = ctx.shape_snap end
+    if ctx.shape_snap and not contextual_mode then values[#values + 1] = ctx.shape_snap end
   elseif ctx.snap_enabled then
     values[#values + 1] = "SNAP"
-    if ctx.snap_summary then values[#values + 1] = ctx.snap_summary end
+    if ctx.snap_summary and not contextual_mode then values[#values + 1] = ctx.snap_summary end
   end
   if not ctx.form then values[#values + 1] = "DETAIL " .. tostring(ctx.detail_level or "middle"):upper() end
   if ctx.zoom then values[#values + 1] = string.format("×%.2g", ctx.zoom) end
@@ -94,11 +111,16 @@ function M.render(ctx, width, opts)
   local shown = {}
   for index = 1, math.min(opts.max_actions or 5, #candidates) do shown[index] = candidates[index] end
   local status_text = status(ctx)
-  local line, hidden, hidden_count, more = compose(shown, actions, status_text, ctx)
-  while #shown > 0 and common.width(line) > width do
+  local fitting_status = status(ctx, false)
+  local fitting_line = compose(shown, actions, fitting_status, ctx)
+  while #shown > 0 and common.width(fitting_line) > width do
     shown[#shown] = nil
-    line, hidden, hidden_count, more = compose(shown, actions, status_text, ctx)
+    fitting_line = compose(shown, actions, fitting_status, ctx)
   end
+  -- Breadcrumbs add context without displacing action hints that already fit.
+  -- The final common.line() call clips lower-priority trailing status on narrow
+  -- canvases while keeping the result to one display-width-bounded line.
+  local line, hidden, hidden_count, more = compose(shown, actions, status_text, ctx)
 
   local document = common.document(width)
   local highlights = {}
@@ -139,6 +161,15 @@ function M.render(ctx, width, opts)
     end_col = -1,
     hl_group = "RoomPlanWorkspaceMuted",
   }
+  local breadcrumb = breadcrumb_text(ctx)
+  local breadcrumb_at = breadcrumb and line:find(breadcrumb, status_at + 1, true) or nil
+  if breadcrumb_at then
+    highlights[#highlights + 1] = {
+      start_col = breadcrumb_at - 1,
+      end_col = breadcrumb_at - 1 + #breadcrumb,
+      hl_group = type(ctx.breadcrumb) == "table" and ctx.breadcrumb.hl_group or "RoomPlanWorkspaceStatus",
+    }
+  end
   local alert = ctx.conflicted and "CONFLICT" or (ctx.dirty and "DIRTY" or nil)
   if alert then
     local alert_at = line:find(alert, status_at + 1, true)
@@ -156,6 +187,7 @@ function M.render(ctx, width, opts)
   document.overflow_actions = hidden
   document.overflow_count = hidden_count
   document.status = status_text
+  document.breadcrumb = ctx.breadcrumb
   return common.finish(document, opts.height or 1)
 end
 

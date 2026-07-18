@@ -48,6 +48,7 @@ end
 local function reset_handles(edit)
   clear_feedback(edit)
   edit.resize_edges = {}
+  edit.move_feedback = nil
   return edit
 end
 

@@ -214,6 +214,11 @@ Details pane, and a one-line contextual footer. The Navigator starts visible;
 Details starts hidden. Both retain their selection and can be toggled to give
 the canvas more room.
 
+The one-line footer adds a concise room/object breadcrumb for a useful
+selection. MOVE extends it with direction, distance, and snap target; RESIZE
+adds section, edge, step, and snap target. It adds no mapping or pane and clips
+to the available width without displacing action hints that already fit.
+
 Wide terminals use side panes. Medium layouts retain only the panes that fit.
 Compact layouts open bordered drawers. Manually closing a pane keeps it closed
 until explicitly toggled again.
