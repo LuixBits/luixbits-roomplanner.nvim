@@ -48,12 +48,14 @@ feedback. It adds no mapping, never replaces an action hint that already fits,
 and is clipped with the rest of the one-line status on narrow layouts. Complete
 properties remain in Details rather than being repeated in the footer.
 
-Compound furniture and project-template shape editing is intentionally an
-unmapped action in the full popup: select the object, press `?`, then search for
-`shape`. Project templates use an isolated local preview. When a placed item
+The ordinary `e` popup is also the single entry point for compound-shape
+editing. Room, furniture, and project-template forms include **Edit footprint**;
+row; pressing `Enter` there opens the shared canvas section controls. If other
+popup fields changed first, RoomPlan validates and applies them before the
+transition. Project templates use an isolated local preview. When a placed item
 references a project-local template, saving opens a second compact popup for
 **This item only** versus **Item + project template**. Neither choice rewrites
-other placed items.
+other placed items. The room `r` key remains a convenient direct shortcut.
 
 Common actions are `a` (Add), `e` (Edit), `m` (Move), `A` (Align), `r`
 (resize a room or rotate furniture), `y` (Duplicate), and `d` (Delete). `D`, `W`, `O`, and `F`

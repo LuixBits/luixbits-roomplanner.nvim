@@ -13,6 +13,7 @@ local SUPPORTED = {
   object_ref = true,
   toggle = true,
   readonly = true,
+  action = true,
 }
 
 local function resolve(value, context, draft, field, state)
@@ -54,7 +55,7 @@ function M.enabled(field, context, draft, state)
 end
 
 function M.value(field, context, draft, state)
-  if field.type == "readonly" and field.value ~= nil then
+  if (field.type == "readonly" or field.type == "action") and field.value ~= nil then
     return resolve(field.value, context, draft, field, state)
   end
   return draft[field.key]
@@ -114,6 +115,8 @@ function M.parse(field, raw, context, draft, state)
   local kind = field.type or "text"
   if kind == "readonly" then
     return nil, { code = "FORM_FIELD_READONLY", message = (field.label or field.key) .. " is read-only" }
+  elseif kind == "action" then
+    return nil, { code = "FORM_FIELD_ACTION", message = (field.label or field.key) .. " is an action" }
   elseif kind == "text" then
     if type(raw) ~= "string" then raw = tostring(raw or "") end
     if field.trim == true then raw = trimmed(raw) end
@@ -170,6 +173,7 @@ end
 function M.validate(field, value, context, draft, state)
   if not M.visible(field, context, draft, state) then return nil end
   local kind = field.type or "text"
+  if kind == "action" then return nil end
   if kind ~= "readonly" and field.required == true then
     if value == nil or (type(value) == "string" and trimmed(value) == "") then
       return "is required"
@@ -217,6 +221,7 @@ function M.format(field, value, context, draft, state)
     return tostring(field.format(value, context, draft, field, state) or "")
   end
   local kind = field.type or "text"
+  if kind == "action" then return tostring(value or field.action_label or "Open…") end
   if value == nil then return field.empty_text or "—" end
   if kind == "measurement" then
     local formatted = units.format_mm(value)

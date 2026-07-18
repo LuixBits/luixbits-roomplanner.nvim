@@ -70,16 +70,21 @@ describe("structured forms", function()
           key = "detail", label = "Detail", type = "text", required = true,
           visible = function(_, draft) return draft.kind == "detailed" end,
         },
+        {
+          key = "edit_shape", label = "Footprint", type = "action",
+          action = "edit_shape", action_label = "Edit sections", value = "Edit sections on canvas…",
+        },
         { key = "summary", label = "Summary", type = "readonly", value = function(_, draft) return draft.name .. " x" .. draft.count end },
       },
       preview = function(draft) return { lines = { "Width is " .. draft.width .. " mm" } } end,
     }
     local state = form_state.new(spec, {})
-    h.eq(7, #form_state.visible_fields(state))
+    h.eq(8, #form_state.visible_fields(state))
+    h.eq(nil, state.draft.edit_shape)
     state = form_state.reduce(state, { type = "set_raw", key = "width", value = "2.1m" })
     h.eq(2100, state.draft.width)
     state = form_state.reduce(state, { type = "set_value", key = "kind", value = "detailed" })
-    h.eq(8, #form_state.visible_fields(state))
+    h.eq(9, #form_state.visible_fields(state))
     state = form_state.reduce(state, { type = "set_raw", key = "count", value = "9" })
     h.matches("at most", state.errors.count)
     local checked, valid = form_state.validate_all(state)
@@ -90,6 +95,7 @@ describe("structured forms", function()
     h.truthy(line_contains(output.lines, "Field kinds  [TEST]"))
     h.truthy(line_contains(output.lines, "Width"))
     h.truthy(line_contains(output.lines, "Summary"))
+    h.truthy(line_contains(output.lines, "Edit sections on canvas"))
     h.truthy(line_contains(output.lines, "9"), "invalid raw input should remain visible")
     h.truthy(line_contains(output.lines, "Ctrl-s] Use values"))
     h.truthy(next(output.meta.error_rows) ~= nil)
@@ -237,7 +243,7 @@ describe("structured forms", function()
 
   it("opens a complete float, anchors editors, applies, and cancels", function()
     local session = plan_session()
-    local submitted, cancelled
+    local submitted, cancelled, opened_action
     local spec = {
       id = "engine-test",
       title = "Structured editor",
@@ -249,12 +255,14 @@ describe("structured forms", function()
         { key = "size", label = "Size", type = "measurement" },
         { key = "choice", label = "Choice", type = "enum", choices = { "one", "two" } },
         { key = "enabled", label = "Enabled", type = "toggle" },
+        { key = "shape", label = "Footprint", type = "action", action = "edit_shape", value = "Edit sections on canvas…" },
         { key = "summary", label = "Summary", type = "readonly", value = function(_, draft) return draft.name end },
       },
     }
     local handle = h.truthy(form.open(session, spec, {
       on_submit = function(draft) submitted = draft; return { committed = true } end,
       on_cancel = function(reason) cancelled = reason end,
+      on_action = function(action) opened_action = action; return true end,
     }))
     h.truthy(vim.api.nvim_win_is_valid(handle.winid))
     local lines = vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false)
@@ -262,6 +270,7 @@ describe("structured forms", function()
     h.truthy(line_contains(lines, "Name"))
     h.truthy(line_contains(lines, "Size"))
     h.truthy(line_contains(lines, "Choice"))
+    h.truthy(line_contains(lines, "Edit sections on canvas"))
     h.truthy(line_contains(lines, "Summary"))
     local help_mapping = vim.api.nvim_buf_call(handle.bufnr, function()
       return vim.fn.maparg("?", "n", false, true)
@@ -295,6 +304,10 @@ describe("structured forms", function()
     vim.ui.select = original_select
     h.eq("two", handle.state.draft.choice)
     h.eq("choice", handle.state.active_key)
+    h.truthy(form.activate(handle, "shape"))
+    h.truthy(form.edit(handle))
+    h.eq("edit_shape", opened_action)
+    h.eq(nil, handle.state.draft.shape)
     h.eq(true, h.truthy(form.set_value(handle, "enabled", true, { raw = false, trusted = true })))
     local applied = h.truthy(form.apply(handle))
     h.eq(true, applied.committed)

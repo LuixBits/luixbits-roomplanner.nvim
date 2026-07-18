@@ -18,9 +18,7 @@ footprint.
 Select furniture and use:
 
 - `e` to edit room, template, label, geometry where available, position, and
-  rotation;
-- `?`, then `/` and `shape`, to open direct section editing without adding a
-  permanent furniture shortcut;
+  rotation, or activate **Edit footprint** for direct section editing;
 - `m` plus directions to move by the configured plan steps;
 - `r` to rotate one quarter-turn;
 - `y` to duplicate it;
@@ -38,8 +36,8 @@ room-local position, height, and rotation stay editable there.
 
 ## Direct shape editing
 
-Choose **Edit furniture shape** from the full `?` action popup. The canvas then
-uses the same `RESIZE` interaction as rooms: `Enter` or `Tab` selects a section,
+Press `e` and activate **Edit footprint**. The canvas then uses the same
+`RESIZE` interaction as rooms: `Enter` or `Tab` selects a section,
 direction keys choose and resize its visible edge, `a` adds an adjoining
 same-sized section, and `d` removes the selected section. `s` applies the
 complete footprint as one undo step and saves; `Esc` cancels it.
@@ -68,11 +66,10 @@ returns to the active shape draft; it neither commits nor saves anything.
 Enable **Save as project template** while adding furniture to create a
 `custom:*` template with the current footprint and height. Project templates
 are saved inside that plan, appear as top-level Objects rows, and can be edited
-with `e`. Select a template, open `?`, search for `shape`, and choose **Edit
-template shape** to edit its rectangular sections in an isolated local canvas
-preview. The usual `Enter`/`Tab`, directions, `a`, `d`, `s`, and `Esc` controls
-apply. The plan viewport is restored afterwards, and the template anchor stays
-fixed and valid.
+with `e`. In that same popup, activate **Edit footprint** to edit its rectangular
+sections in an isolated local canvas preview. The usual `Enter`/`Tab`,
+directions, `a`, `d`, `s`, and `Esc` controls apply. The plan viewport is
+restored afterwards, and the template anchor stays fixed and valid.
 
 Saving a direct template edit changes future placements only. Existing placed
 furniture keeps its explicit geometry. Use the placed-item save-scope popup

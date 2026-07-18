@@ -28,10 +28,6 @@ local definitions = {
     priority = 75, scopes = { "canvas" },
   },
   edit = { key = "e", mapping = "edit", label = "Edit", handler = "edit_selected", priority = 100 },
-  edit_shape = {
-    mapping = "edit_shape", label = "Edit compound shape",
-    handler = "edit_selected_shape", priority = 85,
-  },
   move = { key = "m", mapping = "move_mode", label = "Move", handler = "set_mode", args = { "MOVE" }, priority = 95 },
   pan = { key = "p", mapping = "pan_mode", label = "Pan", handler = "set_mode", args = { "PAN" }, priority = 30 },
   align = { key = "A", mapping = "align", label = "Align", handler = "align_room", priority = 90 },
@@ -118,7 +114,7 @@ local definitions = {
 
 local group_members = {
   create = { "add", "add_room", "add_door", "add_window", "add_outlet", "add_furniture" },
-  selection = { "select", "edit", "edit_shape", "move", "align", "rotate", "duplicate", "delete" },
+  selection = { "select", "edit", "move", "align", "rotate", "duplicate", "delete" },
   view = {
     "pan", "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
     "reset_view", "validate", "next_issue", "previous_issue",
@@ -206,10 +202,6 @@ local function availability(id, ctx)
     then
       return false, "Select a movable object first"
     end
-  elseif id == "edit_shape" then
-    if kind ~= "furniture" and kind ~= "template" then
-      return false, "Select placed furniture or a project template first"
-    end
   elseif id == "align" then
     if kind ~= "room" then return false, "Select a room first" end
     if room_count(ctx) < 2 then return false, "Add another room first" end
@@ -260,8 +252,6 @@ function M.get(id, ctx)
       result.handler = "edit_template"
       result.args = { ctx.selection.id }
     end
-  elseif id == "edit_shape" and ctx.selection then
-    result.label = ctx.selection.kind == "template" and "Edit template shape" or "Edit furniture shape"
   elseif id == "toggle_snap" then
     result.label = ctx.snap_enabled == false and "Enable snapping" or "Disable snapping"
   elseif id == "cycle_detail_level" then
@@ -316,7 +306,7 @@ local function ids_for(ctx)
     }
   elseif kind == "furniture" then
     return {
-      "edit", "edit_shape", "move", "rotate", "fit", "duplicate", "delete",
+      "edit", "move", "rotate", "fit", "duplicate", "delete",
       "validate", "save", "undo", "redo", "help",
     }
   elseif kind == "door" then
@@ -324,7 +314,7 @@ local function ids_for(ctx)
   elseif kind == "window" or kind == "outlet" then
     return { "edit", "move", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
   elseif kind == "template" then
-    return { "edit", "edit_shape", "duplicate", "delete", "save", "undo", "redo", "help" }
+    return { "edit", "duplicate", "delete", "save", "undo", "redo", "help" }
   end
   return { "add", "select", "fit", "validate", "save", "pan", "undo", "redo", "help", "hide" }
 end
@@ -341,7 +331,7 @@ local safe_full_ids = {
   "toggle_snap", "bypass_snap", "aspect", "save", "save_as", "undo", "redo", "reload", "close",
 }
 
-local selection_full_ids = { "edit", "edit_shape", "move", "align", "rotate", "duplicate", "delete" }
+local selection_full_ids = { "edit", "move", "align", "rotate", "duplicate", "delete" }
 
 local function create_full_ids(ctx)
   if room_count(ctx) == 0 then

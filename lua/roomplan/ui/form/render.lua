@@ -38,6 +38,8 @@ local function footer_lines(state, active, opts)
     elseif active.type == "toggle" then
       local toggle = display_key(keys.edit) or display_key(keys.toggle)
       edit_hint = hint(toggle, "Toggle")
+    elseif active.type == "action" then
+      edit_hint = hint(keys.edit, active.action_label or "Open")
     elseif active.type == "readonly" then
       edit_hint = ""
     end
@@ -94,6 +96,7 @@ function M.build(state, opts)
     formatted = tostring(formatted)
     local marker = field.key == state.active_key and ">" or " "
     local suffix = fields.enabled(field, state.context, state.draft, state) and "" or "  (read-only)"
+    if field.type == "action" then suffix = "  [Enter]" end
     local row = push(string.format("%s %-" .. label_width .. "s  %s%s", marker, field.label or field.key, formatted, suffix))
     meta.field_rows[field.key] = row
     if not fields.enabled(field, state.context, state.draft, state) then meta.readonly_rows[row] = true end

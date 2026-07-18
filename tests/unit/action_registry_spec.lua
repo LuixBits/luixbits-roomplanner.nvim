@@ -160,32 +160,19 @@ describe("action registry", function()
     assert_equal("Add a room first", registry.get("add_outlet", empty).reason)
   end)
 
-  it("offers placed-furniture shape editing through More without adding a key", function()
-    local ctx = context("canvas", { kind = "furniture", id = "sofa-1" })
-    local action = registry.get("edit_shape", ctx)
-    assert_equal(true, action.enabled)
-    assert_equal(nil, action.key)
-    assert_equal("Edit furniture shape", action.label)
-
-    local found = false
-    for _, candidate in ipairs(registry.full(ctx)) do
-      if candidate.id == "edit_shape" then found = true end
+  it("keeps shape editing in the unified edit popup instead of duplicating it in More", function()
+    assert_equal(nil, registry.get("edit_shape", context("canvas", {
+      kind = "furniture", id = "sofa-1",
+    })))
+    for _, selection in ipairs({
+      { kind = "room", id = "room-main" },
+      { kind = "furniture", id = "sofa-1" },
+      { kind = "template", id = "custom:sectional" },
+    }) do
+      for _, candidate in ipairs(registry.full(context("canvas", selection))) do
+        assert_true(candidate.id ~= "edit_shape")
+      end
     end
-    assert_equal(true, found)
-    assert_equal(false, registry.get("edit_shape", context("canvas", {
-      kind = "room", id = "room-main",
-    })).enabled)
-
-    local template_ctx = context("canvas", { kind = "template", id = "custom:sectional" })
-    local template_action = registry.get("edit_shape", template_ctx)
-    assert_equal(true, template_action.enabled)
-    assert_equal(nil, template_action.key)
-    assert_equal("Edit template shape", template_action.label)
-    local template_found = false
-    for _, candidate in ipairs(registry.full(template_ctx)) do
-      if candidate.id == "edit_shape" then template_found = true end
-    end
-    assert_equal(true, template_found)
   end)
 
   it("prioritizes pane-local keys and respects mapping overrides", function()

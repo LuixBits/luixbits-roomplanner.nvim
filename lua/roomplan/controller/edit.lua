@@ -120,6 +120,25 @@ function M.attach(controller)
         return result
       end,
       on_cancel = function() focus_after_form(session) end,
+      on_action = function(action, form_state, active_handle)
+        if action ~= "edit_shape" then
+          return nil, util.err("FORM_ACTION", "unsupported editor action " .. tostring(action))
+        end
+        -- Preserve popup work before changing interaction surfaces. A clean
+        -- form closes as a transition; a dirty form validates and applies its
+        -- scalar changes first, so opening the footprint editor never discards
+        -- a draft silently.
+        if form_state.dirty then
+          local applied, apply_err = form.apply(active_handle)
+          if not applied then return nil, apply_err end
+        elseif not form.transition(active_handle, "edit-shape") then
+          return nil, util.err("FORM_STALE", "the edit popup is no longer active")
+        end
+        vim.schedule(function()
+          if not session.closed then controller.edit_selected_shape(session) end
+        end)
+        return true
+      end,
     })
     if not handle then return notify_error(err) end
     return handle
