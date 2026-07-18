@@ -19,7 +19,10 @@ RoomPlan displays the active mode in the action bar.
 **NAV** is the normal mode. `h j k l` moves the logical cursor one cell and
 `H J K L` moves five. `Enter` selects an object under the cursor; repeated
 presses cycle overlapping hit targets. `Tab` and `Shift-Tab` cycle scene
-objects through the workspace panes.
+objects through the workspace panes. When the cursor enters the configured
+`canvas.scrolloff` margin, further directional movement pans the viewport and
+keeps advancing through world space. This makes a zoomed canvas continuously
+navigable without zooming out or entering PAN mode.
 
 **MOVE** starts with `m` and requires a selected room, door, window, outlet, or
 furniture item. Directions use a whole multiple of the plan's normal step large

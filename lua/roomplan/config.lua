@@ -36,6 +36,7 @@ local defaults = {
     max_mm_per_column = 100000,
     fit_margin_cells = 2,
     header_lines = 1,
+    scrolloff = 3,
     pan_step_cells = 5,
     pan_coarse_step_cells = 20,
     show_grid = false,
@@ -137,6 +138,7 @@ function M.setup(opts)
   end
   integer_positive("canvas.fit_margin_cells", candidate.canvas.fit_margin_cells, errors, true)
   integer_positive("canvas.header_lines", candidate.canvas.header_lines, errors, true)
+  integer_positive("canvas.scrolloff", candidate.canvas.scrolloff, errors, true)
   integer_positive("canvas.pan_step_cells", candidate.canvas.pan_step_cells, errors)
   integer_positive("canvas.pan_coarse_step_cells", candidate.canvas.pan_coarse_step_cells, errors)
   integer_positive("autosave.debounce_ms", candidate.autosave.debounce_ms, errors)

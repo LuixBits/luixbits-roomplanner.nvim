@@ -275,6 +275,10 @@ Canvas and editing:
   Alt-l / Alt-h / g0
                   rotate view clockwise / counterclockwise / north-up
   gs / g!        toggle snapping / bypass the next snap
+
+In NAV, directional movement keeps travelling beyond the visible canvas. Once
+the cursor reaches the configured canvas.scrolloff margin, RoomPlan pans the
+viewport in that direction while keeping the cursor inside the margin.
   s / S          save / save as
 
 Forms:
@@ -318,6 +322,7 @@ errors; options are not silently ignored. The important defaults are: >lua
       max_mm_per_column = 100000,
       fit_margin_cells = 2,
       header_lines = 1,
+      scrolloff = 3,
       pan_step_cells = 5,
       pan_coarse_step_cells = 20,
       show_grid = false,

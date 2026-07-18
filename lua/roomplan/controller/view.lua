@@ -332,9 +332,37 @@ function M.attach(controller)
     if not cursor then return end
     local step = coarse and 5 or 1
     local width, height = canvas_size(session)
-    local row = util.clamp(cursor.row - dy * step, 0, height - 1)
-    local column = util.clamp(cursor.column + dx * step, 0, width - 1)
-    canvas.set_logical_cursor(session, row, column)
+    local target_row = cursor.row - dy * step
+    local target_column = cursor.column + dx * step
+    local viewport_module = require("roomplan.render.viewport")
+    local current = ensure_viewport(session)
+    local world_x, world_y = viewport_module.screen_to_world(current, target_column, target_row)
+    local next_viewport = viewport_module.ensure_visible(
+      current,
+      world_x,
+      world_y,
+      width,
+      height,
+      config.get().canvas.scrolloff
+    )
+    local scrolled = next_viewport.world_left_mm ~= current.world_left_mm
+      or next_viewport.world_top_mm ~= current.world_top_mm
+    if scrolled then
+      session.viewport = next_viewport
+      local handle = session.canvas and session.canvas.handle
+      if handle and canvas.redraw then
+        local rendered = canvas.redraw(handle, nil, next_viewport, { reason = "scrolloff" })
+        if not rendered then controller.refresh(session) end
+      else
+        controller.refresh(session)
+      end
+      target_column, target_row = viewport_module.world_to_screen(next_viewport, world_x, world_y)
+    end
+    canvas.set_logical_cursor(
+      session,
+      util.clamp(util.round(target_row), 0, height - 1),
+      util.clamp(util.round(target_column), 0, width - 1)
+    )
   end
 
   function controller.direction(session, dx, dy, scale)

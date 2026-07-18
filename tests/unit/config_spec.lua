@@ -43,6 +43,19 @@ describe("config", function()
     config.reset()
   end)
 
+  it("accepts a Neovim-style non-negative canvas scrolloff", function()
+    config.reset()
+    assert_equal(3, config.defaults().canvas.scrolloff)
+    assert_equal(6, config.setup({ canvas = { scrolloff = 6 } }).canvas.scrolloff)
+    assert_equal(0, config.setup({ canvas = { scrolloff = 0 } }).canvas.scrolloff)
+    for _, value in ipairs({ -1, 1.5 }) do
+      local ok, err = pcall(config.setup, { canvas = { scrolloff = value } })
+      assert_true(not ok)
+      assert_true(tostring(err):find("canvas.scrolloff", 1, true) ~= nil)
+    end
+    config.reset()
+  end)
+
   it("validates unknown keys without replacing prior config", function()
     config.reset()
     config.setup({ canvas = { open = "split" } })

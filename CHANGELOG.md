@@ -4,6 +4,12 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Added Neovim-style canvas edge following for NAV movement. `h/j/k/l` and
+  their coarse variants keep advancing through world space when the logical
+  cursor reaches the edge of a zoomed viewport; the canvas pans just enough to
+  preserve the configured `canvas.scrolloff` margin. The default is three
+  cells, zero waits for the actual edge, and the transient movement never
+  changes plan data or history.
 - Moved full-action search into the `?` popup. `/` now starts a visible search
   row, every typed character immediately reduces the grouped results, and
   `Enter` runs the first match while `Esc` returns to action navigation. It no
