@@ -15,14 +15,7 @@ local function context(focus, selection)
     kind = "section", section = "geometry", expanded = false,
   } or nil
   return {
-    model = {
-      rooms = { { id = "room-1" }, { id = "room-2" } },
-      furniture = {
-        { id = "chair-1", room_id = "room-1" },
-        { id = "chair-2", room_id = "room-1" },
-        { id = "chair-3", room_id = "room-1" },
-      },
-    },
+    model = { rooms = { { id = "room-1" }, { id = "room-2" } } },
     mode = "NAV",
     focus = focus,
     selection = selection,
@@ -37,9 +30,7 @@ describe("action registry", function()
   it("keeps persistent actions compact and sensitive to pane and selection", function()
     local furniture = { kind = "furniture", id = "chair-1" }
     local canvas = registry.primary(context("canvas", furniture))
-    assert_equal({ "edit", "resize_dimensions", "move", "align", "rotate", "delete", "help" }, ids(canvas))
-    assert_equal("Equal spacing", canvas[4].label)
-    assert_equal("A", canvas[4].key)
+    assert_equal({ "edit", "resize_dimensions", "move", "rotate", "delete", "help" }, ids(canvas))
     assert_true(canvas[#canvas].count > 0)
 
     local objects = registry.primary(context("objects", furniture))
@@ -196,13 +187,6 @@ describe("action registry", function()
     assert_equal("R", rotate.key)
     assert_equal(true, rotate.enabled)
     assert_equal(false, registry.get("rotate", context("canvas", { kind = "room", id = "room-main" })).enabled)
-
-    local sparse = context("canvas", { kind = "furniture", id = "chair-1" })
-    sparse.model.furniture = { sparse.model.furniture[1] }
-    local spacing = registry.get("align", sparse)
-    assert_equal("Equal spacing", spacing.label)
-    assert_equal(false, spacing.enabled)
-    assert_equal("Add at least three furniture items to this room", spacing.reason)
   end)
 
   it("prioritizes pane-local keys and respects mapping overrides", function()

@@ -60,10 +60,6 @@ placement. Press `m` to move the selected sofa, `r` to resize it live, `R` to
 rotate it, and `Esc` to
 leave MOVE mode.
 
-Once a room has at least three furniture items, select any one and press `A`
-to preview equal horizontal or vertical spacing. The two outer items stay
-fixed and applying the popup creates one undo step.
-
 ## 6. Add a window and outlet
 
 Press `W` to place a window on an exterior wall, then press `O` and choose a

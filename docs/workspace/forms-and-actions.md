@@ -58,15 +58,14 @@ references a project-local template, saving opens a second compact popup for
 other placed items. Lowercase `r` enters the same live resize directly for
 rooms, furniture, and project templates; uppercase `R` rotates furniture.
 
-Common actions are `a` (Add), `e` (Edit), `m` (Move), `A` (room alignment or
-equal furniture spacing), `r`
+Common actions are `a` (Add), `e` (Edit), `m` (Move), `A` (Align), `r`
 (live resize), `R` (rotate furniture), `y` (Duplicate), and `d` (Delete). `D`, `W`, `O`, and `F`
 open Door, Window, Outlet, and Furniture directly; the `a` Add menu uses
 lowercase `d`, `w`, `o`, and `f`. Deleting a room summarizes and confirms its
 cascading doors, windows, outlets, and furniture when deletion confirmation is
 enabled.
 
-Add Room and room alignment include **Allow invalid draft** for deliberate repair work.
+Add Room and Align include **Allow invalid draft** for deliberate repair work.
 It never hides the resulting diagnostics, and ordinary save rules still
 apply.
 

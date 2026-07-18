@@ -699,49 +699,6 @@ describe("controller lifecycle", function()
     cleanup()
   end)
 
-  it("distributes a room's furniture from the contextual A popup as one undo step", function()
-    cleanup()
-    local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))
-    h.truthy(controller.dispatch(session, {
-      type = "add_room",
-      room = model.new_room({
-        id = "room-spacing", name = "Spacing", origin_mm = { 0, 0 }, size_mm = { 10000, 4000 },
-      }),
-    }))
-    for index, item in ipairs({
-      { "furniture-left", 1000 },
-      { "furniture-middle", 3000 },
-      { "furniture-right", 8000 },
-    }) do
-      h.truthy(controller.dispatch(session, {
-        type = "add_furniture",
-        furniture = model.new_furniture({
-          id = item[1], room_id = "room-spacing", template_id = "builtin:chair",
-          name = index == 2 and "Middle" or item[1], position_mm = { item[2], 1000 },
-          size_mm = { 1000, 600, 700 },
-        }),
-      }))
-    end
-    session.selection = { kind = "furniture", id = "furniture-middle" }
-    local revision = session:revision_id()
-    local form = require("roomplan.ui.form")
-    local handle = h.truthy(controller.align_room(session))
-    h.eq("FURNITURE DISTRIBUTE", handle.spec.mode)
-    h.eq("Equal furniture spacing", handle.spec.title)
-    h.truthy(handle.state.field_index.axis)
-    local lines = table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
-    h.matches("outer two stay fixed", lines)
-    local applied, apply_err = form.apply(handle)
-    h.truthy(applied, vim.inspect(apply_err))
-    h.eq({ 4500, 1000 }, session:model().furniture[2].position_mm)
-    h.eq({ kind = "furniture", id = "furniture-middle" }, session.selection)
-    h.truthy(session:revision_id() ~= revision)
-    h.truthy(controller.undo(session))
-    h.eq({ 3000, 1000 }, session:model().furniture[2].position_mm)
-    controller.close(session, { bang = true })
-    cleanup()
-  end)
-
   it("refits the active canvas after runtime aspect calibration without editing the plan", function()
     cleanup()
     local runtime_config = require("roomplan.config")
