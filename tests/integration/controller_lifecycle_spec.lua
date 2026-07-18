@@ -196,6 +196,7 @@ describe("controller lifecycle", function()
     h.truthy(controller.direction(session, 1, 0, "normal"))
     h.eq(3000, session:model().rooms[1].footprint.parts[1].size_mm[1])
     h.eq(3100, session:current_model().rooms[1].footprint.parts[1].size_mm[1])
+    h.eq("right 100 mm", session.room_shape_edit.move_feedback)
     h.eq(revision, session:revision_id())
 
     h.truthy(controller.add_room_shape_part(session))

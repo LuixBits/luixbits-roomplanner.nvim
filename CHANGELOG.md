@@ -4,6 +4,13 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Added a one-line contextual selection breadcrumb to the existing action bar.
+  Rooms, furniture, doors, windows, outlets, and project templates use their
+  semantic colors and concise owner/object labels; MOVE and RESIZE add active
+  direction, distance, edge, section, and snap-target feedback. It introduces
+  no mappings or popups, hides without a useful selection, stays bounded in
+  wide/medium/compact layouts, and never displaces action hints that previously
+  fit.
 - Added schema v4 wall/floor outlet placement with a sequential v3-to-v4
   migration. Wall outlets render as half circles pointing into their room;
   floor outlets use full circles and validated room-local positions. The `?`

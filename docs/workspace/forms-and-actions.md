@@ -38,6 +38,12 @@ Press `/` in that window to search labels, descriptions, groups, IDs, and keys;
 submit an empty search to restore the complete list.
 `:RoomPlan` opens the same context-aware action surface for the active session.
 
+A useful selection also adds a short room/object breadcrumb to that same line;
+MOVE and RESIZE extend it with direction, distance, section/edge, and snap
+feedback. It adds no mapping, never replaces an action hint that already fits,
+and is clipped with the rest of the one-line status on narrow layouts. Complete
+properties remain in Details rather than being repeated in the footer.
+
 Common actions are `a` (Add), `e` (Edit), `m` (Move), `A` (Align), `r`
 (resize a room or rotate furniture), `y` (Duplicate), and `d` (Delete). `D`, `W`, `O`, and `F`
 open Door, Window, Outlet, and Furniture directly; the `a` Add menu uses

@@ -130,6 +130,7 @@ function M.attach(controller)
     local step = scale == "fine" and settings.fine_step_mm
       or scale == "coarse" and settings.coarse_step_mm
       or settings.normal_step_mm
+    local direction_label = dx < 0 and "left" or dx > 0 and "right" or dy < 0 and "down" or "up"
     dx, dy = require("roomplan.render.viewport").view_delta_to_world(ensure_viewport(resolved), dx, dy)
     local owner = room_for(resolved, edit)
     local snap_options = common.snapping_options(resolved)
@@ -138,6 +139,7 @@ function M.attach(controller)
       origin_mm = owner and owner.origin_mm,
       options = snap_options,
     })
+    if next_edit then next_edit.move_feedback = string.format("%s %d mm", direction_label, step) end
     resolved.bypass_snap_once = false
     return update(resolved, next_edit, shape_err)
   end

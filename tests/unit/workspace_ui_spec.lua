@@ -243,6 +243,83 @@ describe("workspace UI", function()
     assert_equal(2, ctx.zoom)
   end)
 
+  it("builds concise selection and interaction breadcrumbs from presenter data", function()
+    local plan = fixture()
+    plan.schema_version = 4
+    plan.windows = {}
+    plan.outlets = {
+      {
+        id = "outlet-floor", room_id = "room-living", placement = "floor",
+        position_mm = { 500, 500 }, outlet_type = "power", slots = 2,
+      },
+    }
+    plan.furniture[1].category = "seating"
+
+    local outlet = presenter.context({
+      model = plan,
+      selection = { kind = "outlet", id = "outlet-floor" },
+      mode = "NAV",
+    })
+    assert_equal("Living › Floor outlet · Power · 2 slots", outlet.breadcrumb.text)
+    assert_equal("RoomPlanWorkspaceOutlet", outlet.breadcrumb.hl_group)
+
+    assert_equal("Living › Door · East → Bedroom", presenter.context({
+      model = plan,
+      selection = { kind = "door", id = "door-shared" },
+      mode = "NAV",
+    }).breadcrumb.text)
+    plan.windows[1] = {
+      id = "window-north", room_id = "room-living", side = "north",
+      connects_to_room_id = nil, offset_mm = 500, width_mm = 1200,
+    }
+    assert_equal("Living › Window · North → outside", presenter.context({
+      model = plan,
+      selection = { kind = "window", id = "window-north" },
+      mode = "NAV",
+    }).breadcrumb.text)
+    plan.custom_templates[1] = {
+      id = "custom:desk", name = "My desk", category = "work",
+      default_size_mm = { 1600, 800, 740 },
+    }
+    assert_equal("Project template › My desk · work", presenter.context({
+      model = plan,
+      selection = { kind = "template", id = "custom:desk" },
+      mode = "NAV",
+    }).breadcrumb.text)
+
+    local furniture = presenter.context({
+      model = plan,
+      selection = { kind = "furniture", id = "sofa-1" },
+      mode = "MOVE",
+      move_feedback = "right 100 mm",
+    })
+    furniture.snap_summary = "X → Bedroom west wall"
+    furniture.breadcrumb = presenter.breadcrumb(plan, furniture)
+    assert_equal(
+      "Living › Sofa · seating · MOVE · right 100 mm · snap: X → Bedroom west wall",
+      furniture.breadcrumb.text
+    )
+
+    local resize = presenter.breadcrumb(plan, {
+      selection = { kind = "room", id = "room-living" },
+      mode = "RESIZE",
+      shape_section_index = 2,
+      shape_section_count = 3,
+      shape_edge = "west",
+      shape_feedback = "left 10 mm",
+      shape_snap = "X → Bedroom west wall",
+    })
+    assert_equal(
+      "Living · RESIZE section 2/3 · west edge · left 10 mm · snap: X → Bedroom west wall",
+      resize.text
+    )
+    assert_equal(nil, presenter.context({
+      model = plan,
+      selection = { kind = "plan" },
+      mode = "NAV",
+    }).breadcrumb)
+  end)
+
   it("reports contextual actions, disabled reasons, and explicit interaction modes", function()
     local empty = { model = { rooms = {} }, mode = "NAV", focus = "canvas", snap_enabled = true }
     local actions = registry.contextual(empty)
@@ -356,6 +433,44 @@ describe("workspace UI", function()
     nav_ctx.detail_level = "middle"
     local nav_bar = action_bar.render(nav_ctx, 100, { height = 1 })
     assert_true(nav_bar.lines[1]:find("DETAIL MIDDLE", 1, true) ~= nil)
+  end)
+
+  it("keeps contextual breadcrumbs useful in wide, medium, and compact action bars", function()
+    local session = {
+      model = fixture(),
+      selection = { kind = "furniture", id = "sofa-1" },
+      validation = {},
+      mode = "MOVE",
+      move_feedback = "right 100 mm",
+      snap_enabled = true,
+      model_dirty = function() return false end,
+    }
+    local ctx = presenter.context(session)
+    ctx.can_undo = true
+    ctx.can_redo = false
+    ctx.focus = "canvas"
+
+    for _, width in ipairs({ 120, 90, 55 }) do
+      local bar = action_bar.render(ctx, width, { height = 1 })
+      assert_equal(1, #bar.lines)
+      assert_true(vim.fn.strdisplaywidth(bar.lines[1]) <= width)
+      assert_true(bar.lines[1]:find("Living", 1, true) ~= nil, "missing breadcrumb at width " .. width)
+      assert_equal(ctx.breadcrumb.text, bar.breadcrumb.text)
+    end
+
+    local wide = action_bar.render(ctx, 160, { height = 1 })
+    local _, move_count = wide.status:gsub("MOVE", "")
+    assert_equal(1, move_count)
+    local furniture_highlight
+    for _, highlight in ipairs(wide.highlights) do
+      if highlight.hl_group == "RoomPlanWorkspaceFurniture" then furniture_highlight = highlight end
+    end
+    assert_true(furniture_highlight ~= nil)
+
+    session.selection = nil
+    local empty = action_bar.render(presenter.context(session), 90, { height = 1 })
+    assert_equal(nil, empty.breadcrumb)
+    assert_true(empty.lines[1]:find("›", 1, true) == nil)
   end)
 
   it("keeps the workspace facade API stable", function()

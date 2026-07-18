@@ -20,10 +20,10 @@ and raster logic deterministic and directly testable.
 ## Model and mutation
 
 `schema` is the persisted-data authority; its small facade dispatches to shared
-JSON-safe primitives and explicit version normalizers. Schema v3 is the active
-reader/writer; schema v1 and v2 enter through sequential migrations. Load
+JSON-safe primitives and explicit version normalizers. Schema v4 is the active
+reader/writer; schema v1, v2, and v3 enter through sequential migrations. Load
 records migration metadata without rewriting source bytes, and the first
-explicit save establishes the v3 durable revision. The strict JSON codec
+explicit save establishes the v4 durable revision. The strict JSON codec
 preserves the difference between arrays, objects, null, and exact decimal
 input. `model` constructs immutable-by-convention snapshots. Every user-visible
 mutation goes
