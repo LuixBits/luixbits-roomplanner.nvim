@@ -1,7 +1,8 @@
--- Pure draft operations for direct compound room and placed-furniture shape
--- editing. Drafts retain the complete tagged footprint and become one semantic
--- edit action on commit. The legacy module name is kept as an internal import
--- path while both object kinds share this single implementation authority.
+-- Pure draft operations for direct compound room, placed-furniture, and
+-- project-template shape editing. Drafts retain the complete tagged footprint
+-- and become one semantic edit action on commit. The legacy module name is
+-- kept as an internal import path while all object kinds share this single
+-- implementation authority.
 
 local geometry = require("roomplan.geometry.footprint")
 local shape_snapping = require("roomplan.room_shape.snapping")
@@ -15,14 +16,18 @@ local function failure(code, message, details)
 end
 
 local function entity(model, kind, id)
-  local collection = kind == "furniture" and model.furniture or model.rooms
+  local collection = kind == "furniture" and model.furniture
+    or kind == "template" and model.custom_templates
+    or model.rooms
   for _, candidate in ipairs(collection or {}) do
     if candidate.id == id then return candidate end
   end
 end
 
 local function noun(edit)
-  return edit.kind == "furniture" and "furniture" or "room"
+  if edit.kind == "furniture" then return "furniture" end
+  if edit.kind == "template" then return "project template" end
+  return "room"
 end
 
 local function selected(edit)
@@ -34,7 +39,7 @@ end
 local function valid_footprint(edit, value)
   local runtime, err = geometry.from_persisted(value)
   if err then return failure(err.code or "ROOM_SHAPE_INVALID", err.message or "the room shape is invalid", err.details) end
-  if edit.kind == "furniture" then
+  if edit.kind == "furniture" or edit.kind == "template" then
     local anchor = edit.anchor2_mm
     local contains, anchor_err = type(anchor) == "table"
       and geometry.contains_point2(runtime, anchor[1], anchor[2]) or false
@@ -70,23 +75,28 @@ end
 
 function M.start(model, entity_id, revision_id, kind)
   kind = kind or "room"
-  if kind ~= "room" and kind ~= "furniture" then
-    return failure("SHAPE_KIND", "shape editing supports rooms and placed furniture")
+  if kind ~= "room" and kind ~= "furniture" and kind ~= "template" then
+    return failure("SHAPE_KIND", "shape editing supports rooms, placed furniture, and project templates")
   end
   local source = entity(model, kind, entity_id)
-  if not source or type(source.footprint) ~= "table" or not source.footprint.parts[1] then
+  local source_footprint = kind == "template" and source and source.default_footprint
+    or source and source.footprint
+  if not source or type(source_footprint) ~= "table" or not source_footprint.parts[1] then
     return failure("SHAPE_UNAVAILABLE", "select a compound-schema " .. kind .. " before editing its shape")
   end
+  local anchor = kind == "furniture" and source.anchor2_mm
+    or kind == "template" and source.default_anchor2_mm
   return {
     kind = kind,
     entity_id = entity_id,
     room_id = kind == "room" and entity_id or source.room_id,
     base_revision_id = revision_id,
-    original_footprint = util.deepcopy(source.footprint),
-    footprint = util.deepcopy(source.footprint),
-    anchor2_mm = kind == "furniture" and util.deepcopy(source.anchor2_mm) or nil,
+    original_footprint = util.deepcopy(source_footprint),
+    footprint = util.deepcopy(source_footprint),
+    anchor2_mm = anchor and util.deepcopy(anchor) or nil,
+    template_id = kind == "furniture" and source.template_id or nil,
     rotation_deg = kind == "furniture" and (source.rotation_deg or 0) or 0,
-    selected_part_id = source.footprint.parts[1].id,
+    selected_part_id = source_footprint.parts[1].id,
     snap_guides = {},
     snap_exclusions = {},
     resize_edges = {},
@@ -97,7 +107,8 @@ function M.preview_model(model, edit)
   local result = util.deepcopy(model)
   local target = entity(result, edit.kind or "room", edit.entity_id or edit.room_id)
   if not target then return failure("SHAPE_STALE", "the edited " .. noun(edit) .. " no longer exists") end
-  target.footprint = util.deepcopy(edit.footprint)
+  if edit.kind == "template" then target.default_footprint = util.deepcopy(edit.footprint)
+  else target.footprint = util.deepcopy(edit.footprint) end
   return result
 end
 
@@ -272,7 +283,7 @@ function M.remove(edit, model)
   end
   local _, index = selected(edit)
   if not index then return failure("SHAPE_SELECTION", "the selected section no longer exists") end
-  local used = edit.kind == "furniture" and {} or references(model, edit.room_id, edit.selected_part_id)
+  local used = edit.kind == "room" and references(model, edit.room_id, edit.selected_part_id) or {}
   if #used > 0 then
     return failure("ROOM_SHAPE_PART_IN_USE", "move or remove attached objects first: " .. table.concat(used, ", "))
   end
@@ -307,7 +318,22 @@ function M.is_changed(edit)
   return not json.deep_equal(edit.original_footprint, edit.footprint)
 end
 
-function M.action(edit)
+function M.action(edit, scope)
+  if edit.kind == "template" then
+    return {
+      type = "edit_custom_template",
+      id = edit.entity_id,
+      patch = { default_footprint = util.deepcopy(edit.footprint) },
+    }
+  end
+  if edit.kind == "furniture" and scope == "template" then
+    return {
+      type = "edit_furniture_template_shape",
+      id = edit.entity_id,
+      template_id = edit.template_id,
+      footprint = util.deepcopy(edit.footprint),
+    }
+  end
   return {
     type = edit.kind == "furniture" and "edit_furniture" or "edit_room",
     id = edit.entity_id or edit.room_id,

@@ -1,5 +1,6 @@
--- Direct canvas room and placed-furniture shape editing. It previews a complete
--- shape but commits exactly one semantic entity edit when the user applies it.
+-- Direct canvas room, placed-furniture, and project-template shape editing. It
+-- previews a complete shape but commits exactly one semantic history change
+-- when the user applies it.
 
 local config = require("roomplan.config")
 local model = require("roomplan.model")
@@ -56,6 +57,10 @@ function M.attach(controller)
   end
 
   local function clear(session)
+    local edit = active(session)
+    if edit and edit.kind == "template" then
+      session.viewport = edit.previous_viewport and util.deepcopy(edit.previous_viewport) or nil
+    end
     session.shape_edit = nil
     session.preview_model = nil
     common.clear_snap_feedback(session)
@@ -80,6 +85,8 @@ function M.attach(controller)
     if edit.kind == "furniture" then
       local owner = model.find(value, "room", target.room_id)
       return owner and geometry.from_furniture(owner, target) or nil
+    elseif edit.kind == "template" then
+      return geometry.from_persisted(target.default_footprint)
     end
     return geometry.from_room(target)
   end
@@ -107,15 +114,18 @@ function M.attach(controller)
     local selection = resolved.selection
     kind = kind or (selection and selection.kind)
     entity_id = entity_id or (selection and selection.id)
-    if kind ~= "room" and kind ~= "furniture" then
-      return notify_error(util.err("SHAPE_REQUIRED", "select a room or placed furniture item before editing its shape"))
+    if kind ~= "room" and kind ~= "furniture" and kind ~= "template" then
+      return notify_error(util.err("SHAPE_REQUIRED",
+        "select a room, placed furniture item, or project template before editing its shape"))
     end
     if not entity_id then return notify_error(util.err("SHAPE_REQUIRED", "select an object before editing its shape")) end
     local edit, start_err = room_shape.start(resolved:model(), entity_id, resolved:revision_id(), kind)
     if not edit then return notify_error(start_err) end
+    if kind == "template" then edit.previous_viewport = util.deepcopy(resolved.viewport) end
     local result, publish_err = publish(resolved, edit)
     if not result then return notify_error(publish_err) end
     controller.focus_canvas(resolved)
+    if kind == "template" then controller.fit(resolved, { focus_selection = true, immediate = true }) end
     return result
   end
 
@@ -208,7 +218,7 @@ function M.attach(controller)
     return update(resolved, room_shape.remove(edit, resolved:model()))
   end
 
-  function controller.apply_room_shape_edit(session)
+  function controller.apply_room_shape_edit(session, scope)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
     local edit = active(resolved)
@@ -217,7 +227,7 @@ function M.attach(controller)
       return notify_error(util.err("SHAPE_STALE", "the plan changed; cancel and restart shape editing"))
     end
     if not room_shape.is_changed(edit) then clear(resolved); return true end
-    local result, dispatch_err = controller.dispatch(resolved, room_shape.action(edit))
+    local result, dispatch_err = controller.dispatch(resolved, room_shape.action(edit, scope))
     if not result then return notify_error(dispatch_err) end
     clear(resolved)
     return result
@@ -280,7 +290,37 @@ function M.attach(controller)
   end
   controller.save = function(session, ...)
     if active(session) then
-      local applied, err = controller.apply_room_shape_edit(session)
+      local edit = active(session)
+      local source_template = edit.kind == "furniture" and edit.template_id
+        and model.find(session:model(), "template", edit.template_id) or nil
+      if room_shape.is_changed(edit) and source_template then
+        local save_args = { ... }
+        return require("roomplan.ui.palette").open({
+          session = session,
+          title = "Save furniture shape",
+          items = {
+            {
+              key = "i",
+              label = "This item only",
+              description = "Keep the project template and every other placed item unchanged.",
+              callback = function()
+                local applied = controller.apply_room_shape_edit(session, "item")
+                if applied then base.save(session, unpack(save_args)) end
+              end,
+            },
+            {
+              key = "t",
+              label = "Item + project template",
+              description = "Use this shape for future placements; existing other items stay unchanged.",
+              callback = function()
+                local applied = controller.apply_room_shape_edit(session, "template")
+                if applied then base.save(session, unpack(save_args)) end
+              end,
+            },
+          },
+        })
+      end
+      local applied, err = controller.apply_room_shape_edit(session, "item")
       if not applied then return nil, err end
     end
     return base.save(session, ...)

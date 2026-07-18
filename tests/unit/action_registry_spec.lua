@@ -175,6 +175,17 @@ describe("action registry", function()
     assert_equal(false, registry.get("edit_shape", context("canvas", {
       kind = "room", id = "room-main",
     })).enabled)
+
+    local template_ctx = context("canvas", { kind = "template", id = "custom:sectional" })
+    local template_action = registry.get("edit_shape", template_ctx)
+    assert_equal(true, template_action.enabled)
+    assert_equal(nil, template_action.key)
+    assert_equal("Edit template shape", template_action.label)
+    local template_found = false
+    for _, candidate in ipairs(registry.full(template_ctx)) do
+      if candidate.id == "edit_shape" then template_found = true end
+    end
+    assert_equal(true, template_found)
   end)
 
   it("prioritizes pane-local keys and respects mapping overrides", function()

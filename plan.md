@@ -29,11 +29,13 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   semantic colours, and responsive workspace drawers. Wall outlets use
   view-aware inward-facing half circles; floor outlets use full circles and
   remain strictly inside their owner room.
-- Placed furniture reuses the direct compound section editor from the full
-  action popup without adding a mapping. Quarter-turned edge movement and
-  snapping operate in world space while the explicit doubled-mm anchor stays
-  fixed; apply is one undoable furniture edit and never silently rewrites its
-  source template.
+- Placed furniture and project templates reuse the direct compound section
+  editor from the full action popup without adding a mapping. Quarter-turned
+  furniture movement and snapping operate in world space; templates use an
+  isolated local preview. Explicit doubled-mm anchors stay fixed. A compact
+  popup chooses item-only or item-plus-template scope, commits one undo step,
+  and never silently rewrites other placed items. Saved project catalogues
+  round-trip the edited default for future placements.
 - The complete `?` action window has an in-popup `/` search row that filters
   actions after every character without changing the immediate one-key Add
   menu. Adjacent unshifted `,` and `.` keys zoom out and in for Swiss, compact,
@@ -46,14 +48,7 @@ writer. Compound footprints are connected, hole-free unions of at most 256
 axis-aligned rectangles. Angled walls and arbitrary polygons are deliberately
 outside the current model.
 
-## Next — extend compound authoring
-
-- Reuse that interaction for project templates, with an explicit placed-item
-  versus update-template choice and tested catalogue round trips.
-- Add further room/furniture presets only when they reduce common editing work
-  without creating parallel geometry representations.
-
-## Stable physical walls and openings
+## Next — stable physical walls and openings
 
 - Promote transient exterior/shared-boundary topology to reconciled persistent
   wall identity, representing each physical shared wall once.
@@ -98,6 +93,8 @@ outside the current model.
 
 ## UI/UX backlog
 
+- Further room/furniture presets only when they reduce common editing work
+  without creating parallel geometry representations.
 - Equal-spacing constraints.
 - Minimap drawer and named view presets.
 - Undo-history drawer, grouping, locking, and layer visibility.

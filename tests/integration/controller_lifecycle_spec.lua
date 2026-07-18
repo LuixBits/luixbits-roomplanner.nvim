@@ -317,6 +317,119 @@ describe("controller lifecycle", function()
     cleanup()
   end)
 
+  it("edits a project template in an isolated preview and round-trips it", function()
+    cleanup()
+    local path = temp(".roomplan.json")
+    local session = h.truthy(controller.init_source(nil, { path = path }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_custom_template",
+      template = model.new_custom_template({
+        id = "custom:sectional", name = "Sectional", category = "seating",
+        default_anchor2_mm = { 1000, 500 }, default_height_mm = 800,
+        default_footprint = model.rectangle_footprint({ 1000, 500 }),
+      }),
+    }))
+    session.selection = { kind = "template", id = "custom:sectional" }
+    local previous_viewport = model.deep_copy(session.viewport)
+    local revision = session:revision_id()
+
+    h.truthy(controller.edit_selected_shape(session))
+    h.eq("template", session.shape_edit.kind)
+    h.eq("RESIZE", session.mode)
+    local preview_scene = require("roomplan.scene.build").build(session:current_model(), nil, {
+      shape_edit = session.shape_edit, detail_level = "none",
+    })
+    h.eq(1, #preview_scene.objects)
+    h.eq("template", preview_scene.objects[1].type)
+    h.truthy(controller.direction(session, 1, 0, "normal"))
+    h.eq(1100, session:current_model().custom_templates[1].default_footprint.parts[1].size_mm[1])
+    h.eq(1000, session:model().custom_templates[1].default_footprint.parts[1].size_mm[1])
+    h.eq(revision, session:revision_id())
+
+    h.truthy(controller.save(session, { quiet = true, noninteractive = true }))
+    h.eq("NAV", session.mode)
+    h.eq(nil, session.shape_edit)
+    h.eq(previous_viewport, session.viewport)
+    h.eq(1100, session:model().custom_templates[1].default_footprint.parts[1].size_mm[1])
+    h.eq(1100, h.truthy(model.decode(source.read_file(path))).custom_templates[1]
+      .default_footprint.parts[1].size_mm[1])
+    h.truthy(controller.undo(session))
+    h.eq(1000, session:model().custom_templates[1].default_footprint.parts[1].size_mm[1])
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
+  it("uses an in-popup scope choice to update one item and its template as one undo step", function()
+    cleanup()
+    local path = temp(".roomplan.json")
+    local session = h.truthy(controller.init_source(nil, { path = path }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_room",
+      room = model.new_room({
+        id = "room-template", name = "Template room", origin_mm = { 0, 0 }, size_mm = { 4000, 3000 },
+      }),
+    }))
+    h.truthy(controller.dispatch(session, {
+      type = "add_custom_template",
+      template = model.new_custom_template({
+        id = "custom:sectional", name = "Sectional", category = "seating",
+        default_anchor2_mm = { 1000, 500 }, default_height_mm = 800,
+        default_footprint = model.rectangle_footprint({ 1000, 500 }),
+      }),
+    }))
+    for index, id in ipairs({ "furniture-edited", "furniture-peer" }) do
+      h.truthy(controller.dispatch(session, {
+        type = "add_furniture",
+        furniture = model.new_furniture({
+          id = id, room_id = "room-template", template_id = "custom:sectional",
+          name = id, category = "seating", position_mm = { index * 1300 - 300, 1000 },
+          anchor2_mm = { 1000, 500 }, height_mm = 800,
+          footprint = model.rectangle_footprint({ 1000, 500 }),
+        }),
+      }))
+    end
+    session.selection = { kind = "furniture", id = "furniture-edited" }
+    session.snap_enabled = false
+    h.truthy(controller.edit_selected_shape(session))
+    h.truthy(controller.direction(session, 1, 0, "normal"))
+
+    local palette = h.truthy(controller.save(session, { quiet = true, noninteractive = true }))
+    h.eq("Save furniture shape", palette.title)
+    h.eq("This item only", palette.items[1].label)
+    h.eq("Item + project template", palette.items[2].label)
+    h.truthy(session.shape_edit)
+    h.eq(1000, session:model().custom_templates[1].default_footprint.parts[1].size_mm[1])
+    h.truthy(require("roomplan.ui.palette").choose(palette, palette.items[1]))
+    h.truthy(vim.wait(1000, function() return session.shape_edit == nil end, 10))
+
+    h.eq(1100, session:model().furniture[1].footprint.parts[1].size_mm[1])
+    h.eq(1000, session:model().custom_templates[1].default_footprint.parts[1].size_mm[1])
+    h.eq(1000, session:model().furniture[2].footprint.parts[1].size_mm[1])
+    h.truthy(controller.undo(session))
+    h.eq(1000, session:model().furniture[1].footprint.parts[1].size_mm[1])
+
+    session.selection = { kind = "furniture", id = "furniture-edited" }
+    h.truthy(controller.edit_selected_shape(session))
+    h.truthy(controller.direction(session, 1, 0, "normal"))
+    palette = h.truthy(controller.save(session, { quiet = true, noninteractive = true }))
+    h.truthy(require("roomplan.ui.palette").choose(palette, palette.items[2]))
+    h.truthy(vim.wait(1000, function() return session.shape_edit == nil end, 10))
+
+    h.eq(1100, session:model().furniture[1].footprint.parts[1].size_mm[1])
+    h.eq(1100, session:model().custom_templates[1].default_footprint.parts[1].size_mm[1])
+    h.eq(1000, session:model().furniture[2].footprint.parts[1].size_mm[1])
+    h.eq(false, session:model_dirty())
+    local reopened = h.truthy(model.decode(source.read_file(path)))
+    h.eq(1100, reopened.custom_templates[1].default_footprint.parts[1].size_mm[1])
+    h.eq(1000, reopened.furniture[2].footprint.parts[1].size_mm[1])
+
+    h.truthy(controller.undo(session))
+    h.eq(1000, session:model().furniture[1].footprint.parts[1].size_mm[1])
+    h.eq(1000, session:model().custom_templates[1].default_footprint.parts[1].size_mm[1])
+    controller.close(session, { bang = true })
+    cleanup()
+  end)
+
   it("keeps window and outlet selections stable through movement, history, duplication, and deletion", function()
     cleanup()
     local session = h.truthy(controller.init_source(nil, { path = temp(".roomplan.json") }))

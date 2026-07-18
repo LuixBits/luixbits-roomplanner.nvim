@@ -396,7 +396,14 @@ mapping. Select it, press ?, then / and type "shape"; Enter runs the matching
 Edit furniture shape action. RESIZE uses Enter/Tab to select sections,
 h/j/k/l to choose and move visible edges, a/d to add/remove, s to apply and
 save, and Esc to cancel. Its explicit anchor and position stay fixed. Invalid
-anchor-removing edits are rejected, and the source template is not rewritten.
+anchor-removing edits are rejected. When it references a project template, s
+opens a RoomPlan popup: update this item only, or update the item plus the
+future-placement template as one undo step. Other placed items never change.
+
+Project templates have the same unmapped Edit template shape action. Select a
+top-level template row, search the ? popup for "shape", and edit its isolated
+local preview. Saving changes future placements only and restores the plan
+viewport; existing furniture keeps explicit geometry.
 
 RoomPlan includes generic built-in templates. Add process-wide defaults inline
 or load one or more dependency-free JSON files. Set

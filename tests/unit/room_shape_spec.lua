@@ -76,6 +76,53 @@ describe("direct room resize drafts", function()
     h.eq("FURNITURE_SHAPE_ANCHOR", anchor_err.code)
   end)
 
+  it("edits project templates in local coordinates without mutating placed items", function()
+    local plan = fixture()
+    plan.custom_templates[1] = model.new_custom_template({
+      id = "custom:sectional",
+      name = "Sectional",
+      category = "seating",
+      default_anchor2_mm = { 1000, 500 },
+      default_footprint = model.rectangle_footprint({ 1000, 500 }),
+      default_height_mm = 800,
+    })
+    plan.furniture[1] = model.new_furniture({
+      id = "furniture-section",
+      room_id = "room-main",
+      template_id = "custom:sectional",
+      name = "Placed sectional",
+      category = "seating",
+      position_mm = { 1500, 1000 },
+      anchor2_mm = { 1000, 500 },
+      footprint = model.rectangle_footprint({ 1000, 500 }),
+      height_mm = 800,
+    })
+
+    local edit = h.truthy(room_shape.start(plan, "custom:sectional", 9, "template"))
+    h.eq("template", edit.kind)
+    h.eq({ 1000, 500 }, edit.anchor2_mm)
+    edit = h.truthy(room_shape.direction(edit, 1, 0, 100, { max_dimension_mm = 100000 }))
+    h.eq(1100, edit.footprint.parts[1].size_mm[1])
+    h.eq(1000, plan.custom_templates[1].default_footprint.parts[1].size_mm[1])
+    h.eq(1000, plan.furniture[1].footprint.parts[1].size_mm[1])
+
+    local preview = h.truthy(room_shape.preview_model(plan, edit))
+    h.eq(1100, preview.custom_templates[1].default_footprint.parts[1].size_mm[1])
+    h.eq(1000, preview.furniture[1].footprint.parts[1].size_mm[1])
+    local action = room_shape.action(edit)
+    h.eq("edit_custom_template", action.type)
+    h.eq("custom:sectional", action.id)
+
+    local furniture_edit = h.truthy(room_shape.start(plan, "furniture-section", 9, "furniture"))
+    furniture_edit = h.truthy(room_shape.direction(
+      furniture_edit, 1, 0, 100, { max_dimension_mm = 100000 }
+    ))
+    local combined = room_shape.action(furniture_edit, "template")
+    h.eq("edit_furniture_template_shape", combined.type)
+    h.eq("custom:sectional", combined.template_id)
+    h.eq(nil, combined.anchor2_mm)
+  end)
+
   it("snaps quarter-turned furniture edges in world space", function()
     local plan = fixture()
     plan.rooms[2] = model.new_room({

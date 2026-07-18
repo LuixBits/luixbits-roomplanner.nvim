@@ -10,17 +10,19 @@ local function schema_version(context)
 end
 
 local function editable_rectangle(template, version)
-  if version < 2 then return true, template.default_size_mm end
+  if version < 2 then return true, template.default_size_mm, "rectangle" end
   local parts = template.default_footprint and template.default_footprint.parts
   local part = parts and #parts == 1 and parts[1] or nil
   local anchor = template.default_anchor2_mm
-  if not part or part.id ~= "part-main" or not part.origin_mm or not part.size_mm
-    or part.origin_mm[1] ~= 0 or part.origin_mm[2] ~= 0
-    or not anchor or anchor[1] ~= part.size_mm[1] or anchor[2] ~= part.size_mm[2]
-  then
-    return false, { nil, nil, template.default_height_mm }
+  if not part then
+    return false, { nil, nil, template.default_height_mm }, "compound"
   end
-  return true, { part.size_mm[1], part.size_mm[2], template.default_height_mm }
+  if part.id ~= "part-main" or not part.origin_mm or not part.size_mm
+    or part.origin_mm[1] ~= 0 or part.origin_mm[2] ~= 0
+    or not anchor or anchor[1] ~= part.size_mm[1] or anchor[2] ~= part.size_mm[2] then
+    return false, { nil, nil, template.default_height_mm }, "custom anchor"
+  end
+  return true, { part.size_mm[1], part.size_mm[2], template.default_height_mm }, "rectangle"
 end
 
 function M.edit(session, template)
@@ -29,13 +31,13 @@ function M.edit(session, template)
   local context = { session = session, template_id = template.id }
   local maximum = config.get().limits.max_dimension_mm
   local version = schema_version(context)
-  local can_resize, size = editable_rectangle(template, version)
+  local can_resize, size, shape_label = editable_rectangle(template, version)
   local spec = {
     id = "edit-template",
     title = "Edit custom furniture template",
     mode = "TEMPLATE EDIT",
     description = can_resize and "Furniture already using this template keeps its explicit dimensions."
-      or "Compound geometry is preserved; metadata and default height remain editable.",
+      or "Shape geometry is preserved here; use More → Edit template shape for direct canvas editing.",
     apply_label = "Apply template changes",
     context = context,
     initial = {
@@ -63,7 +65,10 @@ function M.edit(session, template)
   else
     spec.fields[#spec.fields + 1] = {
       key = "footprint", label = "Footprint", type = "readonly",
-      value = function() return string.format("%d parts (preserved)", #(template.default_footprint.parts or {})) end,
+      value = function()
+        return string.format("%d part%s · %s", #(template.default_footprint.parts or {}),
+          #(template.default_footprint.parts or {}) == 1 and "" or "s", shape_label)
+      end,
     }
   end
   spec.fields[#spec.fields + 1] = {
@@ -71,7 +76,7 @@ function M.edit(session, template)
   }
   spec.fields[#spec.fields + 1] = {
     key = "shape", label = "Shape", type = "readonly",
-    value = function() return can_resize and "rectangle" or "compound" end,
+    value = function() return shape_label end,
   }
   spec.preview = function(draft)
     local geometry = can_resize and string.format("%d x %d x %d mm", draft.width_mm,

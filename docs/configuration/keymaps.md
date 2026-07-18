@@ -63,20 +63,23 @@ Canvas direction keys (`h j k l`, uppercase variants, and Ctrl variants) can be
 overridden by their literal default left-hand sides. PAN uses the same keys in
 a different mode; `zh zj zk zl` are direct pan aliases.
 
-## Direct room resizing
+## Direct compound-shape resizing
 
-Select a room and press `r`; no form step is required.
+Select a room and press `r`; no form step is required. For placed furniture or
+a project template, open `?`, press `/`, and search for `shape`. The
+`edit_shape` action deliberately has no default mapping, so the persistent UI
+stays compact while all three object kinds share the controls below.
 
 | Default | Semantic name | Action |
 | --- | --- | --- |
 | `Enter` | `select` | Select section under the cursor |
-| `Tab` / `Shift-Tab` | `shape_next` / `shape_previous` | Cycle room sections |
+| `Tab` / `Shift-Tab` | `shape_next` / `shape_previous` | Cycle shape sections |
 | `h j k l` | literal keys | Choose west/south/north/east first, then move that edge by the normal step |
 | `H J K L` | literal keys | Resize by the coarse step |
 | `Ctrl-h/j/k/l` | literal keys | Resize by the fine step |
 | `a` / `d` | `add` / `delete` | Add / remove a section |
 | `gs` / `g!` | `toggle_snap` / `bypass_snap` | Toggle snapping / bypass the next change |
-| `s` | `save` | Commit the room resize and save the plan |
+| `s` | `save` | Commit the resize and save; project-linked furniture first chooses item or template scope in a popup |
 | `Esc` | `escape` | Cancel without changing the model |
 
 ## Forms and action windows

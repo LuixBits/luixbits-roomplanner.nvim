@@ -353,6 +353,36 @@ function handlers.edit_furniture(model, action)
     touched = { touched("furniture", furniture.id) } }
 end
 
+-- Update one placed item's explicit geometry and its project-template default
+-- atomically. Other placed items intentionally retain their explicit shapes.
+function handlers.edit_furniture_template_shape(model, action)
+  local furniture = find(model.furniture, action.id)
+  if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id }) end
+  if type(action.footprint) ~= "table" then
+    return nil, failure("INVALID_ACTION", "edit_furniture_template_shape requires a footprint")
+  end
+  local template = find(model.custom_templates, action.template_id)
+  if not template then
+    return nil, failure("NOT_FOUND", "project template was not found", { id = action.template_id })
+  end
+  if furniture.template_id ~= template.id then
+    return nil, failure("TEMPLATE_CHANGED", "the furniture no longer references that project template", {
+      id = furniture.id, expected = template.id, actual = furniture.template_id,
+    })
+  end
+  local _, furniture_err = copy_patch(furniture, { footprint = action.footprint }, furniture.id)
+  if furniture_err then return nil, furniture_err end
+  local _, template_err = copy_patch(template, {
+    default_footprint = action.footprint,
+    default_anchor2_mm = furniture.anchor2_mm,
+  }, template.id)
+  if template_err then return nil, template_err end
+  return {
+    label = "Edit furniture and template " .. tostring(template.name or template.id),
+    touched = { touched("furniture", furniture.id), touched("template", template.id) },
+  }
+end
+
 function handlers.move_furniture(model, action, context)
   local furniture = find(model.furniture, action.id)
   if not furniture then return nil, failure("NOT_FOUND", "furniture was not found", { id = action.id }) end

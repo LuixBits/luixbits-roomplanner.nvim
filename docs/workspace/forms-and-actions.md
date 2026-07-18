@@ -47,6 +47,13 @@ feedback. It adds no mapping, never replaces an action hint that already fits,
 and is clipped with the rest of the one-line status on narrow layouts. Complete
 properties remain in Details rather than being repeated in the footer.
 
+Compound furniture and project-template shape editing is intentionally an
+unmapped action in the full popup: select the object, press `?`, then search for
+`shape`. Project templates use an isolated local preview. When a placed item
+references a project-local template, saving opens a second compact popup for
+**This item only** versus **Item + project template**. Neither choice rewrites
+other placed items.
+
 Common actions are `a` (Add), `e` (Edit), `m` (Move), `A` (Align), `r`
 (resize a room or rotate furniture), `y` (Duplicate), and `d` (Delete). `D`, `W`, `O`, and `F`
 open Door, Window, Outlet, and Furniture directly; the `a` Add menu uses

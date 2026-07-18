@@ -146,8 +146,9 @@ local function session_header(session, canvas_config)
     local _, index = require("roomplan.room_shape").selected(edit)
     local snap = require("roomplan.room_shape").snap_summary(edit)
     local edge = require("roomplan.room_shape").edge_summary(edit)
-    display_mode = "RESIZE"
-    shape_notice = string.format(" · RESIZE · section %d/%d · edge %s",
+    display_mode = edit.kind == "template" and "TEMPLATE RESIZE" or "RESIZE"
+    shape_notice = string.format(" · %s · section %d/%d · edge %s",
+      display_mode,
       index or 0, #(edit.footprint.parts or {}), edge or "choose with h/j/k/l")
     if snap then shape_notice = shape_notice .. " · SNAP " .. snap end
   elseif session.mode == "MOVE" then
@@ -195,6 +196,19 @@ local function session_footer(session)
     local label = tostring(workflow):gsub("[-_]", " "):upper()
     return string.format(" %s | Complete the active prompt  [Esc] Cancel ", label)
   end
+  if session.mode == "RESIZE" and session.shape_edit then
+    local edit = session.shape_edit
+    local _, index = require("roomplan.room_shape").selected(edit)
+    local snap = require("roomplan.room_shape").snap_summary(edit)
+      or (session.snap_enabled == false and "off" or "ready")
+    local edge = require("roomplan.room_shape").edge_summary(edit) or "choose h/j/k/l"
+    local label = edit.kind == "template" and "TEMPLATE RESIZE"
+      or edit.kind == "furniture" and "FURNITURE RESIZE" or "ROOM RESIZE"
+    return string.format(
+      " %s · section %d/%d · edge %s · snap %s | [Enter/Tab] Select  [a/d] Add/Remove  [gs] Snap  [s] Save  [Esc] Cancel ",
+      label, index or 0, #(edit.footprint.parts or {}), edge, snap
+    )
+  end
   if #rooms == 0 then
     return " [a] Add first room  [?] Help  [q] Hide "
   end
@@ -205,16 +219,6 @@ local function session_footer(session)
     return " MOVE" .. (session.move_feedback and (" · " .. session.move_feedback) or "")
       .. (snap and (" · snap " .. snap) or "")
       .. " | [h/j/k/l] Move  [H/J/K/L] Coarse  [Ctrl-h/j/k/l] Fine  [Esc] Done "
-  elseif session.mode == "RESIZE" and session.shape_edit then
-    local edit = session.shape_edit
-    local _, index = require("roomplan.room_shape").selected(edit)
-    local snap = require("roomplan.room_shape").snap_summary(edit)
-      or (session.snap_enabled == false and "off" or "ready")
-    local edge = require("roomplan.room_shape").edge_summary(edit) or "choose h/j/k/l"
-    return string.format(
-      " RESIZE · section %d/%d · edge %s · snap %s | [Enter/Tab] Select  [a/d] Add/Remove  [gs] Snap  [s] Save  [Esc] Cancel ",
-      index or 0, #(edit.footprint.parts or {}), edge, snap
-    )
   end
   local kind = session.selection and session.selection.kind
   if kind == "room" then
