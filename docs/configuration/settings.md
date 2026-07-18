@@ -112,14 +112,19 @@ strongly highlight the overlapping edge. Moving away temporarily releases that
 axis until it leaves the tolerance, so fine steps cannot become snap-locked.
 After correction, RoomPlan recomputes exact exterior-silhouette contact and
 highlights every positive-length touched segment rather than only the candidate
-that won the snap. Feedback never enters saved data.
+that won the snap. Contact recomputation also runs when magnetic snapping is
+off or bypassed; in that case only the strong touching segments render, without
+a full alignment guide. Feedback never enters saved data.
 
 `detail_level` controls transient canvas text. `high` shows labels plus every
 exterior wall-run, furniture width/depth, and door/window-width dimension.
 `middle` (the default) shows labels plus exterior wall-run dimensions. `none` renders
 geometry without labels or dimensions. Press `t`, use
 `:RoomPlanCanvasDetail`, or call `require("roomplan").set_canvas_detail()` to
-change the current session without changing its model or history.
+change the current session without changing its model or history. Within the
+visible levels, names and dimensions have built-in projected-screen budgets:
+they abbreviate or disappear as their objects shrink, so no additional zoom
+threshold setting is required.
 
 ## Workspace and notifications
 

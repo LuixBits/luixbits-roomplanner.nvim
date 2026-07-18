@@ -412,7 +412,8 @@ function M.attach(controller)
         end
       end
       local snap_options = common.snapping_options(resolved)
-      if snap_options and anchor.kind == "room" then
+      local feedback_options = snap_options or { bypass = true }
+      if anchor.kind == "room" then
         local room = model.find(plan, "room", anchor.id)
         local proposed = room and util.deepcopy(room) or nil
         if proposed then
@@ -423,13 +424,13 @@ function M.attach(controller)
               targets[#targets + 1] = candidate
             end
           end
-          batch_snap = snapping.snap_room(proposed, targets, snap_options)
+          batch_snap = snapping.snap_room(proposed, targets, feedback_options)
           raw_delta = {
             batch_snap.origin_mm[1] - room.origin_mm[1],
             batch_snap.origin_mm[2] - room.origin_mm[2],
           }
         end
-      elseif snap_options and anchor.kind == "furniture" then
+      elseif anchor.kind == "furniture" then
         local furniture = model.find(plan, "furniture", anchor.id)
         local owner = furniture and model.find(plan, "room", furniture.room_id) or nil
         local proposed = furniture and util.deepcopy(furniture) or nil
@@ -452,7 +453,7 @@ function M.attach(controller)
               apertures[#apertures + 1] = door_geometry.aperture(door_owner, door)
             end
           end
-          batch_snap = snapping.snap_furniture(owner, proposed, pairs, apertures, snap_options)
+          batch_snap = snapping.snap_furniture(owner, proposed, pairs, apertures, feedback_options)
           raw_delta = {
             batch_snap[field][1] - furniture[field][1],
             batch_snap[field][2] - furniture[field][2],

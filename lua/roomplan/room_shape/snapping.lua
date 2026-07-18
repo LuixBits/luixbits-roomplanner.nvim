@@ -154,9 +154,12 @@ end
 
 function M.apply(edit, part, dx, dy, context)
   local options = context and context.options
-  if type(options) ~= "table" then return edit end
-  local model = context.model
+  local model = context and context.model
   if type(model) ~= "table" then return edit end
+  -- Touch highlighting remains active when magnetic snapping is disabled or
+  -- bypassed. In that case no correction is resolved, but final exact
+  -- silhouette contacts are still recomputed below.
+  options = type(options) == "table" and options or { bypass = true }
 
   local moving = moving_features(edit, context, dx, dy)
   local targets = target_features(edit, model, context)

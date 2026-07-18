@@ -34,6 +34,12 @@ The default `middle` level shows object labels and dimensions for every
 exterior wall run. `high` additionally shows furniture width/depth and
 door/window width dimensions. `none` leaves geometry only, with no labels or
 dimensions.
+Within `middle` and `high`, text density also follows the active zoom. Names
+use only part of their projected room or furniture width, preserve both ends
+when shortened, and disappear when the object becomes too small to label
+cleanly. Dimensions render only when their edge has enough surrounding space;
+outlet descriptions drop out in far overviews. This is transient screen-space
+layout and requires no extra setup keys.
 Use `t` to cycle levels or
 `:RoomPlanCanvasDetail high|middle|none|cycle` to choose explicitly. The level
 belongs to the live session and never dirties or rewrites the plan.
@@ -61,6 +67,11 @@ the active object, last visible direction and distance, and named snap target.
 At deep zoom, the plan's existing `fine_step_mm` is the minimum magnetic range
 (still capped by `snapping.max_distance_mm`), so tiny millimetre remainders snap
 cleanly instead of requiring repeated Ctrl-directions.
+Exact positive-length contact is separate from magnetic correction: every
+touched horizontal or vertical wall segment stays strongly highlighted while
+moving, including when snapping is disabled or the next step is bypassed. A
+light full alignment guide is reserved for an actual snap correction, avoiding
+unnecessary lines across the overview.
 
 ## Live dimension resizing
 
@@ -78,8 +89,10 @@ alignment and extends just beyond the target wall so horizontal and vertical
 connections stay visible. Every positive-length exterior wall overlap around
 the final room or furniture silhouette is strongly highlighted, including
 separate wall segments that share the same coordinate; the target names remain
-available in status. Centres can align to centres but are never misreported as
-wall contact. `gs` toggles snapping and `g!` bypasses the next change.
+available in status after magnetic corrections. Pure touch highlighting remains
+active with snapping off. Centres can align to centres but are never
+misreported as wall contact. `gs` toggles snapping and `g!` bypasses the next
+change.
 Moving away releases a snap immediately, even with fine steps. Use ordinary
 `m` movement to move the whole room and its furniture with the same snap
 feedback. See

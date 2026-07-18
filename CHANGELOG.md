@@ -4,6 +4,16 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Made the main canvas responsive to zoom density. Room and furniture names
+  now use their projected footprint as a text budget, preserve both ends when
+  abbreviated, and disappear once the object is only an overview glyph.
+  Dimensions require breathing room around their projected edge, outlet text
+  drops out at far zoom, and adjacent labels reserve a separating cell.
+- Decoupled exact touch highlighting from magnetic snapping. Movement and live
+  resize now recompute every final horizontal and vertical wall contact even
+  when snapping is disabled or bypassed. Pure contacts draw only the strong
+  touched segments; an actual magnetic correction additionally draws its light
+  alignment guide.
 - Reworked movement and resize snapping around exact compound silhouettes.
   After one correction, every positive-length room/furniture wall contact is
   retained and highlighted instead of only the winning edge; coincident guide

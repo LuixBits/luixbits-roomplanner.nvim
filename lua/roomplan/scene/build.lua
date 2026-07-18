@@ -216,7 +216,7 @@ local function add_snap_guides(scene, roles, snap_guides)
       primitive.x2, primitive.y2 = scene.bounds.right + padding, guide.value_mm
     end
     local line_key = tostring(guide.axis) .. ":" .. tostring(guide.value2 or guide.value_mm)
-    if primitive.x1 and not guide_lines[line_key] then
+    if primitive.x1 and not guide.contact_only and not guide_lines[line_key] then
       guide_lines[line_key] = true
       add_primitive(scene, primitive, roles)
     end

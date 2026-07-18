@@ -182,11 +182,11 @@ function handlers.move_room(model, action, context)
   room.origin_mm = action_json_value(origin, "array")
   local metadata = { requested_origin_mm = { origin[1], origin[2] } }
   local snap_options = action.snap or context.snapping
-  if snap_options and not action.exact then
-    snap_options = deep_copy(snap_options)
-    snap_options.bypass = action.bypass_snap or snap_options.bypass
-    snap_options.grid_mm = snap_options.grid_mm or (model.settings and model.settings.grid_mm)
-    local snap_result = snapping.snap_room(room, model.rooms, snap_options)
+  if not action.exact then
+    local feedback_options = snap_options and deep_copy(snap_options) or { bypass = true }
+    feedback_options.bypass = action.bypass_snap or feedback_options.bypass
+    feedback_options.grid_mm = feedback_options.grid_mm or (model.settings and model.settings.grid_mm)
+    local snap_result = snapping.snap_room(room, model.rooms, feedback_options)
     room.origin_mm = action_json_value(snap_result.origin_mm, "array")
     metadata.snapping = snap_result
   end
@@ -409,7 +409,7 @@ function handlers.move_furniture(model, action, context)
   local metadata_key = model.schema_version >= 2 and "requested_position_mm" or "requested_center_mm"
   local metadata = { [metadata_key] = { position[1], position[2] } }
   local snap_options = action.snap or context.snapping
-  if snap_options and not action.exact then
+  if not action.exact then
     local owner = find_room(model, furniture.room_id)
     if owner then
       local pairs, apertures = {}, {}
@@ -422,10 +422,10 @@ function handlers.move_furniture(model, action, context)
         local door_owner = find_room(model, model.doors[i].room_id)
         if door_owner then apertures[#apertures + 1] = door_geometry.aperture(door_owner, model.doors[i]) end
       end
-      snap_options = deep_copy(snap_options)
-      snap_options.bypass = action.bypass_snap or snap_options.bypass
-      snap_options.grid_mm = snap_options.grid_mm or (model.settings and model.settings.grid_mm)
-      local snap_result = snapping.snap_furniture(owner, furniture, pairs, apertures, snap_options)
+      local feedback_options = snap_options and deep_copy(snap_options) or { bypass = true }
+      feedback_options.bypass = action.bypass_snap or feedback_options.bypass
+      feedback_options.grid_mm = feedback_options.grid_mm or (model.settings and model.settings.grid_mm)
+      local snap_result = snapping.snap_furniture(owner, furniture, pairs, apertures, feedback_options)
       furniture[position_field] = action_json_value(snap_result[position_field], "array")
       metadata.snapping = snap_result
     end

@@ -845,11 +845,81 @@ local function placement_positions(context, primitive, anchor_column, anchor_row
   return result
 end
 
+local LABEL_SCALE = {
+  room_name = { min_width = 6, min_height = 3, width_fraction = 0.65 },
+  object_name = { min_width = 7, min_height = 3, width_fraction = 0.6 },
+}
+
+local function projected_box_cells(context, bounds)
+  if type(bounds) ~= "table" then return nil end
+  local points = {
+    { bounds.left, bounds.bottom },
+    { bounds.left, bounds.top },
+    { bounds.right, bounds.bottom },
+    { bounds.right, bounds.top },
+  }
+  local left, right, top, bottom
+  for _, point in ipairs(points) do
+    if not finite(point[1]) or not finite(point[2]) then return nil end
+    local x, y = project(context.viewport, point[1], point[2])
+    left = left and math.min(left, x) or x
+    right = right and math.max(right, x) or x
+    top = top and math.min(top, y) or y
+    bottom = bottom and math.max(bottom, y) or y
+  end
+  return right - left + 1, bottom - top + 1
+end
+
+local function projected_span_cells(context, span)
+  if type(span) ~= "table" then return nil end
+  if not finite(span.x1) or not finite(span.y1) or not finite(span.x2) or not finite(span.y2) then
+    return nil
+  end
+  local x1, y1 = project(context.viewport, span.x1, span.y1)
+  local x2, y2 = project(context.viewport, span.x2, span.y2)
+  return math.max(math.abs(x2 - x1), math.abs(y2 - y1)) + 1
+end
+
+-- Terminal cells cannot change font size. Instead, labels use the projected
+-- object as a screen-space budget: full text when it has room, an abbreviated
+-- name at medium scale, and no text once the shape becomes a tiny overview
+-- glyph. Dimensions also need air around their measured edge.
+local function label_cell_budget(context, primitive)
+  local limit = math.min(context.width, primitive.max_cells or context.max_label_cells)
+  if finite(primitive.max_mm_per_column)
+    and context.viewport.mm_per_column > primitive.max_mm_per_column
+  then
+    return 0
+  end
+  local policy = LABEL_SCALE[primitive.scale_policy]
+  if policy then
+    local width, height = projected_box_cells(context, primitive.fit_bounds)
+    local text_width = context.width_fn(tostring(primitive.text or ""))
+    if not width or width < policy.min_width or height < policy.min_height then
+      -- A single-letter room name remains useful in a small but still
+      -- recognizable outline. Longer text disappears instead of turning into
+      -- a canvas full of ellipses.
+      if text_width <= 1 and width and width >= 4 and height and height >= 3 then
+        return math.min(limit, 1)
+      end
+      return 0
+    end
+    limit = math.min(limit, math.floor(math.max(0, width - 2) * policy.width_fraction))
+    if limit < 3 and text_width > limit then return 0 end
+  elseif primitive.scale_policy == "dimension" then
+    local span = projected_span_cells(context, primitive.fit_span)
+    local text_width = context.width_fn(tostring(primitive.text or ""))
+    if not span or span < math.max(8, text_width + 5) then return 0 end
+  end
+  return math.max(0, math.floor(limit))
+end
+
 local function draw_label(context, primitive)
-  local max_cells = math.min(context.width, primitive.max_cells or context.max_label_cells)
+  local max_cells = label_cell_budget(context, primitive)
+  if max_cells < 1 then return end
   local cells, metadata = text.sanitize_cells(
     primitive.text or "",
-    max_cells,
+    context.max_label_source_cells,
     context.width_fn,
     context.glyphs.replacement
   )
@@ -865,7 +935,7 @@ local function draw_label(context, primitive)
     return
   end
 
-  if primitive.allow_truncate == false and metadata.truncated then
+  if primitive.allow_truncate == false and (metadata.truncated or #cells > max_cells) then
     context.warnings[#context.warnings + 1] = {
       code = "LABEL_NOT_RENDERED",
       object_id = primitive.ref and primitive.ref.id,
@@ -875,9 +945,10 @@ local function draw_label(context, primitive)
   end
 
   local candidates = label_candidates(primitive)
+  local maximum_length = math.min(#cells, max_cells)
   local minimum_length = primitive.allow_truncate == false and #cells or 1
-  for length = #cells, minimum_length, -1 do
-    local displayed = abbreviated_cells(cells, length, metadata.truncated and length == #cells, context.width_fn)
+  for length = maximum_length, minimum_length, -1 do
+    local displayed = abbreviated_cells(cells, length, metadata.truncated, context.width_fn)
     for candidate_index = 1, #candidates do
       local x, y = project(context.viewport, candidates[candidate_index][1], candidates[candidate_index][2])
       local anchor_column = round(x) + 1
@@ -898,6 +969,13 @@ local function draw_label(context, primitive)
             })
             context.grid[position.row][column].label_reserved = true
           end
+          -- Keep adjacent labels from reading as one accidental word. Names
+          -- are placed first, so dimensions naturally move to another row or
+          -- disappear when the overview is crowded.
+          local before = position.first_column - 1
+          local after = position.first_column + #displayed
+          if before >= 1 then context.grid[position.row][before].label_reserved = true end
+          if after <= context.width then context.grid[position.row][after].label_reserved = true end
           if #displayed < #cells or metadata.truncated or metadata.replaced > 0 then
             context.warnings[#context.warnings + 1] = {
               code = "LABEL_ABBREVIATED",
@@ -1085,6 +1163,7 @@ function M.rasterize(scene, viewport, opts)
     serial = 0,
     warnings = {},
     max_label_cells = math.max(1, math.floor(opts.max_label_cells or 32)),
+    max_label_source_cells = math.min(4096, math.max(32, math.floor(opts.max_label_source_cells or 256))),
   }
   if glyph_warning then
     context.warnings[#context.warnings + 1] = {

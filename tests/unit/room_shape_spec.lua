@@ -287,4 +287,37 @@ describe("direct room resize drafts", function()
     h.eq(100, overlap.x1)
     h.eq(3100, overlap.x2)
   end)
+
+  it("retains north-wall touch highlighting with snapping disabled", function()
+    local plan = fixture()
+    plan.rooms[2] = model.new_room({
+      id = "room-north", name = "Bedroom", origin_mm = { 100, 2300 }, size_mm = { 3000, 2000 },
+    })
+    local resized = h.truthy(room_shape.direction(
+      h.truthy(room_shape.start(plan, "room-main", 1)), 0, 1, 100,
+      { max_dimension_mm = 100000 }, {
+        model = plan,
+        origin_mm = plan.rooms[1].origin_mm,
+        options = false,
+      }
+    ))
+    h.eq(2100, resized.footprint.parts[1].size_mm[2])
+    h.eq(1, #resized.snap_guides)
+    h.eq("y", resized.snap_guides[1].axis)
+    h.eq(true, resized.snap_guides[1].contact_only)
+    h.eq(nil, room_shape.snap_summary(resized))
+
+    local preview = h.truthy(room_shape.preview_model(plan, resized))
+    local scene = require("roomplan.scene.build").build(preview, nil, {
+      shape_edit = resized,
+      detail_level = "none",
+    })
+    local guides, overlaps = 0, 0
+    for _, primitive in ipairs(scene.primitives) do
+      if primitive.kind == "snap_guide" then guides = guides + 1 end
+      if primitive.kind == "snap_overlap" then overlaps = overlaps + 1 end
+    end
+    h.eq(0, guides)
+    h.eq(1, overlaps)
+  end)
 end)

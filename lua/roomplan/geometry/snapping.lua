@@ -246,6 +246,7 @@ function M.guide(candidate)
     moving_id = candidate.moving.id,
     moving_label = candidate.moving.name,
     delta_mm = candidate.delta_mm,
+    contact_only = candidate.contact_only == true,
   }
   if candidate.moving.start2 ~= nil and candidate.target.start2 ~= nil then
     local start2 = math.max(candidate.moving.start2, candidate.target.start2)
@@ -307,6 +308,7 @@ function M.contacts(moving_features, target_features)
               candidates[#candidates + 1] = {
                 moving = moving,
                 target = target,
+                contact_only = true,
                 delta2 = 0,
                 delta_mm = 0,
                 screen_distance = 0,
@@ -360,10 +362,12 @@ end
 function M.summary(guides)
   local labels, seen = {}, {}
   for _, guide in ipairs(guides or {}) do
-    local label = string.format("%s → %s", guide.axis:upper(), guide.target_label)
-    if not seen[label] then
-      seen[label] = true
-      labels[#labels + 1] = label
+    if not guide.contact_only then
+      local label = string.format("%s → %s", guide.axis:upper(), guide.target_label)
+      if not seen[label] then
+        seen[label] = true
+        labels[#labels + 1] = label
+      end
     end
   end
   if #labels > 3 then
