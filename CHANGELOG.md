@@ -8,10 +8,11 @@ All notable changes to `roomplan.nvim` will be documented here.
   row, every typed character immediately reduces the grouped results, and
   `Enter` runs the first match while `Esc` returns to action navigation. It no
   longer uses `vim.ui.input` or a command-line prompt, and compact one-key
-  palettes remain unchanged. Search now captures temporary popup-local input
-  while its buffer remains read-only, so insert-mode completion providers
-  cannot interfere or raise `E21`; `Backspace` edits the query and `Esc` always
-  restores normal popup navigation.
+  palettes remain unchanged. Search now uses a dedicated native prompt buffer
+  over a fixed-size, read-only results window. Result redraws cannot move its
+  cursor or steal focus, prompt buffers keep completion providers out, and the
+  `/` mapping enters the prompt before queued input is processed. `Backspace`
+  edits the query and `Esc` always restores normal popup navigation.
 - Extended direct compound section editing to placed furniture and project
   templates through unmapped actions in the searchable `?` popup. Furniture
   handles quarter turns and world-space snapping; templates use an isolated

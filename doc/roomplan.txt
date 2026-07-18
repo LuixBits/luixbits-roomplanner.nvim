@@ -249,7 +249,7 @@ Workspace:
   /              filter Navigator or Issues
   h / l          collapse / expand a room or Details section
   ?              complete action window or contextual help
-  /              start read-only in-popup search in the ? action window
+  /              focus the in-popup prompt in the ? action window
   q              return to canvas, close a drawer, or hide workspace
   <Esc>          cancel the current interaction, then return to canvas
 
@@ -542,7 +542,8 @@ or system rebuild. If a plan is not visible, press `f`. If an action is not in
 the compact footer, press `?` to see the complete contextual action window and
 `/` to filter it live without leaving the popup. Enter runs the first match;
 Backspace edits the query, and Esc returns to the matching results without
-running anything. Search never enters Insert mode or invokes completion.
+running anything. The fixed action window and its read-only results remain
+stable while a separate native prompt owns input and excludes completion.
 
 For detailed diagnosis see docs/reference/troubleshooting.md.
 
