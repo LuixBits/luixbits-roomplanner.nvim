@@ -36,8 +36,9 @@ at the `canvas.scrolloff` margin, so zoomed navigation does not stop at the
 visible boundary.
 
 The `M` minimap is a non-focusable overlay in the canvas's upper-right corner.
-It uses the real compound room outlines and room colors, while a warm outlined
-rectangle shows the exact world area visible in the main canvas. The rectangle
+It uses the real compound room outlines and colorscheme-linked room colors,
+while a high-contrast colorscheme-linked outlined rectangle shows the exact
+world area visible in the main canvas. The rectangle
 updates after zoom, pan, scrolloff movement, rotation, room edits, and terminal
 resizes. The overview is transient: it adds no plan fields, history entries, or
 configuration keys, and hides automatically with the canvas. On a canvas too

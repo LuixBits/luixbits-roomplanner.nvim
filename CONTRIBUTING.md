@@ -1,5 +1,9 @@
 # Contributing
 
+Participation follows [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md). For support or
+security-sensitive reports, use [SUPPORT.md](SUPPORT.md) and
+[SECURITY.md](SECURITY.md) instead of a pull request.
+
 Read [`docs/development/architecture.md`](docs/development/architecture.md)
 before changing persistence, geometry, or lifecycle behavior.
 Keep model, schema, actions, geometry, validation, scene extraction, and the
@@ -12,6 +16,21 @@ migration, fixtures, JSON Schema changes, and recovery documentation.
 
 Do not copy Neorg implementation code. Any adapted third-party code must keep
 its license notice and be recorded in `NOTICE` before merge.
+
+## Change workflow
+
+- Start from an up-to-date `main` branch and use a focused topic branch.
+- Prefer an issue before substantial user-facing work so scope, UX, persistence,
+  and compatibility are agreed before implementation.
+- Use an imperative commit summary with a conventional type such as `feat:`,
+  `fix:`, `docs:`, `test:`, `refactor:`, `perf:`, `build:`, `ci:`, or `chore:`.
+- Keep unrelated formatting or refactoring out of behavior changes.
+- Open a pull request with the problem, outcome, verification, compatibility
+  impact, and screenshots for visible UI changes.
+
+Create or supersede an [ADR](docs/adr/README.md) when a choice is durable,
+cross-cutting, expensive to reverse, or changes a public compatibility
+boundary. Do not use ADRs for ordinary feature details.
 
 ## Extension points
 

@@ -1,5 +1,8 @@
 # roomplan.nvim
 
+[![CI](https://github.com/LuixBits/luixbits-roomplanner.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/LuixBits/luixbits-roomplanner.nvim/actions/workflows/ci.yml)
+[![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
+
 A keyboard-first floor-planning workspace for Neovim.
 
 RoomPlan keeps exact millimetre geometry in structured JSON or an embedded
@@ -140,6 +143,8 @@ The documentation is a linked, chaptered handbook:
 - [Commands](docs/reference/commands.md), [Lua API](docs/reference/lua-api.md),
   and [troubleshooting](docs/reference/troubleshooting.md)
 - [Architecture](docs/development/architecture.md),
+  [compatibility](docs/development/compatibility.md),
+  [architecture decisions](docs/adr/README.md),
   [contributing](docs/development/contributing.md), and
   [releasing](docs/development/releasing.md)
 
@@ -193,6 +198,12 @@ Contribution rules and release gates live in
 dependency boundaries are maintained in the
 [architecture chapter](docs/development/architecture.md), not in historical
 implementation-plan files.
+
+For questions and bug-report requirements, read [SUPPORT.md](SUPPORT.md).
+Security-sensitive reports follow [SECURITY.md](SECURITY.md), and all project
+spaces follow the [code of conduct](CODE_OF_CONDUCT.md). Durable cross-cutting
+decisions are recorded in the [ADR index](docs/adr/README.md); accepted product
+work remains in the canonical [roadmap](plan.md).
 
 ## License
 

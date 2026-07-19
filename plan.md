@@ -4,6 +4,12 @@ This file records the stable baseline and the remaining implementation route.
 Detailed shipped behaviour is documented under [`docs/`](docs/README.md), while
 completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
 
+This is the canonical product roadmap. Accepted near-term work should become a
+focused GitHub issue and release milestone before implementation; issues track
+execution, this file tracks direction, ADRs track durable technical decisions,
+and the changelog records shipped outcomes. Candidates are not compatibility
+promises.
+
 ## Shipped baseline
 
 - Schema v4 writing with explicit, non-destructive v1 → v2 → v3 → v4
@@ -43,6 +49,9 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   and ergonomic keyboards. Both remain configurable by semantic mapping name.
 - Native packages, lazy.nvim, snacks, rocks, Nix flake, and nvf compatibility
   without optional integrations becoming hard dependencies.
+- Public-project foundations including contribution/support/security policies,
+  issue and pull-request templates, ADRs for durable decisions, pinned CI
+  actions, dependency-update automation, and a guarded release workflow.
 - Exact silhouette snapping and resize feedback retain every simultaneous
   positive-length wall contact. The existing fine step becomes a bounded
   deep-zoom magnetic floor, removing tiny millimetre residuals without another
@@ -85,6 +94,9 @@ outside the current model.
   history into release notes, create a signed/annotated tag, and verify both
   the default branch and pinned tag. Stable consumers should pin a release tag
   instead of requiring a stream of individual commits.
+- Add one accurate real-workspace screenshot or short recording to the README
+  before the public release announcement; do not substitute a mockup for the
+  actual terminal UI.
 - Keep the roadmap factual and remove candidates that have no product value or
   implementation route. Do not tag around a failing required check.
 

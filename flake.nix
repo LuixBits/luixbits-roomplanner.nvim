@@ -73,7 +73,13 @@
           '';
 
           workflow = pkgs.runCommand "roomplan-workflow-check" { nativeBuildInputs = [ pkgs.actionlint ]; } ''
-            actionlint ${./.github/workflows/ci.yml}
+            actionlint ${./.github}/workflows/*.yml
+            touch "$out"
+          '';
+
+          formatting = pkgs.runCommand "roomplan-formatting-check" { nativeBuildInputs = [ pkgs.stylua ]; } ''
+            stylua --check --config-path ${./stylua.toml} \
+              ${./lua} ${./plugin} ${./tests} ${./scripts}
             touch "$out"
           '';
         }

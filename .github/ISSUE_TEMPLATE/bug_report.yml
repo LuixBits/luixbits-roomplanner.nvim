@@ -1,0 +1,89 @@
+name: Bug report
+description: Report reproducible incorrect behavior in RoomPlan
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for helping improve RoomPlan. Search existing issues first and remove private paths or plan data.
+        Security-sensitive reports belong in the private channel described by SECURITY.md.
+  - type: input
+    id: version
+    attributes:
+      label: RoomPlan version
+      description: Provide a release tag or full commit SHA.
+      placeholder: v0.1.0 or 0123456789abcdef...
+    validations:
+      required: true
+  - type: input
+    id: neovim
+    attributes:
+      label: Neovim version
+      description: Paste the first line of `nvim --version`.
+      placeholder: NVIM v0.12.4
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environment
+      description: Operating system, terminal, and installation method.
+      placeholder: NixOS, kitty, nvf
+    validations:
+      required: true
+  - type: textarea
+    id: health
+    attributes:
+      label: Health output
+      description: Paste `:checkhealth roomplan` output. Remove private paths.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Minimal configuration
+      description: Include only configuration required to reproduce the issue.
+      render: lua
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Start from opening Neovim and list exact keys or commands.
+      placeholder: |
+        1. Start with `nvim -u minimal_init.lua`
+        2. Run `:RoomPlanOpen ...`
+        3. Press ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior and complete error
+      description: Include the complete stack trace when one is shown.
+    validations:
+      required: true
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional context
+      description: Screenshots, minimal non-sensitive plan fixture, or regression range.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I reproduced this with the latest supported RoomPlan release or current `main` before the first release.
+          required: true
+        - label: I searched existing issues and this does not contain sensitive security information.
+          required: true

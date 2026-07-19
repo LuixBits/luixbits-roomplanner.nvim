@@ -300,7 +300,7 @@ Canvas and editing:
   v / Alt-j / Alt-k
                   validate / next issue / previous issue
   u / <C-r>      undo / redo
-  . / , / f      zoom in / zoom out / fit
+  . / , / f / zf zoom in / zoom out / fit
   M              toggle whole-plan minimap / field-of-view rectangle
   t              cycle high / middle / none canvas detail
   zh zj zk zl    pan without entering PAN mode
@@ -571,6 +571,7 @@ Public entry points: >lua
   roomplan.set_canvas_detail(level)
   roomplan.rotate_view(direction)
   roomplan.sun_study()
+  roomplan.toggle_minimap()
   roomplan.hide(opts)
   roomplan.close(opts, callback)
   roomplan.validate(opts)

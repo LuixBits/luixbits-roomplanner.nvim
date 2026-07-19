@@ -108,4 +108,8 @@ These boundaries are design constraints, not only folder organization: UI
 must never mutate nested model tables, storage must never bypass revisions, and
 render text must never become persisted state.
 
-← [Limitations and roadmap](../reference/limitations-and-roadmap.md) | [Documentation home](../README.md) | [Contributing](contributing.md) →
+The [ADR index](../adr/README.md) records why the durable boundaries were
+chosen and how a future decision may supersede one. This chapter remains the
+authority for the architecture as it exists now.
+
+← [Limitations and roadmap](../reference/limitations-and-roadmap.md) | [Documentation home](../README.md) | [Compatibility](compatibility.md) →
