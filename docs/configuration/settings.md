@@ -110,6 +110,10 @@ take precedence over the grid. Resizing and ordinary movement both show the
 chosen target as a transient light guide, name it in the canvas status, and
 strongly highlight the overlapping edge. Moving away temporarily releases that
 axis until it leaves the tolerance, so fine steps cannot become snap-locked.
+If a discrete movement or resize step crosses a compatible wall, RoomPlan stops
+at the first crossed wall even when the final proposed position would fall
+outside the magnetic tolerance. This keeps dimensions such as `1.95 m` usable
+with 100 mm or 10 mm steps without introducing a temporary overlap error.
 After correction, RoomPlan recomputes exact exterior-silhouette contact and
 highlights every positive-length touched segment rather than only the candidate
 that won the snap. Contact recomputation also runs when magnetic snapping is

@@ -247,6 +247,34 @@ describe("pure geometry", function()
     assert_true(not bypass.snapped)
   end)
 
+  it("chooses the first wall crossed by a directional step", function()
+    local moving = {
+      geometry.snapping.feature("x", 4100, "room_edge", "moving", "east", { 0, 2000 }),
+    }
+    local targets = {
+      geometry.snapping.feature("x", 4000, "room_edge", "far", "west", { 0, 2000 }),
+      geometry.snapping.feature("x", 3960, "room_edge", "near", "west", { 0, 2000 }),
+    }
+    local best = geometry.snapping.choose_axis(moving, targets, 10, {
+      axis = "x",
+      sweep_mm = 100,
+      require_overlap = true,
+    })
+    assert_equal("near", best.target.id)
+    assert_equal(-70, best.delta_mm)
+
+    local away = geometry.snapping.choose_axis({
+      geometry.snapping.feature("x", 3800, "room_edge", "moving", "east", { 0, 2000 }),
+    }, {
+      geometry.snapping.feature("x", 4000, "room_edge", "touching", "west", { 0, 2000 }),
+    }, 10, {
+      axis = "x",
+      sweep_mm = -100,
+      require_overlap = true,
+    })
+    assert_equal(nil, away)
+  end)
+
   it("retains every coincident wall segment after one snap correction", function()
     local moving = room("room-moving", 993, 1000, 1000, 1000)
     local lower = room("room-lower", 2000, 1000, 500, 500)
@@ -532,6 +560,42 @@ describe("structured validation", function()
 end)
 
 describe("atomic actions", function()
+  it("snaps room and furniture edges crossed by a non-divisible move step", function()
+    local room_plan = base_model()
+    add(room_plan, "rooms", room("room-moving", 950, 0, 1000, 1000))
+    add(room_plan, "rooms", room("room-fixed", 2000, 0, 1000, 1000))
+    local moved_room = assert(actions.apply(room_plan, {
+      type = "move_room",
+      id = "room-moving",
+      delta_mm = { 100, 0 },
+    }, {
+      snapping = {
+        tolerance_mm = { x = 10, y = 10 },
+        priority = { "room_edge", "furniture", "grid" },
+      },
+    }))
+    assert_equal({ 1000, 0 }, moved_room.rooms[1].origin_mm)
+
+    local furniture_plan = base_model()
+    add(furniture_plan, "rooms", room("room-owner", 0, 0, 2000, 2000))
+    add(furniture_plan, "furniture", model.new_furniture({
+      id = "furniture-moving", room_id = "room-owner", template_id = "builtin:chair",
+      name = "Chair", category = "seating", center_mm = { 1700, 1000 },
+      size_mm = { 500, 500, 800 }, rotation_deg = 0,
+    }))
+    local moved_furniture = assert(actions.apply(furniture_plan, {
+      type = "move_furniture",
+      id = "furniture-moving",
+      delta_mm = { 100, 0 },
+    }, {
+      snapping = {
+        tolerance_mm = { x = 10, y = 10 },
+        priority = { "room_edge", "furniture", "grid" },
+      },
+    }))
+    assert_equal({ 1750, 1000 }, moved_furniture.furniture[1].center_mm)
+  end)
+
   it("keeps newly placed furniture selected when also saving its template", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))

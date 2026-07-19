@@ -169,6 +169,7 @@ end
 function handlers.move_room(model, action, context)
   local room = find_room(model, action.id)
   if not room then return nil, failure("NOT_FOUND", "room was not found", { id = action.id }) end
+  local previous_origin = { room.origin_mm[1], room.origin_mm[2] }
   local origin
   if action.origin_mm then
     local err
@@ -186,6 +187,10 @@ function handlers.move_room(model, action, context)
     local feedback_options = snap_options and deep_copy(snap_options) or { bypass = true }
     feedback_options.bypass = action.bypass_snap or feedback_options.bypass
     feedback_options.grid_mm = feedback_options.grid_mm or (model.settings and model.settings.grid_mm)
+    feedback_options.sweep_mm = {
+      origin[1] - previous_origin[1],
+      origin[2] - previous_origin[2],
+    }
     local snap_result = snapping.snap_room(room, model.rooms, feedback_options)
     room.origin_mm = action_json_value(snap_result.origin_mm, "array")
     metadata.snapping = snap_result
@@ -391,7 +396,12 @@ function handlers.move_furniture(model, action, context)
   if model.schema_version >= 2 and action.center_mm ~= nil then
     return nil, failure("INVALID_ACTION", "compound furniture movement requires position_mm")
   end
+  local current = furniture[position_field]
+  if type(current) ~= "table" then
+    return nil, failure("INVALID_ACTION", "furniture is missing " .. position_field, { id = furniture.id })
+  end
   local position
+  local previous_position = { current[1], current[2] }
   if requested_position then
     local err
     position, err = vector2(requested_position, position_field)
@@ -399,10 +409,6 @@ function handlers.move_furniture(model, action, context)
   else
     local delta, err = vector2(action.delta_mm or { action.dx_mm, action.dy_mm }, "delta_mm")
     if not delta then return nil, err end
-    local current = furniture[position_field]
-    if type(current) ~= "table" then
-      return nil, failure("INVALID_ACTION", "furniture is missing " .. position_field, { id = furniture.id })
-    end
     position = { current[1] + delta[1], current[2] + delta[2] }
   end
   furniture[position_field] = action_json_value(position, "array")
@@ -425,6 +431,10 @@ function handlers.move_furniture(model, action, context)
       local feedback_options = snap_options and deep_copy(snap_options) or { bypass = true }
       feedback_options.bypass = action.bypass_snap or feedback_options.bypass
       feedback_options.grid_mm = feedback_options.grid_mm or (model.settings and model.settings.grid_mm)
+      feedback_options.sweep_mm = {
+        position[1] - previous_position[1],
+        position[2] - previous_position[2],
+      }
       local snap_result = snapping.snap_furniture(owner, furniture, pairs, apertures, feedback_options)
       furniture[position_field] = action_json_value(snap_result[position_field], "array")
       metadata.snapping = snap_result

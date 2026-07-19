@@ -251,6 +251,58 @@ describe("direct room resize drafts", function()
     h.eq(2200, overlap.y2)
   end)
 
+  it("snaps a resized edge when one step crosses a nearby wall", function()
+    local plan = fixture()
+    plan.rooms[2] = model.new_room({
+      id = "room-east", name = "Kitchen", origin_mm = { 3150, 200 }, size_mm = { 2000, 2000 },
+    })
+    local resized = h.truthy(room_shape.direction(
+      h.truthy(room_shape.start(plan, "room-main", 1)), 1, 0, 100,
+      { max_dimension_mm = 100000 }, {
+        model = plan,
+        origin_mm = plan.rooms[1].origin_mm,
+        options = {
+          tolerance_mm = { x = 10, y = 10 },
+          mm_per_screen_unit = { x = 1, y = 1 },
+          priority = { "room_edge", "furniture", "grid" },
+          grid_mm = 100,
+        },
+      }
+    ))
+    h.eq(3050, resized.footprint.parts[1].size_mm[1])
+    h.eq("X → Kitchen west wall", room_shape.snap_summary(resized))
+  end)
+
+  it("snaps a furniture resize step that crosses its room wall", function()
+    local plan = fixture()
+    plan.furniture[1] = model.new_furniture({
+      id = "furniture-sofa", room_id = "room-main", template_id = "builtin:custom-rectangle",
+      name = "Sofa", category = "seating", position_mm = { 2450, 1000 },
+      anchor2_mm = { 1000, 500 }, footprint = model.rectangle_footprint({ 1000, 500 }),
+      height_mm = 800, rotation_deg = 0,
+    })
+    local geometry = require("roomplan.geometry.footprint")
+    local resized = h.truthy(room_shape.direction(
+      h.truthy(room_shape.start(plan, "furniture-sofa", 1, "furniture")), 1, 0, 100,
+      { max_dimension_mm = 100000 }, {
+        model = plan,
+        origin_mm = plan.rooms[1].origin_mm,
+        options = {
+          tolerance_mm = { x = 10, y = 10 },
+          mm_per_screen_unit = { x = 1, y = 1 },
+          priority = { "room_edge", "furniture_edge", "grid" },
+          grid_mm = 100,
+        },
+        world_shape = function(candidate)
+          local preview = h.truthy(room_shape.preview_model(plan, candidate))
+          return geometry.from_furniture(preview.rooms[1], preview.furniture[1])
+        end,
+      }
+    ))
+    h.eq(1050, resized.footprint.parts[1].size_mm[1])
+    h.eq("X → Main east wall", room_shape.snap_summary(resized))
+  end)
+
   it("draws a visible support tail for north and south snaps", function()
     local plan = fixture()
     plan.rooms[2] = model.new_room({

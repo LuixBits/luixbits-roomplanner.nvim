@@ -130,6 +130,10 @@ local function spans_overlap(left, right)
 end
 
 local function candidate_less(a, b)
+  if a.crossed ~= b.crossed then return a.crossed == true end
+  if a.crossed and a.travel_distance ~= b.travel_distance then
+    return a.travel_distance < b.travel_distance
+  end
   if a.screen_distance ~= b.screen_distance then return a.screen_distance < b.screen_distance end
   if a.priority ~= b.priority then return a.priority < b.priority end
   if a.target.id ~= b.target.id then return a.target.id < b.target.id end
@@ -145,6 +149,7 @@ function M.choose_axis(moving_features, target_features, tolerance_mm, options)
   local scale = options.mm_per_screen_unit or 1
   if scale <= 0 then scale = 1 end
   local priorities = priority_map(options.priority)
+  local sweep2 = 2 * (options.sweep_mm or 0)
   local candidates = {}
   local i, j
   for i = 1, #(moving_features or {}) do
@@ -155,13 +160,28 @@ function M.choose_axis(moving_features, target_features, tolerance_mm, options)
         and (not options.require_overlap or spans_overlap(moving, target))
       then
         local delta2 = target.value2 - moving.value2
-        if math.abs(delta2) <= tolerance_mm * 2 then
+        local previous2 = moving.value2 - sweep2
+        -- Magnetic tolerance alone cannot see a wall skipped by a discrete
+        -- step. Follow the moving edge from its previous coordinate to the
+        -- proposal, accepting only targets ahead of that edge and stopping at
+        -- the first positive-length wall or edge it crossed.
+        local ahead = sweep2 == 0
+          or sweep2 > 0 and target.value2 > previous2
+          or sweep2 < 0 and target.value2 < previous2
+        local crossed = ahead and sweep2 ~= 0
+          and moving.start2 ~= nil and moving.finish2 ~= nil
+          and target.start2 ~= nil and target.finish2 ~= nil
+          and (sweep2 > 0 and target.value2 <= moving.value2
+            or sweep2 < 0 and target.value2 >= moving.value2)
+        if ahead and (math.abs(delta2) <= tolerance_mm * 2 or crossed) then
           candidates[#candidates + 1] = {
             moving = moving,
             target = target,
             delta2 = delta2,
             delta_mm = delta2 / 2,
             screen_distance = math.abs(delta2 / 2) / scale,
+            crossed = crossed,
+            travel_distance = crossed and math.abs(target.value2 - previous2) / 2 or math.huge,
             priority = priorities[target.kind] or 1000,
           }
         end
@@ -390,18 +410,21 @@ function M.resolve(parameters)
   local tolerance_x = type(tolerance) == "table" and (tolerance.x or tolerance[1]) or tolerance
   local tolerance_y = type(tolerance) == "table" and (tolerance.y or tolerance[2]) or tolerance
   local scale = parameters.mm_per_screen_unit or {}
+  local sweep = parameters.sweep_mm or {}
   local exclusions = active_exclusions(
     parameters.exclude_targets, parameters.moving_x, parameters.moving_y, tolerance
   )
   local xbest = not released_axis(exclusions, "x") and M.choose_axis(
     parameters.moving_x, parameters.target_x, tolerance_x, {
       axis = "x", priority = parameters.priority,
+      sweep_mm = type(sweep) == "table" and (sweep.x or sweep[1] or 0) or sweep,
       mm_per_screen_unit = type(scale) == "table" and (scale.x or scale[1] or 1) or scale,
       require_overlap = parameters.require_overlap,
     }) or nil
   local ybest = not released_axis(exclusions, "y") and M.choose_axis(
     parameters.moving_y, parameters.target_y, tolerance_y, {
       axis = "y", priority = parameters.priority,
+      sweep_mm = type(sweep) == "table" and (sweep.y or sweep[2] or 0) or sweep,
       mm_per_screen_unit = type(scale) == "table" and (scale.y or scale[2] or 1) or scale,
       require_overlap = parameters.require_overlap,
     }) or nil
@@ -493,6 +516,7 @@ function M.snap_room(proposed_room, other_rooms, options)
     moving_x = moving.x, moving_y = moving.y, target_x = tx, target_y = ty,
     tolerance_mm = options.tolerance_mm, mm_per_screen_unit = options.mm_per_screen_unit,
     priority = options.priority, bypass = options.bypass,
+    sweep_mm = options.sweep_mm,
     exclude_targets = options.exclude_targets,
     require_overlap = true,
   })
@@ -571,6 +595,7 @@ function M.snap_furniture(room, proposed, furniture_with_rooms, door_apertures, 
     moving_x = moving.x, moving_y = moving.y, target_x = tx, target_y = ty,
     tolerance_mm = options.tolerance_mm, mm_per_screen_unit = options.mm_per_screen_unit,
     priority = options.priority, bypass = options.bypass,
+    sweep_mm = options.sweep_mm,
     exclude_targets = options.exclude_targets,
     require_overlap = true,
   })

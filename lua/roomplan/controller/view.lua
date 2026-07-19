@@ -480,6 +480,7 @@ function M.attach(controller)
       end
       local snap_options = common.snapping_options(resolved)
       local feedback_options = snap_options or { bypass = true }
+      feedback_options.sweep_mm = { raw_delta[1], raw_delta[2] }
       if anchor.kind == "room" then
         local room = model.find(plan, "room", anchor.id)
         local proposed = room and util.deepcopy(room) or nil

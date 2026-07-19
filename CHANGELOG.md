@@ -4,6 +4,10 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Fixed wall snapping when a discrete movement or resize step crosses a nearby
+  wall. Room and furniture edges now stop at the first crossed compatible wall
+  instead of overshooting it and producing a layout error when the remaining
+  distance is not divisible by the configured step.
 - Reserved `H J K L` exclusively for coarse directional movement. Sun Study
   now opens and reopens with mnemonic `S`; the less frequent Save As action
   moves to `gS`. Semantic mapping overrides remain compatible.
