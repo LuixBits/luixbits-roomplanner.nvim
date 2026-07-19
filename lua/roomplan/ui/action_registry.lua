@@ -69,7 +69,7 @@ local definitions = {
     handler = "rotate_view", args = { "reset" }, priority = 20,
   },
   sun_study = {
-    key = "L", mapping = "sun_study", label = "Sun study",
+    key = "S", mapping = "sun_study", label = "Sun study",
     handler = "sun_study", priority = 58,
   },
   sun_previous = {
@@ -103,7 +103,7 @@ local definitions = {
   bypass_snap = { key = "g!", mapping = "bypass_snap", label = "Bypass next snap", handler = "bypass_snap", priority = 20 },
   aspect = { mapping = "aspect", label = "Calibrate terminal aspect", handler = "set_aspect", priority = 10 },
   save = { key = "s", mapping = "save", label = "Save", handler = "save", priority = 55 },
-  save_as = { key = "S", mapping = "save_as", label = "Save As", handler = "save_as_prompt", priority = 45 },
+  save_as = { key = "gS", mapping = "save_as", label = "Save As", handler = "save_as_prompt", priority = 45 },
   undo = { key = "u", mapping = "undo", label = "Undo", handler = "undo", priority = 40 },
   redo = { key = "<C-r>", mapping = "redo", label = "Redo", handler = "redo", priority = 35 },
   history_list = { mapping = "history_list", label = "Browse undo history", handler = "history", priority = 30 },

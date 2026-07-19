@@ -4,6 +4,9 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Reserved `H J K L` exclusively for coarse directional movement. Sun Study
+  now opens and reopens with mnemonic `S`; the less frequent Save As action
+  moves to `gS`. Semantic mapping overrides remain compatible.
 - Added a non-focusable `M` minimap and `:RoomPlanMinimap`. It reuses the real
   compound-room renderer and configured glyphs, applies subdued room colors,
   and tracks the exact canvas field of view through zoom, pan, scrolloff,
@@ -32,7 +35,7 @@ All notable changes to `roomplan.nvim` will be documented here.
   Neovim release, and CI checkout now uses the maintained Node 24 action.
 - Expanded the offline sun study without adding saved-plan keys. `h`/`l` now
   inspect time while canvas `j`/`k` compare the same clock time three months
-  apart. In the `L` popup, `j`/`k` retain ordinary field navigation;
+  apart. In the `S` popup, `j`/`k` retain ordinary field navigation;
   popup presets cover today, equinoxes, and solstices. Whole-day playback
   reliably rewinds to sunrise, handles fractional sunset boundaries, and ends
   on a transient five-band daily-exposure map. Details adds a timeline,
@@ -46,11 +49,11 @@ All notable changes to `roomplan.nvim` will be documented here.
   snapping, and zoom without repeating the command list. No setup mappings or
   saved-plan keys were added.
 - Sun-study playback now dismisses its setup form and focuses the unobstructed
-  canvas. Contextual `h`/`l`, `Space`, `L`, and `Esc` controls step, play/pause,
+  canvas. Contextual `h`/`l`, `Space`, `S`, and `Esc` controls step, play/pause,
   reopen settings, and close the overlay. The hidden quit guard now keeps a
   conflicted plan protected while opening the normal conflict-resolution flow
   instead of exposing a Lua callback traceback.
-- Added a complete offline sunlight study. `L`, `:RoomPlanSunStudy`, and the
+- Added a complete offline sunlight study. `S`, `:RoomPlanSunStudy`, and the
   searchable action popup open one structured workflow for exact plan north,
   location, fixed UTC offset, date/time, step size, frame duration, and
   sunrise-to-sunset playback. Exterior sun-facing walls/windows and clipped

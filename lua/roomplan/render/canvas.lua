@@ -229,7 +229,7 @@ local function session_footer(session)
   if session.sun_study and session.sun_study.viewing then
     local playback = session.sun_study.playing and "Pause" or "Play day"
     return " SUN STUDY | [h/l] Time  [j/k] Next/previous season  [Space] " .. playback
-      .. "  [L] Settings  [Esc] Close "
+      .. "  [S] Settings  [Esc] Close "
   end
   if #rooms == 0 then
     return " [a] Add first room  [?] Help  [q] Hide "
@@ -254,7 +254,7 @@ local function session_footer(session)
   elseif kind == "outlet" then
     return " OUTLET | [e] Edit  [m] Move  [f] Fit  [y] Duplicate  [d] Delete  [a] Add "
   end
-  return " NAV | [a] Add  [Enter] Select  [Tab] Next  [f] Fit  [M] Map  [L] Sun  [v] Validate  [?] Help  [q] Hide "
+  return " NAV | [a] Add  [Enter] Select  [Tab] Next  [f] Fit  [M] Map  [S] Sun  [v] Validate  [?] Help  [q] Hide "
 end
 
 local function options_for_session(session, callbacks)

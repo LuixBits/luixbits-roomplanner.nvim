@@ -58,11 +58,11 @@ ordinary `e`, `m`, `y`, and `d` edit/move/duplicate/delete mappings.
 | `f`, `.`, `,` | `fit`, `zoom_in`, `zoom_out` | Fit/zoom |
 | `M` | `toggle_minimap` | Show/hide the whole-plan minimap and field-of-view rectangle |
 | `t` | `cycle_detail_level` | Cycle `high`, `middle`, and `none` canvas detail |
-| `L` | `sun_study` | Open the sunlight study in NAV; remains coarse-right in MOVE/PAN/RESIZE |
+| `S` | `sun_study` | Open or reopen the sunlight study |
 | Sun mode: `h`/`l`, `j`/`k` | contextual | Earlier/later time; next/previous three-month season on canvas |
 | `Alt-h`, `Alt-l`, `g0` | `rotate_view_counterclockwise`, `rotate_view_clockwise`, `reset_view` | Rotate projection |
 | `gs`, `g!` | `toggle_snap`, `bypass_snap` | Snapping controls |
-| `s`, `S` | `save`, `save_as` | Save / Save As |
+| `s`, `gS` | `save`, `save_as` | Save / Save As |
 
 Exact measurement, selected-furniture wall placement, marked-object batch
 actions, and named history browsing have no default mapping. They remain
@@ -73,15 +73,15 @@ searchable in `?`, and can still receive a semantic override through
 Canvas direction keys (`h j k l`, uppercase variants, and Ctrl variants) can be
 overridden by their literal default left-hand sides. PAN uses the same keys in
 a different mode; `zh zj zk zl` are direct pan aliases. The semantic
-`sun_study` override may move or disable the NAV shortcut without removing
-uppercase `L` coarse movement from editing modes.
+`sun_study` override may move or disable `S`; uppercase `L` is reserved for
+coarse right movement in every canvas mode.
 
 After a study moves to the canvas, contextual `h`/`l` step through time,
-`Space` plays or pauses, `L` reopens its popup, and `Esc` closes it. They reuse
-existing canvas keys only for the lifetime of the visible study and add no
-configuration entries. The dynamic Details controls, footer, and `?` all use
-this same resolved mapping data, so an existing override is displayed wherever
-the command is documented at runtime.
+`Space` plays or pauses, `S` reopens its popup, and `Esc` closes it. The
+direction and playback controls change meaning only for the lifetime of the
+visible study and add no configuration entries. The dynamic Details controls,
+footer, and `?` all use this same resolved mapping data, so an existing
+override is displayed wherever the command is documented at runtime.
 
 ## Direct compound-shape resizing
 

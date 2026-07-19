@@ -300,6 +300,9 @@ function M.attach(controller)
   function controller.sun_study(session)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
+    if resolved.mode ~= "NAV" or resolved.shape_edit then
+      return notify_error(util.err("SUN_BUSY", "finish the current interaction before opening the sunlight study"))
+    end
     if not resolved:model().site then
       return controller.configure_sun_site(resolved, { open_study = true })
     end
@@ -427,7 +430,7 @@ function M.attach(controller)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
     if not resolved.sun_study or not resolved.sun_study.viewing then
-      return notify_error(util.err("SUN_NOT_VIEWING", "open the sunlight study with L first"))
+      return notify_error(util.err("SUN_NOT_VIEWING", "open the sunlight study with S first"))
     end
     stop_timer(resolved)
     reset_playback(resolved.sun_study)
@@ -441,7 +444,7 @@ function M.attach(controller)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
     if not resolved.sun_study or not resolved.sun_study.viewing then
-      return notify_error(util.err("SUN_NOT_VIEWING", "open the sunlight study with L first"))
+      return notify_error(util.err("SUN_NOT_VIEWING", "open the sunlight study with S first"))
     end
     local changed, season_error = advance_season(controller, resolved, delta and delta < 0 and -1 or 1)
     if changed == nil then return notify_error(season_error) end
