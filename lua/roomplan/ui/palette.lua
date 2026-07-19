@@ -10,6 +10,7 @@ local highlight_namespace = vim.api.nvim_create_namespace("roomplan-palette")
 local open_search_prompt
 local close_search_prompt
 local position_search_prompt
+local search_prompt = "/ "
 
 local function valid_buffer(bufnr)
   return type(bufnr) == "number" and vim.api.nvim_buf_is_valid(bufnr)
@@ -17,6 +18,22 @@ end
 
 local function valid_window(winid)
   return type(winid) == "number" and vim.api.nvim_win_is_valid(winid)
+end
+
+-- Neovim 0.10 and 0.11 do not provide prompt_getinput(). Prompt buffers keep
+-- the prompt and current input on their final line, so use the stable buffer
+-- API shared by every supported Neovim version and remove exactly one prompt
+-- prefix. Reading the final line also remains correct if a provider inserts
+-- informational lines before the active prompt.
+local function prompt_query(bufnr)
+  if not valid_buffer(bufnr) then return "" end
+  local line_count = vim.api.nvim_buf_line_count(bufnr)
+  local lines = vim.api.nvim_buf_get_lines(bufnr, math.max(0, line_count - 1), line_count, false)
+  local line = tostring(lines[1] or "")
+  if line:sub(1, #search_prompt) == search_prompt then
+    return line:sub(#search_prompt + 1)
+  end
+  return line
 end
 
 local function text_width(value)
@@ -325,9 +342,9 @@ open_search_prompt = function(handle)
   vim.bo[bufnr].modeline = false
   vim.bo[bufnr].filetype = "roomplan-palette-search"
   vim.b[bufnr].completion = false
-  vim.fn.prompt_setprompt(bufnr, "/ ")
+  vim.fn.prompt_setprompt(bufnr, search_prompt)
   if handle.query ~= "" then
-    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { "/ " .. handle.query })
+    vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, { search_prompt .. handle.query })
   end
   pcall(vim.api.nvim_buf_set_name, bufnr, "roomplan://palette-search/" .. handle.id)
 
@@ -345,7 +362,7 @@ open_search_prompt = function(handle)
   vim.wo[winid].signcolumn = "no"
   vim.wo[winid].wrap = false
   vim.wo[winid].winhighlight = "Normal:NormalFloat"
-  vim.api.nvim_win_set_cursor(winid, { 1, #("/ " .. handle.query) })
+  vim.api.nvim_win_set_cursor(winid, { 1, #(search_prompt .. handle.query) })
 
   local map_opts = { buffer = bufnr, silent = true, nowait = true }
   vim.keymap.set({ "i", "n" }, "<Esc>", function()
@@ -364,7 +381,7 @@ open_search_prompt = function(handle)
     group = handle.augroup, buffer = bufnr,
     callback = function()
       if not handle.searching or handle.closed or not valid_buffer(bufnr) then return end
-      local query = tostring(vim.fn.prompt_getinput(bufnr) or "")
+      local query = prompt_query(bufnr)
       if query ~= handle.query then
         handle.query = query
         render(handle)
