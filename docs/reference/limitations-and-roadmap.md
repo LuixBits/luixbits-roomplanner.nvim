@@ -70,7 +70,7 @@ LuaRock release.
 
 Sunlight currently calculates direction/elevation, marks exposed exterior
 walls/windows, projects clipped floor patches from explicit or assumed window
-heights, compares four-month seasonal dates, and accumulates a fixed-band daily
+heights, compares three-month seasonal dates, and accumulates a fixed-band daily
 exposure legend. Future sunlight work may add overhangs, wall thickness,
 obstacle-height shadows, and reusable overlay controls. It remains explicitly
 approximate in a 2D plan.

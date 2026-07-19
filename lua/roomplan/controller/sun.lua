@@ -102,7 +102,7 @@ end
 local function advance_season(controller, session, delta)
   local study = session and session.sun_study
   if not study then return nil, util.err("SUN_INACTIVE", "the sunlight study is not active") end
-  local date, reason = solar.shift_months(study.date, (delta < 0 and -1 or 1) * 4)
+  local date, reason = solar.shift_months(study.date, (delta < 0 and -1 or 1) * 3)
   if not date then return nil, util.err("SUN_INVALID_DATE", reason) end
   stop_timer(session)
   study.date = date
@@ -181,7 +181,7 @@ local function study_spec(session, initial, local_today)
     id = "sun-study",
     title = "Sun study",
     mode = "SUN STUDY",
-    description = "h/l change time; j/k compare four-month seasons; Space plays the whole day.",
+    description = "h/l change time; Space plays the whole day. Canvas j/k compare three-month seasons.",
     apply_label = "View on canvas",
     context = { session = session },
     initial = initial,
@@ -359,14 +359,6 @@ function M.attach(controller)
       return true
     end
 
-    local function advance_form_season(delta)
-      if not handle or not form.is_current(handle) then return false end
-      local date = solar.shift_months(handle.state.draft.date, (delta < 0 and -1 or 1) * 4)
-      if not date then return false end
-      form.set_value(handle, "date", date, { raw = false, trusted = true })
-      return true
-    end
-
     local function view_on_canvas(play, overlay)
       play_after_submit = play == true
       overlay_after_submit = overlay or "instant"
@@ -403,8 +395,6 @@ function M.attach(controller)
         local mappings = require("roomplan.ui.mappings")
         mappings.set(active.bufnr, "h", function() advance_form(-1) end, "Previous sunlight step")
         mappings.set(active.bufnr, "l", function() advance_form(1) end, "Next sunlight step")
-        mappings.set(active.bufnr, "j", function() advance_form_season(1) end, "Next four-month season")
-        mappings.set(active.bufnr, "k", function() advance_form_season(-1) end, "Previous four-month season")
         mappings.set(active.bufnr, "<Space>", function() view_on_canvas(true) end,
           "Play the whole sunlight day on the canvas")
       end,

@@ -77,11 +77,11 @@ local definitions = {
     handler = "sun_step", args = { 1 }, priority = 90,
   },
   sun_previous_season = {
-    key = "k", literal = true, label = "Previous season (4 months)",
+    key = "k", literal = true, label = "Previous season (3 months)",
     handler = "sun_season", args = { -1 }, priority = 88,
   },
   sun_next_season = {
-    key = "j", literal = true, label = "Next season (4 months)",
+    key = "j", literal = true, label = "Next season (3 months)",
     handler = "sun_season", args = { 1 }, priority = 86,
   },
   sun_toggle_playback = {
