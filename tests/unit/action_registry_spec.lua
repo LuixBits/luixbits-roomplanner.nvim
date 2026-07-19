@@ -150,6 +150,8 @@ describe("action registry", function()
     assert_equal("t", present.cycle_detail_level.key)
     assert_equal("M", present.toggle_minimap.key)
     assert_equal("Show minimap", present.toggle_minimap.label)
+    assert_equal("S", present.sun_study.key)
+    assert_equal("gS", present.save_as.key)
     ctx.minimap_enabled = true
     assert_equal("Hide minimap", registry.get("toggle_minimap", ctx).label)
     assert_equal("set_detail_level", present.cycle_detail_level.handler)

@@ -26,12 +26,7 @@ function M.apply(buf, session)
     map(buf, entry[1], controller("direction", entry[2], entry[3], "coarse"), "RoomPlan coarse direction")
   end
   map(buf, "L", controller("direction", 1, 0, "coarse"), "RoomPlan coarse direction", "coarse_right")
-  map(buf, "L", function()
-    if session.mode == "NAV" and not session.shape_edit then
-      return require("roomplan.controller").sun_study(session)
-    end
-    return require("roomplan.controller").direction(session, 1, 0, "coarse")
-  end, "Open RoomPlan sun study or move right coarsely", "sun_study")
+  map(buf, "S", controller("sun_study"), "Open RoomPlan sun study", "sun_study")
   map(buf, "<Space>", function()
     if session.sun_study and session.sun_study.viewing then
       return require("roomplan.controller").sun_toggle(session)
@@ -76,7 +71,7 @@ function M.apply(buf, session)
   map(buf, "gs", controller("toggle_snap"), "Toggle RoomPlan snapping", "toggle_snap")
   map(buf, "g!", controller("bypass_snap"), "Bypass next RoomPlan snap", "bypass_snap")
   map(buf, "s", controller("save"), "Apply RoomPlan resize and save", "save")
-  map(buf, "S", controller("save_as_prompt"), "Save RoomPlan As", "save_as")
+  map(buf, "gS", controller("save_as_prompt"), "Save RoomPlan As", "save_as")
   map(buf, "?", function() require("roomplan.ui.help").open(session) end, "RoomPlan help", "help")
   map(buf, "<Esc>", controller("escape"), "Cancel RoomPlan mode", "escape")
 end

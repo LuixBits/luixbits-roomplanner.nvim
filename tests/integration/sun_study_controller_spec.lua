@@ -6,6 +6,24 @@ local controller = require("roomplan.controller")
 local session_module = require("roomplan.session")
 
 describe("sun-study controller", function()
+  it("does not interrupt an active canvas interaction", function()
+    config.reset()
+    local plan = h.truthy(model.new({ name = "Busy sun controller" }))
+    plan.site = json.object({
+      north_deg = 0, latitude_deg = 47, longitude_deg = 8, utc_offset_minutes = 60,
+    })
+    local source_buffer = vim.api.nvim_create_buf(false, true)
+    local session = h.truthy(session_module.new({ bufnr = source_buffer, adapter = "standalone" }, plan, {
+      durable = true,
+    }))
+    session.mode = "MOVE"
+    h.eq(nil, controller.sun_study(session))
+    h.eq(nil, session.sun_study)
+    h.truthy(session:destroy({ force = true }))
+    if vim.api.nvim_buf_is_valid(source_buffer) then vim.api.nvim_buf_delete(source_buffer, { force = true }) end
+    config.reset()
+  end)
+
   it("dismisses the popup for canvas playback and keeps contextual controls available", function()
     config.reset()
     config.setup({ sun_study = { playback = { step_minutes = 60, frame_duration_ms = 50 } } })
@@ -74,7 +92,7 @@ describe("sun-study controller", function()
       overlay = session.sun_study and session.sun_study.overlay,
     }))
     h.truthy(session.sun_study.daily_exposure and #session.sun_study.daily_exposure.samples > 0)
-    vim.api.nvim_feedkeys("L", "x", false)
+    vim.api.nvim_feedkeys("S", "x", false)
     h.truthy(vim.wait(500, function()
       return session.form and session.form.spec.id == "sun-study"
     end, 10))

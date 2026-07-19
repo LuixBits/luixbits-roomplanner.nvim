@@ -105,12 +105,12 @@ For a room, furniture item, or project template, `e` also exposes an
 `q` returns to the canvas before hiding the workspace. Add a window directly
 with `W` or an outlet with `O`; the outlet form chooses wall or floor placement.
 From the Add menu use `a` followed by lowercase `w` or `o`.
-Press `L` for the sunlight study. Its first use asks for plan north, location,
+Press `S` for the sunlight study. Its first use asks for plan north, location,
 and UTC offset in one popup; later uses open the date/time playback directly.
 `Space` starts at sunrise and dismisses the popup so the whole canvas remains
 visible. On the canvas use `h`/`l` for time and `j`/`k` for forward/backward
 three-month comparisons. `Space` pauses or resumes and the completed day becomes
-a direct-sun exposure map; `L` reopens settings and `Esc` closes the study.
+a direct-sun exposure map; `S` reopens settings and `Esc` closes the study.
 
 Open the plan again with:
 

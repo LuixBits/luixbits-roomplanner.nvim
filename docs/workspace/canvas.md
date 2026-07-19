@@ -18,12 +18,12 @@ truth.
 | `M` | Toggle the colored whole-plan minimap |
 | `Alt-l` / `Alt-h` | Rotate the view clockwise / counter-clockwise |
 | `g0` | Restore the plan view/up projection |
-| `L` | Open the offline sunlight study |
+| `S` | Open the offline sunlight study |
 
 Starting whole-day playback dismisses the study form so it cannot cover the
 plan. While the study is on the canvas, `h`/`l` step through time and `j`/`k`
 move forward/backward by three months at that same time. `Space` plays from
-sunrise or pauses/resumes, `L` reopens settings, and `Esc` closes the transient
+sunrise or pauses/resumes, `S` reopens settings, and `Esc` closes the transient
 overlay. A completed day shows the fixed-band exposure map. Press `3` to show
 the same controls, timeline, legend, and play state in Details, or `?` to find
 them in the **Current mode** group.

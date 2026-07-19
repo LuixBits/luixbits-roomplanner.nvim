@@ -1,7 +1,7 @@
 # Sun study
 
 RoomPlan can draw an approximate top-down sunlight patch through exterior
-windows without network access. Press `L`, run `:RoomPlanSunStudy`, or choose
+windows without network access. Press `S`, run `:RoomPlanSunStudy`, or choose
 **Sun study** from `?`.
 
 The first use opens one structured setup popup. Enter:
@@ -31,7 +31,7 @@ on canvas**, and **View daily exposure** expose all three choices explicitly.
 While viewing the canvas, `h` and `l` step backward and forward in the chosen
 day; `j` advances three months and `k` goes back three months at the same local
 time. `Space` plays from sunrise, pauses or resumes an active run, and restarts
-from sunrise after completion. `L` pauses and reopens the same settings, and
+from sunrise after completion. `S` pauses and reopens the same settings, and
 `Esc` closes the study. Playback advances only across the calculated daylight
 interval. At sunset it stops and replaces the final instant with the daily
 exposure overlay. These contextual controls do not add more setup keys.
