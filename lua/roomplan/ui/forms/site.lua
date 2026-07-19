@@ -51,8 +51,12 @@ function M.new(session)
       { key = "latitude_deg", label = "Latitude", type = "text", required = true, trim = true },
       { key = "longitude_deg", label = "Longitude", type = "text", required = true, trim = true },
       { key = "utc_offset", label = "UTC offset", type = "text", required = true, trim = true },
-      { key = "note", label = "Calculation", type = "readonly",
-        value = "Offline clear-sky geometry; no network, weather, or daylight-saving lookup." },
+      {
+        key = "note",
+        label = "Calculation",
+        type = "readonly",
+        value = "Offline clear-sky geometry; no network, weather, or daylight-saving lookup.",
+      },
     },
   }
   function spec.validate(draft)

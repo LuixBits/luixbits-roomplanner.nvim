@@ -15,9 +15,7 @@ local ALLOWED_DEFINITION_KEYS = {
 }
 local ALLOWED_DOCUMENT_KEYS = { version = true, furniture = true }
 
-local function append(errors, path, message)
-  errors[#errors + 1] = path .. ": " .. message
-end
+local function append(errors, path, message) errors[#errors + 1] = path .. ": " .. message end
 
 local function is_dense_list(value)
   if type(value) ~= "table" then return false end
@@ -29,9 +27,7 @@ local function is_dense_list(value)
   return count == #value
 end
 
-local function nonempty_string(value)
-  return type(value) == "string" and value:match("%S") ~= nil
-end
+local function nonempty_string(value) return type(value) == "string" and value:match("%S") ~= nil end
 
 local function safe_label(value, path, errors)
   if not nonempty_string(value) then
@@ -100,8 +96,11 @@ local function normalize_definition(value, path, max_dimension_mm, errors)
     for index = 1, 3 do
       local dimension = positive_integer(size[index], max_dimension_mm)
       if not dimension then
-        append(errors, string.format("%s.default_size_mm[%d]", path, index),
-          "expected a positive integer no greater than " .. max_dimension_mm)
+        append(
+          errors,
+          string.format("%s.default_size_mm[%d]", path, index),
+          "expected a positive integer no greater than " .. max_dimension_mm
+        )
       else
         normalized_size[index] = dimension
       end
@@ -122,7 +121,8 @@ local function read_document(path, errors)
   local expanded = vim.fn.expand(path)
   local bytes, read_err = source.read_file(expanded, { max_bytes = MAX_CATALOG_BYTES })
   if not bytes then
-    local message = read_err and read_err.code == "SOURCE_SIZE_LIMIT"
+    local message = read_err
+        and read_err.code == "SOURCE_SIZE_LIMIT"
         and (expanded .. " exceeds the 1 MiB catalog limit")
       or ((read_err and read_err.message) or ("could not read " .. expanded))
     append(errors, "furniture.files", message)
@@ -130,7 +130,8 @@ local function read_document(path, errors)
   end
   local document, decode_err = json.decode(bytes, { max_bytes = MAX_CATALOG_BYTES })
   if not document then
-    local location = decode_err.line and string.format(" at line %d, column %d", decode_err.line, decode_err.column) or ""
+    local location = decode_err.line and string.format(" at line %d, column %d", decode_err.line, decode_err.column)
+      or ""
     append(errors, "furniture.files", string.format("%s: %s%s", expanded, decode_err.message, location))
     return nil
   end
@@ -139,7 +140,9 @@ local function read_document(path, errors)
     return nil
   end
   for key in pairs(document) do
-    if not ALLOWED_DOCUMENT_KEYS[key] then append(errors, "furniture.files", expanded .. ": unknown field " .. tostring(key)) end
+    if not ALLOWED_DOCUMENT_KEYS[key] then
+      append(errors, "furniture.files", expanded .. ": unknown field " .. tostring(key))
+    end
   end
   if positive_integer(document.version, 1) ~= 1 then
     append(errors, "furniture.files", expanded .. ": version must be 1")

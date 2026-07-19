@@ -6,19 +6,91 @@ local json = require("roomplan.codec.json")
 local v2_adapter = require("roomplan.catalog.v2_adapter")
 
 local BUILTINS = {
-  { id = "builtin:bed", name = "Bed", category = "sleeping", default_size_mm = { 2000, 1600, 500 }, shape = "rectangle" },
-  { id = "builtin:sofa", name = "Sofa", category = "seating", default_size_mm = { 2100, 900, 850 }, shape = "rectangle" },
-  { id = "builtin:armchair", name = "Armchair", category = "seating", default_size_mm = { 900, 900, 900 }, shape = "rectangle" },
-  { id = "builtin:table", name = "Table", category = "dining", default_size_mm = { 1600, 900, 750 }, shape = "rectangle" },
-  { id = "builtin:chair", name = "Chair", category = "seating", default_size_mm = { 500, 500, 900 }, shape = "rectangle" },
+  {
+    id = "builtin:bed",
+    name = "Bed",
+    category = "sleeping",
+    default_size_mm = { 2000, 1600, 500 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:sofa",
+    name = "Sofa",
+    category = "seating",
+    default_size_mm = { 2100, 900, 850 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:armchair",
+    name = "Armchair",
+    category = "seating",
+    default_size_mm = { 900, 900, 900 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:table",
+    name = "Table",
+    category = "dining",
+    default_size_mm = { 1600, 900, 750 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:chair",
+    name = "Chair",
+    category = "seating",
+    default_size_mm = { 500, 500, 900 },
+    shape = "rectangle",
+  },
   { id = "builtin:desk", name = "Desk", category = "work", default_size_mm = { 1400, 700, 750 }, shape = "rectangle" },
-  { id = "builtin:wardrobe", name = "Wardrobe", category = "storage", default_size_mm = { 1200, 600, 2000 }, shape = "rectangle" },
-  { id = "builtin:bookcase", name = "Bookcase/shelf", category = "storage", default_size_mm = { 900, 300, 1800 }, shape = "rectangle" },
-  { id = "builtin:cabinet", name = "Cabinet", category = "storage", default_size_mm = { 800, 450, 900 }, shape = "rectangle" },
-  { id = "builtin:kitchen-unit", name = "Kitchen unit", category = "kitchen", default_size_mm = { 600, 600, 900 }, shape = "rectangle" },
-  { id = "builtin:appliance", name = "Appliance", category = "appliance", default_size_mm = { 600, 600, 850 }, shape = "rectangle" },
-  { id = "builtin:bathroom-fixture", name = "Bathroom fixture", category = "bathroom", default_size_mm = { 700, 400, 850 }, shape = "rectangle" },
-  { id = "builtin:custom-rectangle", name = "Custom rectangle", category = "custom", default_size_mm = { 1000, 1000, 1000 }, shape = "rectangle" },
+  {
+    id = "builtin:wardrobe",
+    name = "Wardrobe",
+    category = "storage",
+    default_size_mm = { 1200, 600, 2000 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:bookcase",
+    name = "Bookcase/shelf",
+    category = "storage",
+    default_size_mm = { 900, 300, 1800 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:cabinet",
+    name = "Cabinet",
+    category = "storage",
+    default_size_mm = { 800, 450, 900 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:kitchen-unit",
+    name = "Kitchen unit",
+    category = "kitchen",
+    default_size_mm = { 600, 600, 900 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:appliance",
+    name = "Appliance",
+    category = "appliance",
+    default_size_mm = { 600, 600, 850 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:bathroom-fixture",
+    name = "Bathroom fixture",
+    category = "bathroom",
+    default_size_mm = { 700, 400, 850 },
+    shape = "rectangle",
+  },
+  {
+    id = "builtin:custom-rectangle",
+    name = "Custom rectangle",
+    category = "custom",
+    default_size_mm = { 1000, 1000, 1000 },
+    shape = "rectangle",
+  },
 }
 
 local BY_ID = {}
@@ -33,9 +105,7 @@ local imported_by_id = {}
 local include_builtins = true
 
 local function copy_template(template, schema_version)
-  if not template then
-    return nil
-  end
+  if not template then return nil end
   schema_version = schema_version or 1
   if schema_version >= 2 then
     local result
@@ -96,13 +166,9 @@ function M.all(model)
   return result
 end
 
-function M.get(id)
-  return copy_template(BY_ID[id] or imported_by_id[id])
-end
+function M.get(id) return copy_template(BY_ID[id] or imported_by_id[id]) end
 
-function M.exists(id)
-  return BY_ID[id] ~= nil or imported_by_id[id] ~= nil
-end
+function M.exists(id) return BY_ID[id] ~= nil or imported_by_id[id] ~= nil end
 
 function M.categories()
   local seen = {}
@@ -138,16 +204,12 @@ function M.resolve(model, id)
     id, model = model, nil
   end
   local builtin = BY_ID[id]
-  if builtin then
-    return copy_template(builtin, type(model) == "table" and model.schema_version or 1)
-  end
+  if builtin then return copy_template(builtin, type(model) == "table" and model.schema_version or 1) end
   if type(model) == "table" and type(model.custom_templates) == "table" then
     local position = 1
     while position <= #model.custom_templates do
       local template = model.custom_templates[position]
-      if template.id == id then
-        return copy_template(template, model.schema_version or 1)
-      end
+      if template.id == id then return copy_template(template, model.schema_version or 1) end
       position = position + 1
     end
   end
@@ -158,13 +220,12 @@ end
 -- Validation and file loading complete before state is swapped, so a failed
 -- setup leaves the prior effective catalogue intact.
 function M.configure(options, limits)
-  local loaded, errors = require("roomplan.catalog.import").load(
-    options,
-    limits and limits.max_dimension_mm or nil
-  )
+  local loaded, errors = require("roomplan.catalog.import").load(options, limits and limits.max_dimension_mm or nil)
   if not loaded then return nil, errors end
   local index = {}
-  for position = 1, #loaded do index[loaded[position].id] = loaded[position] end
+  for position = 1, #loaded do
+    index[loaded[position].id] = loaded[position]
+  end
   imported = loaded
   imported_by_id = index
   include_builtins = options.include_builtins ~= false

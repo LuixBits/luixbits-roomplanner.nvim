@@ -22,15 +22,28 @@ local definitions = {
   add_door = { key = "D", mapping = "add_door", label = "Add door", handler = "add_door", priority = 50 },
   add_window = { key = "W", mapping = "add_window", label = "Add window", handler = "add_window", priority = 50 },
   add_outlet = { key = "O", mapping = "add_outlet", label = "Add outlet", handler = "add_outlet", priority = 50 },
-  add_furniture = { key = "F", mapping = "add_furniture", label = "Add furniture", handler = "add_furniture", priority = 50 },
+  add_furniture = {
+    key = "F",
+    mapping = "add_furniture",
+    label = "Add furniture",
+    handler = "add_furniture",
+    priority = 50,
+  },
   select = {
-    key = "<CR>", mapping = "select", label = "Select", handler = "select_under_cursor",
-    priority = 75, scopes = { "canvas" },
+    key = "<CR>",
+    mapping = "select",
+    label = "Select",
+    handler = "select_under_cursor",
+    priority = 75,
+    scopes = { "canvas" },
   },
   edit = { key = "e", mapping = "edit", label = "Edit", handler = "edit_selected", priority = 100 },
   resize_dimensions = {
-    key = "r", mapping = "resize_dimensions", label = "Resize dimensions",
-    handler = "edit_selected_shape", priority = 92,
+    key = "r",
+    mapping = "resize_dimensions",
+    label = "Resize dimensions",
+    handler = "edit_selected_shape",
+    priority = 92,
   },
   move = { key = "m", mapping = "move_mode", label = "Move", handler = "set_mode", args = { "MOVE" }, priority = 95 },
   pan = { key = "p", mapping = "pan_mode", label = "Pan", handler = "set_mode", args = { "PAN" }, priority = 30 },
@@ -47,60 +60,137 @@ local definitions = {
   delete = { key = "d", mapping = "delete", label = "Delete", handler = "delete_selected", priority = 40 },
   fit = { key = "f", mapping = "fit", label = "Fit", handler = "fit", priority = 65 },
   toggle_minimap = {
-    key = "M", mapping = "toggle_minimap", label = "Show minimap",
-    handler = "toggle_minimap", priority = 62,
+    key = "M",
+    mapping = "toggle_minimap",
+    label = "Show minimap",
+    handler = "toggle_minimap",
+    priority = 62,
   },
   cycle_detail_level = {
-    key = "t", mapping = "cycle_detail_level", label = "Cycle canvas detail",
-    handler = "set_detail_level", args = { "cycle" }, priority = 40,
+    key = "t",
+    mapping = "cycle_detail_level",
+    label = "Cycle canvas detail",
+    handler = "set_detail_level",
+    args = { "cycle" },
+    priority = 40,
   },
   zoom_in = { key = ".", mapping = "zoom_in", label = "Zoom in", handler = "zoom", args = { "in" }, priority = 35 },
   zoom_out = { key = ",", mapping = "zoom_out", label = "Zoom out", handler = "zoom", args = { "out" }, priority = 35 },
   rotate_view_clockwise = {
-    key = "<A-l>", mapping = "rotate_view_clockwise", label = "Rotate view clockwise",
-    handler = "rotate_view", args = { "clockwise" }, priority = 25,
+    key = "<A-l>",
+    mapping = "rotate_view_clockwise",
+    label = "Rotate view clockwise",
+    handler = "rotate_view",
+    args = { "clockwise" },
+    priority = 25,
   },
   rotate_view_counterclockwise = {
-    key = "<A-h>", mapping = "rotate_view_counterclockwise", label = "Rotate view counter-clockwise",
-    handler = "rotate_view", args = { "counterclockwise" }, priority = 25,
+    key = "<A-h>",
+    mapping = "rotate_view_counterclockwise",
+    label = "Rotate view counter-clockwise",
+    handler = "rotate_view",
+    args = { "counterclockwise" },
+    priority = 25,
   },
   reset_view = {
-    key = "g0", mapping = "reset_view", label = "Reset plan view/up",
-    handler = "rotate_view", args = { "reset" }, priority = 20,
+    key = "g0",
+    mapping = "reset_view",
+    label = "Reset plan view/up",
+    handler = "rotate_view",
+    args = { "reset" },
+    priority = 20,
   },
   sun_study = {
-    key = "S", mapping = "sun_study", label = "Sun study",
-    handler = "sun_study", priority = 58,
+    key = "S",
+    mapping = "sun_study",
+    label = "Sun study",
+    handler = "sun_study",
+    priority = 58,
   },
   sun_previous = {
-    key = "h", literal = true, label = "Earlier time",
-    handler = "sun_step", args = { -1 }, priority = 92,
+    key = "h",
+    literal = true,
+    label = "Earlier time",
+    handler = "sun_step",
+    args = { -1 },
+    priority = 92,
   },
   sun_next = {
-    key = "l", literal = true, label = "Later time",
-    handler = "sun_step", args = { 1 }, priority = 90,
+    key = "l",
+    literal = true,
+    label = "Later time",
+    handler = "sun_step",
+    args = { 1 },
+    priority = 90,
   },
   sun_previous_season = {
-    key = "k", literal = true, label = "Previous season (3 months)",
-    handler = "sun_season", args = { -1 }, priority = 88,
+    key = "k",
+    literal = true,
+    label = "Previous season (3 months)",
+    handler = "sun_season",
+    args = { -1 },
+    priority = 88,
   },
   sun_next_season = {
-    key = "j", literal = true, label = "Next season (3 months)",
-    handler = "sun_season", args = { 1 }, priority = 86,
+    key = "j",
+    literal = true,
+    label = "Next season (3 months)",
+    handler = "sun_season",
+    args = { 1 },
+    priority = 86,
   },
   sun_toggle_playback = {
-    key = "<Space>", literal = true, label = "Play",
-    handler = "sun_toggle", priority = 100,
+    key = "<Space>",
+    literal = true,
+    label = "Play",
+    handler = "sun_toggle",
+    priority = 100,
   },
   sun_close = {
-    key = "<Esc>", mapping = "escape", label = "Close study",
-    handler = "close_sun_study", priority = 95,
+    key = "<Esc>",
+    mapping = "escape",
+    label = "Close study",
+    handler = "close_sun_study",
+    priority = 95,
   },
-  validate = { key = "v", mapping = "validate", label = "Validate", handler = "validate", args = { true }, priority = 60 },
-  next_issue = { key = "<A-j>", mapping = "next_issue", label = "Next issue", handler = "next_issue", args = { 1 }, priority = 30 },
-  previous_issue = { key = "<A-k>", mapping = "previous_issue", label = "Previous issue", handler = "next_issue", args = { -1 }, priority = 30 },
-  toggle_snap = { key = "gs", mapping = "toggle_snap", label = "Toggle snapping", handler = "toggle_snap", priority = 30 },
-  bypass_snap = { key = "g!", mapping = "bypass_snap", label = "Bypass next snap", handler = "bypass_snap", priority = 20 },
+  validate = {
+    key = "v",
+    mapping = "validate",
+    label = "Validate",
+    handler = "validate",
+    args = { true },
+    priority = 60,
+  },
+  next_issue = {
+    key = "<A-j>",
+    mapping = "next_issue",
+    label = "Next issue",
+    handler = "next_issue",
+    args = { 1 },
+    priority = 30,
+  },
+  previous_issue = {
+    key = "<A-k>",
+    mapping = "previous_issue",
+    label = "Previous issue",
+    handler = "next_issue",
+    args = { -1 },
+    priority = 30,
+  },
+  toggle_snap = {
+    key = "gs",
+    mapping = "toggle_snap",
+    label = "Toggle snapping",
+    handler = "toggle_snap",
+    priority = 30,
+  },
+  bypass_snap = {
+    key = "g!",
+    mapping = "bypass_snap",
+    label = "Bypass next snap",
+    handler = "bypass_snap",
+    priority = 20,
+  },
   aspect = { mapping = "aspect", label = "Calibrate terminal aspect", handler = "set_aspect", priority = 10 },
   save = { key = "s", mapping = "save", label = "Save", handler = "save", priority = 55 },
   save_as = { key = "gS", mapping = "save_as", label = "Save As", handler = "save_as_prompt", priority = 45 },
@@ -115,40 +205,75 @@ local definitions = {
   canvas = { key = "2", mapping = "focus_canvas", label = "Canvas", workspace = "canvas", priority = 20 },
   properties = { key = "3", mapping = "focus_properties", label = "Details", workspace = "properties", priority = 20 },
   issues = { key = "!", mapping = "focus_issues", label = "Issues", workspace = "issues", priority = 20 },
-  previous_field = { key = "<S-Tab>", mapping = "form_previous_field", label = "Previous field", form = "previous", priority = 30 },
+  previous_field = {
+    key = "<S-Tab>",
+    mapping = "form_previous_field",
+    label = "Previous field",
+    form = "previous",
+    priority = 30,
+  },
   next_field = { key = "<Tab>", mapping = "form_next_field", label = "Next field", form = "next", priority = 80 },
   edit_field = { key = "<CR>", mapping = "form_edit", label = "Edit field", form = "edit", priority = 90 },
   apply = { key = "<C-s>", mapping = "form_apply", label = "Apply", form = "apply", priority = 100 },
   reset = { key = "R", mapping = "form_reset", label = "Reset", form = "reset", priority = 15 },
   cancel = { key = "<Esc>", mapping = "form_cancel", label = "Cancel", form = "cancel", priority = 95 },
   shape_apply = {
-    key = "s", mapping = "save", label = "Save resize",
-    handler = "save", priority = 100,
+    key = "s",
+    mapping = "save",
+    label = "Save resize",
+    handler = "save",
+    priority = 100,
   },
   shape_previous = {
-    key = "<S-Tab>", mapping = "shape_previous", label = "Previous section",
-    handler = "cycle_room_shape_part", args = { -1 }, priority = 35,
+    key = "<S-Tab>",
+    mapping = "shape_previous",
+    label = "Previous section",
+    handler = "cycle_room_shape_part",
+    args = { -1 },
+    priority = 35,
   },
   shape_next = {
-    key = "<Tab>", mapping = "shape_next", label = "Next section",
-    handler = "cycle_room_shape_part", args = { 1 }, priority = 80,
+    key = "<Tab>",
+    mapping = "shape_next",
+    label = "Next section",
+    handler = "cycle_room_shape_part",
+    args = { 1 },
+    priority = 80,
   },
   leave_mode = { key = "<Esc>", mapping = "escape", label = "Finish mode", handler = "escape", priority = 100 },
   activate_focused = {
-    key = "<CR>", mapping = "workspace_activate_focused", label = "Open",
-    workspace_action = "select_focused", priority = 100, scopes = { "objects", "issues" },
+    key = "<CR>",
+    mapping = "workspace_activate_focused",
+    label = "Open",
+    workspace_action = "select_focused",
+    priority = 100,
+    scopes = { "objects", "issues" },
   },
   collapse_focused = {
-    key = "h", mapping = "workspace_collapse_focused", label = "Collapse",
-    workspace_action = "collapse_focused", args = { false }, priority = 80, scopes = { "objects" },
+    key = "h",
+    mapping = "workspace_collapse_focused",
+    label = "Collapse",
+    workspace_action = "collapse_focused",
+    args = { false },
+    priority = 80,
+    scopes = { "objects" },
   },
   expand_focused = {
-    key = "l", mapping = "workspace_expand_focused", label = "Expand",
-    workspace_action = "expand_focused", args = { true }, priority = 75, scopes = { "objects" },
+    key = "l",
+    mapping = "workspace_expand_focused",
+    label = "Expand",
+    workspace_action = "expand_focused",
+    args = { true },
+    priority = 75,
+    scopes = { "objects" },
   },
   filter_focused = {
-    key = "/", mapping = "workspace_filter_focused", label = "Filter",
-    workspace_action = "filter_focused", priority = 70, scopes = { "objects", "issues" },
+    key = "/",
+    mapping = "workspace_filter_focused",
+    label = "Filter",
+    workspace_action = "filter_focused",
+    priority = 70,
+    scopes = { "objects", "issues" },
   },
   toggle_mark = {
     key = "<Space>",
@@ -173,37 +298,73 @@ local definitions = {
   },
   clear_marks = { mapping = "clear_marks", label = "Clear marked objects", handler = "clear_marks", priority = 20 },
   toggle_details_section = {
-    key = "<CR>", mapping = "workspace_toggle_details_section", label = "Toggle section",
-    workspace_action = "toggle_details_section", priority = 100, scopes = { "properties" },
+    key = "<CR>",
+    mapping = "workspace_toggle_details_section",
+    label = "Toggle section",
+    workspace_action = "toggle_details_section",
+    priority = 100,
+    scopes = { "properties" },
   },
 }
 
 local group_members = {
   create = { "add", "add_room", "add_door", "add_window", "add_outlet", "add_furniture" },
-  selection = { "select", "edit", "resize_dimensions", "move", "align",
-    "place_furniture", "rotate", "duplicate", "delete",
+  selection = {
+    "select",
+    "edit",
+    "resize_dimensions",
+    "move",
+    "align",
+    "place_furniture",
+    "rotate",
+    "duplicate",
+    "delete",
     "move_marked",
     "duplicate_marked",
     "delete_marked",
-    "clear_marks" },
+    "clear_marks",
+  },
   view = {
-    "pan", "fit", "toggle_minimap", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
-    "reset_view", "sun_study", "validate", "next_issue", "previous_issue",
-    "toggle_snap", "bypass_snap",
-    "measure", "aspect",
+    "pan",
+    "fit",
+    "toggle_minimap",
+    "cycle_detail_level",
+    "zoom_in",
+    "zoom_out",
+    "rotate_view_clockwise",
+    "rotate_view_counterclockwise",
+    "reset_view",
+    "sun_study",
+    "validate",
+    "next_issue",
+    "previous_issue",
+    "toggle_snap",
+    "bypass_snap",
+    "measure",
+    "aspect",
   },
   history = { "save", "save_as", "undo", "redo", "history_list" },
   session = { "reload", "close" },
   workspace = { "help", "hide", "objects", "canvas", "properties", "issues" },
   form = { "previous_field", "next_field", "edit_field", "apply", "reset", "cancel" },
   mode = {
-    "shape_apply", "shape_previous", "shape_next", "leave_mode",
-    "sun_previous", "sun_next", "sun_previous_season", "sun_next_season",
-    "sun_toggle_playback", "sun_close",
+    "shape_apply",
+    "shape_previous",
+    "shape_next",
+    "leave_mode",
+    "sun_previous",
+    "sun_next",
+    "sun_previous_season",
+    "sun_next_season",
+    "sun_toggle_playback",
+    "sun_close",
   },
   pane = {
     "activate_focused",
-    "toggle_mark", "collapse_focused", "expand_focused", "filter_focused",
+    "toggle_mark",
+    "collapse_focused",
+    "expand_focused",
+    "filter_focused",
     "toggle_details_section",
   },
 }
@@ -221,17 +382,15 @@ end
 local function clone(value)
   if type(value) ~= "table" then return value end
   local result = {}
-  for key, item in pairs(value) do result[key] = clone(item) end
+  for key, item in pairs(value) do
+    result[key] = clone(item)
+  end
   return result
 end
 
-local function room_count(ctx)
-  return #(ctx.model and ctx.model.rooms or {})
-end
+local function room_count(ctx) return #(ctx.model and ctx.model.rooms or {}) end
 
-local function selected_kind(ctx)
-  return ctx.selection and ctx.selection.kind
-end
+local function selected_kind(ctx) return ctx.selection and ctx.selection.kind end
 
 local function focused_pane(ctx)
   local focus = ctx and ctx.focus or "canvas"
@@ -258,9 +417,7 @@ local friendly_keys = {
   ["<A-l>"] = "Alt-l",
 }
 
-function M.display_key(key)
-  return key and (friendly_keys[key] or key) or nil
-end
+function M.display_key(key) return key and (friendly_keys[key] or key) or nil end
 
 local function availability(id, ctx)
   local kind = selected_kind(ctx)
@@ -275,8 +432,14 @@ local function availability(id, ctx)
     if (id == "delete" or id == "duplicate") and kind == "plan" then
       return false, "The plan itself cannot be " .. (id == "delete" and "deleted" or "duplicated")
     end
-    if id == "duplicate" and kind ~= "room" and kind ~= "door" and kind ~= "window"
-      and kind ~= "outlet" and kind ~= "furniture" and kind ~= "template"
+    if
+      id == "duplicate"
+      and kind ~= "room"
+      and kind ~= "door"
+      and kind ~= "window"
+      and kind ~= "outlet"
+      and kind ~= "furniture"
+      and kind ~= "template"
     then
       return false, "This object cannot be duplicated"
     end
@@ -285,9 +448,7 @@ local function availability(id, ctx)
       return false, "Select a room, furniture item, or project template first"
     end
   elseif id == "move" then
-    if kind ~= "room" and kind ~= "door" and kind ~= "window"
-      and kind ~= "outlet" and kind ~= "furniture"
-    then
+    if kind ~= "room" and kind ~= "door" and kind ~= "window" and kind ~= "outlet" and kind ~= "furniture" then
       return false, "Select a movable object first"
     end
   elseif id == "align" then
@@ -296,9 +457,7 @@ local function availability(id, ctx)
   elseif id == "rotate" then
     if kind ~= "furniture" then return false, "Select furniture first" end
   elseif id == "place_furniture" then
-    if kind ~= "furniture" then
-      return false, "Select furniture first"
-    end
+    if kind ~= "furniture" then return false, "Select furniture first" end
   elseif id == "measure" then
     local plan = ctx.model or {}
     if #(plan.rooms or {}) + #(plan.furniture or {}) < 2 then
@@ -306,30 +465,18 @@ local function availability(id, ctx)
     end
   elseif id == "toggle_mark" then
     local row = ctx.focused_row
-    if not row or row.kind == "plan" or not row.id then
-      return false, "Focus an object row"
-    end
+    if not row or row.kind == "plan" or not row.id then return false, "Focus an object row" end
   elseif id == "move_marked" then
-    if (ctx.marked_count or 0) == 0 then
-      return false, "Mark objects in Navigator first"
-    end
-    if (ctx.marked_move_unsupported or 0) > 0 then
-      return false, "Group movement supports rooms and furniture"
-    end
-    if (ctx.marked_move_count or 0) == 0 then
-      return false, "No marked object can be moved as a group"
-    end
+    if (ctx.marked_count or 0) == 0 then return false, "Mark objects in Navigator first" end
+    if (ctx.marked_move_unsupported or 0) > 0 then return false, "Group movement supports rooms and furniture" end
+    if (ctx.marked_move_count or 0) == 0 then return false, "No marked object can be moved as a group" end
   elseif id == "duplicate_marked" then
-    if (ctx.marked_count or 0) == 0 then
-      return false, "Mark objects in Navigator first"
-    end
+    if (ctx.marked_count or 0) == 0 then return false, "Mark objects in Navigator first" end
     if (ctx.marked_duplicate_unsupported or 0) > 0 then
       return false, "Doors need their placement popup and cannot be batch duplicated"
     end
   elseif id == "delete_marked" or id == "clear_marks" then
-    if (ctx.marked_count or 0) == 0 then
-      return false, "Mark objects in Navigator first"
-    end
+    if (ctx.marked_count or 0) == 0 then return false, "Mark objects in Navigator first" end
   elseif id == "save" and ctx.conflicted then
     return false, "Resolve the source conflict first"
   elseif id == "undo" and ctx.can_undo == false then
@@ -340,9 +487,13 @@ local function availability(id, ctx)
     return false, "View is already plan-up"
   elseif id == "sun_study" and ctx.mode ~= nil and ctx.mode ~= "NAV" and ctx.mode ~= "SUN STUDY" then
     return false, "Finish the current interaction first"
-  elseif id == "sun_previous" or id == "sun_next"
-    or id == "sun_previous_season" or id == "sun_next_season"
-    or id == "sun_toggle_playback" or id == "sun_close"
+  elseif
+    id == "sun_previous"
+    or id == "sun_next"
+    or id == "sun_previous_season"
+    or id == "sun_next_season"
+    or id == "sun_toggle_playback"
+    or id == "sun_close"
   then
     if ctx.mode ~= "SUN STUDY" then return false, "Start the sunlight study first" end
   elseif id == "activate_focused" then
@@ -401,60 +552,106 @@ function M.get(id, ctx)
   elseif id == "sun_study" and ctx.mode == "SUN STUDY" then
     result.label = "Settings"
   elseif id == "leave_mode" then
-    if ctx.mode == "RESIZE" then result.label = "Cancel resize"
-    elseif ctx.mode == "MOVE" then result.label = "Finish moving"
-    elseif ctx.mode == "PAN" then result.label = "Finish panning" end
+    if ctx.mode == "RESIZE" then
+      result.label = "Cancel resize"
+    elseif ctx.mode == "MOVE" then
+      result.label = "Finish moving"
+    elseif ctx.mode == "PAN" then
+      result.label = "Finish panning"
+    end
   elseif ctx.mode == "RESIZE" then
-    if id == "select" then result.label = "Select section"
-    elseif id == "add" then result.label = "Add section"
-    elseif id == "delete" then result.label = "Remove section" end
+    if id == "select" then
+      result.label = "Select section"
+    elseif id == "add" then
+      result.label = "Add section"
+    elseif id == "delete" then
+      result.label = "Remove section"
+    end
   end
   return result
 end
 
-local function is_form(ctx)
-  return ctx.form ~= nil
-end
+local function is_form(ctx) return ctx.form ~= nil end
 
 local function ids_for(ctx)
-  if ctx.form then
-    return { "previous_field", "next_field", "edit_field", "apply", "reset", "cancel" }
-  end
+  if ctx.form then return { "previous_field", "next_field", "edit_field", "apply", "reset", "cancel" } end
   if ctx.mode == "SUN STUDY" then
     return {
-      "sun_previous", "sun_next", "sun_previous_season", "sun_next_season",
-      "sun_toggle_playback", "sun_study", "sun_close", "help",
+      "sun_previous",
+      "sun_next",
+      "sun_previous_season",
+      "sun_next_season",
+      "sun_toggle_playback",
+      "sun_study",
+      "sun_close",
+      "help",
     }
   end
   if ctx.mode == "MOVE" then return { "leave_mode", "undo", "redo", "save", "help" } end
   if ctx.mode == "PAN" then return { "leave_mode", "fit", "help" } end
   if ctx.mode == "RESIZE" then
     return {
-      "shape_apply", "select", "shape_next", "shape_previous", "add", "delete",
-      "toggle_snap", "bypass_snap", "leave_mode", "help",
+      "shape_apply",
+      "select",
+      "shape_next",
+      "shape_previous",
+      "add",
+      "delete",
+      "toggle_snap",
+      "bypass_snap",
+      "leave_mode",
+      "help",
     }
   end
 
   local kind = selected_kind(ctx)
   if room_count(ctx) == 0 then
-    if kind == "plan" then
-      return { "edit", "add_room", "fit", "validate", "save", "undo", "redo", "help", "hide" }
-    end
+    if kind == "plan" then return { "edit", "add_room", "fit", "validate", "save", "undo", "redo", "help", "hide" } end
     return {
-      "add_room", "add_door", "add_window", "add_outlet", "add_furniture",
-      "fit", "save", "undo", "redo", "help", "hide",
+      "add_room",
+      "add_door",
+      "add_window",
+      "add_outlet",
+      "add_furniture",
+      "fit",
+      "save",
+      "undo",
+      "redo",
+      "help",
+      "hide",
     }
   elseif kind == "plan" then
     return { "edit", "add", "fit", "validate", "save", "undo", "redo", "help", "hide" }
   elseif kind == "room" then
     return {
-      "edit", "resize_dimensions", "move", "align", "add", "fit", "duplicate",
-      "delete", "validate", "save", "undo", "redo", "help",
+      "edit",
+      "resize_dimensions",
+      "move",
+      "align",
+      "add",
+      "fit",
+      "duplicate",
+      "delete",
+      "validate",
+      "save",
+      "undo",
+      "redo",
+      "help",
     }
   elseif kind == "furniture" then
     return {
-      "edit", "resize_dimensions", "move", "rotate", "fit", "duplicate", "delete",
-      "validate", "save", "undo", "redo", "help",
+      "edit",
+      "resize_dimensions",
+      "move",
+      "rotate",
+      "fit",
+      "duplicate",
+      "delete",
+      "validate",
+      "save",
+      "undo",
+      "redo",
+      "help",
     }
   elseif kind == "door" then
     return { "edit", "move", "fit", "duplicate", "delete", "validate", "save", "undo", "redo", "help" }
@@ -473,42 +670,76 @@ local pane_ids = {
 }
 
 local safe_full_ids = {
-  "fit", "toggle_minimap", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
-  "sun_study", "validate", "next_issue", "previous_issue",
-  "toggle_snap", "bypass_snap",
-  "measure", "aspect", "save", "save_as", "undo", "redo",
-  "history_list", "reload", "close",
+  "fit",
+  "toggle_minimap",
+  "cycle_detail_level",
+  "zoom_in",
+  "zoom_out",
+  "rotate_view_clockwise",
+  "rotate_view_counterclockwise",
+  "reset_view",
+  "sun_study",
+  "validate",
+  "next_issue",
+  "previous_issue",
+  "toggle_snap",
+  "bypass_snap",
+  "measure",
+  "aspect",
+  "save",
+  "save_as",
+  "undo",
+  "redo",
+  "history_list",
+  "reload",
+  "close",
 }
 
-local selection_full_ids = { "edit", "move", "align",
-  "place_furniture", "rotate", "duplicate", "delete",
+local selection_full_ids = {
+  "edit",
+  "move",
+  "align",
+  "place_furniture",
+  "rotate",
+  "duplicate",
+  "delete",
   "move_marked",
   "duplicate_marked",
   "delete_marked",
-  "clear_marks" }
+  "clear_marks",
+}
 
 local function create_full_ids(ctx)
-  if room_count(ctx) == 0 then
-    return { "add_room", "add_door", "add_window", "add_outlet", "add_furniture" }
-  end
+  if room_count(ctx) == 0 then return { "add_room", "add_door", "add_window", "add_outlet", "add_furniture" } end
   return { "add", "add_door", "add_window", "add_outlet", "add_furniture" }
 end
 
 local function primary_ids_for(ctx)
-  if is_form(ctx) then
-    return { "edit_field", "apply", "cancel", "help" }
-  end
+  if is_form(ctx) then return { "edit_field", "apply", "cancel", "help" } end
   if ctx.mode == "SUN STUDY" then
     return {
-      "sun_toggle_playback", "sun_close", "sun_previous", "sun_next",
-      "sun_previous_season", "sun_next_season", "sun_study", "help",
+      "sun_toggle_playback",
+      "sun_close",
+      "sun_previous",
+      "sun_next",
+      "sun_previous_season",
+      "sun_next_season",
+      "sun_study",
+      "help",
     }
   end
   if ctx.mode == "MOVE" then return { "leave_mode", "undo", "redo", "help" } end
   if ctx.mode == "PAN" then return { "leave_mode", "fit", "help" } end
   if ctx.mode == "RESIZE" then
     return {
-      "shape_apply", "select", "shape_next", "add", "delete", "toggle_snap", "leave_mode", "help",
+      "shape_apply",
+      "select",
+      "shape_next",
+      "add",
+      "delete",
+      "toggle_snap",
+      "leave_mode",
+      "help",
     }
   end
 
@@ -543,7 +774,9 @@ end
 
 local function id_set(ids)
   local result = {}
-  for _, id in ipairs(ids or {}) do result[id] = true end
+  for _, id in ipairs(ids or {}) do
+    result[id] = true
+  end
   return result
 end
 
@@ -555,7 +788,8 @@ local function actions_for(ids, ctx, opts)
   for _, id in ipairs(ids or {}) do
     if not excluded[id] then
       local action = M.get(id, ctx)
-      if action
+      if
+        action
         and (opts.include_disabled ~= false or action.enabled)
         and (opts.include_unmapped ~= false or action.mapped)
       then
@@ -567,9 +801,7 @@ local function actions_for(ids, ctx, opts)
   return result
 end
 
-function M.contextual(ctx, opts)
-  return actions_for(ids_for(ctx or {}), ctx or {}, opts)
-end
+function M.contextual(ctx, opts) return actions_for(ids_for(ctx or {}), ctx or {}, opts) end
 
 ---Return the small, focus-aware set intended for persistent UI chrome.
 ---Disabled entries are hidden by default so the footer remains concise.
@@ -633,19 +865,24 @@ function M.context_controls(ctx)
   local fine = { "<C-h>", "<C-j>", "<C-k>", "<C-l>" }
   if mode == "SUN STUDY" then
     for _, id in ipairs({
-      "sun_previous", "sun_next", "sun_previous_season", "sun_next_season",
-      "sun_toggle_playback", "sun_study", "sun_close",
+      "sun_previous",
+      "sun_next",
+      "sun_previous_season",
+      "sun_next_season",
+      "sun_toggle_playback",
+      "sun_study",
+      "sun_close",
     }) do
       append(result, M.get(id, ctx))
     end
     return result
   elseif mode == "MOVE" then
-    append(result, information(ctx, "move_normal", normal, "Move", 95,
-      "Move the selection in visible plan directions"))
-    append(result, information(ctx, "move_coarse", coarse, "Move coarsely", 90,
-      "Move by the configured coarse grid step"))
-    append(result, information(ctx, "move_fine", fine, "Move finely", 85,
-      "Move by the configured fine step"))
+    append(result, information(ctx, "move_normal", normal, "Move", 95, "Move the selection in visible plan directions"))
+    append(
+      result,
+      information(ctx, "move_coarse", coarse, "Move coarsely", 90, "Move by the configured coarse grid step")
+    )
+    append(result, information(ctx, "move_fine", fine, "Move finely", 85, "Move by the configured fine step"))
     append(result, M.get("toggle_snap", ctx))
     append(result, M.get("save", ctx))
     append(result, M.get("leave_mode", ctx))
@@ -689,9 +926,12 @@ function M.context_title(ctx)
     local state = study.playing and "PLAYING" or study.overlay == "daily" and "DAY EXPOSURE" or "PAUSED"
     return "SUN STUDY" .. date .. time .. " · " .. state
   elseif mode == "RESIZE" then
-    return string.format("RESIZE · SECTION %d/%d · %s EDGE",
-      ctx.shape_section_index or 0, ctx.shape_section_count or 0,
-      tostring(ctx.shape_edge or "CHOOSE"):upper())
+    return string.format(
+      "RESIZE · SECTION %d/%d · %s EDGE",
+      ctx.shape_section_index or 0,
+      ctx.shape_section_count or 0,
+      tostring(ctx.shape_edge or "CHOOSE"):upper()
+    )
   elseif mode == "MOVE" and ctx.move_feedback then
     return "MOVE · " .. tostring(ctx.move_feedback):upper()
   end
@@ -743,7 +983,9 @@ function M.full(ctx, opts)
   end
   local result = {}
   for _, group in ipairs(M.groups()) do
-    for _, action in ipairs(grouped[group.id] or {}) do result[#result + 1] = action end
+    for _, action in ipairs(grouped[group.id] or {}) do
+      result[#result + 1] = action
+    end
   end
   return result
 end
@@ -765,11 +1007,13 @@ end
 function M.more_count(ctx)
   ctx = ctx or {}
   local visible = {}
-  for _, action in ipairs(actions_for(primary_ids_for(ctx), ctx, {
-    include_disabled = false,
-    include_unmapped = false,
-    exclude = { "help" },
-  })) do
+  for _, action in
+    ipairs(actions_for(primary_ids_for(ctx), ctx, {
+      include_disabled = false,
+      include_unmapped = false,
+      exclude = { "help" },
+    }))
+  do
     visible[action.id] = true
   end
   local count = 0
@@ -808,11 +1052,14 @@ function M.mode_label(ctx)
   if mode == "PAN" then return "PAN · h/j/k/l pan" end
   if mode == "RESIZE" then
     local label = ctx.selection and ctx.selection.kind == "template" and "TEMPLATE RESIZE" or "RESIZE"
-    return string.format("%s · section %d/%d · edge %s · snap %s",
+    return string.format(
+      "%s · section %d/%d · edge %s · snap %s",
       label,
-      ctx.shape_section_index or 0, ctx.shape_section_count or 0,
+      ctx.shape_section_index or 0,
+      ctx.shape_section_count or 0,
       ctx.shape_edge or "choose with h/j/k/l",
-      ctx.shape_snap or (ctx.snap_enabled == false and "off" or "ready"))
+      ctx.shape_snap or (ctx.snap_enabled == false and "off" or "ready")
+    )
   end
   return mode
 end
@@ -823,9 +1070,7 @@ function M.hint(action)
   return string.format("[%s] %s%s", action.key_label or M.display_key(action.key), action.label, suffix)
 end
 
-function M.definitions()
-  return clone(definitions)
-end
+function M.definitions() return clone(definitions) end
 
 function M.groups()
   local result = {}

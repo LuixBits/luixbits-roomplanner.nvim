@@ -55,15 +55,11 @@ local function finite(value)
 end
 
 local function round(value)
-  if value >= 0 then
-    return math.floor(value + 0.5)
-  end
+  if value >= 0 then return math.floor(value + 0.5) end
   return math.ceil(value - 0.5)
 end
 
-local function clamp(value, minimum, maximum)
-  return math.max(minimum, math.min(maximum, value))
-end
+local function clamp(value, minimum, maximum) return math.max(minimum, math.min(maximum, value)) end
 
 local function new_grid(width, height)
   local grid = {}
@@ -88,16 +84,12 @@ local function in_bounds(context, row, column)
 end
 
 local function cell_at(context, row, column)
-  if not in_bounds(context, row, column) then
-    return nil
-  end
+  if not in_bounds(context, row, column) then return nil end
   return context.grid[row][column]
 end
 
 local function add_role(cell, role)
-  if role then
-    cell.roles[role] = true
-  end
+  if role then cell.roles[role] = true end
 end
 
 local function add_color(cell, role, value)
@@ -108,9 +100,7 @@ local function add_color(cell, role, value)
 end
 
 local function default_role_for_ref(ref, context)
-  if not ref then
-    return nil
-  end
+  if not ref then return nil end
   if ref.type == "door" then
     return "door"
   elseif ref.type == "window" then
@@ -143,9 +133,7 @@ local function hit_priority(ref, context)
 end
 
 local function add_hit(cell, ref, context)
-  if type(ref) ~= "table" or type(ref.id) ~= "string" or ref.id == "" then
-    return
-  end
+  if type(ref) ~= "table" or type(ref.id) ~= "string" or ref.id == "" then return end
   context = context or ref.context
   local key = (ref.type or "") .. "\0" .. ref.id
   local candidate = {
@@ -156,38 +144,32 @@ local function add_hit(cell, ref, context)
     priority = hit_priority(ref, context),
   }
   local previous = cell.hits_by_key[key]
-  if not previous or candidate.priority < previous.priority then
-    cell.hits_by_key[key] = candidate
-  end
+  if not previous or candidate.priority < previous.priority then cell.hits_by_key[key] = candidate end
   add_role(cell, default_role_for_ref(ref, context))
 end
 
 local function add_visual(context, row, column, visual)
   local cell = cell_at(context, row, column)
-  if not cell then
-    return
-  end
+  if not cell then return end
   context.serial = context.serial + 1
   visual.serial = context.serial
   visual.layer = visual.layer or 0
   visual.order = visual.order or 0
   cell.visuals[#cell.visuals + 1] = visual
-  if visual.critical then
-    cell.critical = true
-  end
+  if visual.critical then cell.critical = true end
   add_role(cell, visual.role)
   add_color(cell, visual.role, visual.color)
-  if visual.ref then
-    add_hit(cell, visual.ref, visual.hit_context)
-  end
+  if visual.ref then add_hit(cell, visual.ref, visual.hit_context) end
 end
 
 local function add_refs_and_role(cell, primitive, hit_context)
   add_role(cell, primitive.role)
-  add_color(cell, primitive.role or (primitive.ref and default_role_for_ref(primitive.ref, hit_context)), primitive.color)
-  if primitive.ref then
-    add_hit(cell, primitive.ref, hit_context)
-  end
+  add_color(
+    cell,
+    primitive.role or (primitive.ref and default_role_for_ref(primitive.ref, hit_context)),
+    primitive.color
+  )
+  if primitive.ref then add_hit(cell, primitive.ref, hit_context) end
   if primitive.refs then
     for i = 1, #primitive.refs do
       add_hit(cell, primitive.refs[i], hit_context)
@@ -195,9 +177,7 @@ local function add_refs_and_role(cell, primitive, hit_context)
   end
 end
 
-local function project(viewport, x, y)
-  return viewport_module.world_to_screen(viewport, x, y)
-end
+local function project(viewport, x, y) return viewport_module.world_to_screen(viewport, x, y) end
 
 local LEFT, RIGHT, TOP, BOTTOM = 1, 2, 4, 8
 
@@ -216,18 +196,14 @@ local function out_code(x, y, width, height)
   return code
 end
 
-local function has_flag(value, flag)
-  return value % (flag * 2) >= flag
-end
+local function has_flag(value, flag) return value % (flag * 2) >= flag end
 
 -- Cohen-Sutherland clipping in zero-based logical screen coordinates.
 local function clip_line(x0, y0, x1, y1, width, height)
   local code0 = out_code(x0, y0, width, height)
   local code1 = out_code(x1, y1, width, height)
   for _ = 1, 16 do
-    if code0 == 0 and code1 == 0 then
-      return x0, y0, x1, y1
-    end
+    if code0 == 0 and code1 == 0 then return x0, y0, x1, y1 end
     -- No bit library is needed: test every region bit arithmetically.
     local common = false
     for _, flag in ipairs({ LEFT, RIGHT, TOP, BOTTOM }) do
@@ -236,34 +212,24 @@ local function clip_line(x0, y0, x1, y1, width, height)
         break
       end
     end
-    if common then
-      return nil
-    end
+    if common then return nil end
 
     local code = code0 ~= 0 and code0 or code1
     local x, y
     if has_flag(code, TOP) then
-      if y1 == y0 then
-        return nil
-      end
+      if y1 == y0 then return nil end
       x = x0 + (x1 - x0) * (0 - y0) / (y1 - y0)
       y = 0
     elseif has_flag(code, BOTTOM) then
-      if y1 == y0 then
-        return nil
-      end
+      if y1 == y0 then return nil end
       x = x0 + (x1 - x0) * ((height - 1) - y0) / (y1 - y0)
       y = height - 1
     elseif has_flag(code, RIGHT) then
-      if x1 == x0 then
-        return nil
-      end
+      if x1 == x0 then return nil end
       y = y0 + (y1 - y0) * ((width - 1) - x0) / (x1 - x0)
       x = width - 1
     else
-      if x1 == x0 then
-        return nil
-      end
+      if x1 == x0 then return nil end
       y = y0 + (y1 - y0) * (0 - x0) / (x1 - x0)
       x = 0
     end
@@ -281,9 +247,7 @@ end
 
 local function line_cells(context, x0, y0, x1, y1, callback)
   x0, y0, x1, y1 = clip_line(x0, y0, x1, y1, context.width, context.height)
-  if not x0 then
-    return
-  end
+  if not x0 then return end
   local column0 = clamp(round(x0) + 1, 1, context.width)
   local row0 = clamp(round(y0) + 1, 1, context.height)
   local column1 = clamp(round(x1) + 1, 1, context.width)
@@ -296,9 +260,7 @@ local function line_cells(context, x0, y0, x1, y1, callback)
   local previous_row, previous_column
   while true do
     callback(row0, column0, previous_row, previous_column, row1, column1)
-    if column0 == column1 and row0 == row1 then
-      break
-    end
+    if column0 == column1 and row0 == row1 then break end
     previous_row, previous_column = row0, column0
     local twice = 2 * err
     if twice >= delta_row then
@@ -317,62 +279,42 @@ local function draw_wall(context, primitive)
   local x1, y1 = project(context.viewport, primitive.x2, primitive.y2)
   if math.abs(y1 - y0) < 1e-9 then
     local row = round(y0) + 1
-    if row < 1 or row > context.height then
-      return
-    end
+    if row < 1 or row > context.height then return end
     local original_min = math.min(round(x0) + 1, round(x1) + 1)
     local original_max = math.max(round(x0) + 1, round(x1) + 1)
-    if original_max < 1 or original_min > context.width then
-      return
-    end
+    if original_max < 1 or original_min > context.width then return end
     local first = clamp(original_min, 1, context.width)
     local last = clamp(original_max, 1, context.width)
-    if last < first then
-      return
-    end
+    if last < first then return end
     for column = first, last do
       local cell = context.grid[row][column]
       if original_min == original_max then
         cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.E)
         cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.W)
       else
-        if column > original_min then
-          cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.W)
-        end
-        if column < original_max then
-          cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.E)
-        end
+        if column > original_min then cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.W) end
+        if column < original_max then cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.E) end
       end
       cell.critical = true
       add_refs_and_role(cell, primitive, "wall")
     end
   else
     local column = round(x0) + 1
-    if column < 1 or column > context.width then
-      return
-    end
+    if column < 1 or column > context.width then return end
     local original_min = math.min(round(y0) + 1, round(y1) + 1)
     local original_max = math.max(round(y0) + 1, round(y1) + 1)
-    if original_max < 1 or original_min > context.height then
-      return
-    end
+    if original_max < 1 or original_min > context.height then return end
     local first = clamp(original_min, 1, context.height)
     local last = clamp(original_max, 1, context.height)
-    if last < first then
-      return
-    end
+    if last < first then return end
     for row = first, last do
       local cell = context.grid[row][column]
       if original_min == original_max then
         cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.N)
         cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.S)
       else
-        if row > original_min then
-          cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.N)
-        end
-        if row < original_max then
-          cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.S)
-        end
+        if row > original_min then cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.N) end
+        if row < original_max then cell.wall_mask = glyph_module.add(cell.wall_mask, glyph_module.S) end
       end
       cell.critical = true
       add_refs_and_role(cell, primitive, "wall")
@@ -387,9 +329,7 @@ local function projected_rect(context, primitive)
   local right = math.max(round(left_screen) + 1, round(right_screen) + 1)
   local top = math.min(round(top_screen) + 1, round(bottom_screen) + 1)
   local bottom = math.max(round(top_screen) + 1, round(bottom_screen) + 1)
-  if right < 1 or left > context.width or bottom < 1 or top > context.height then
-    return nil
-  end
+  if right < 1 or left > context.width or bottom < 1 or top > context.height then return nil end
   return clamp(left, 1, context.width),
     clamp(top, 1, context.height),
     clamp(right, 1, context.width),
@@ -398,9 +338,7 @@ end
 
 local function draw_interior(context, primitive, hit_context)
   local left, top, right, bottom = projected_rect(context, primitive)
-  if not left then
-    return
-  end
+  if not left then return end
   for row = top, bottom do
     for column = left, right do
       local cell = context.grid[row][column]
@@ -411,8 +349,11 @@ end
 
 local function point_in_rectangles(x, y, rectangles)
   for _, rectangle in ipairs(rectangles or {}) do
-    if x >= rectangle.left - 1e-9 and x <= rectangle.right + 1e-9
-      and y >= rectangle.bottom - 1e-9 and y <= rectangle.top + 1e-9
+    if
+      x >= rectangle.left - 1e-9
+      and x <= rectangle.right + 1e-9
+      and y >= rectangle.bottom - 1e-9
+      and y <= rectangle.top + 1e-9
     then
       return true
     end
@@ -425,8 +366,7 @@ local function point_in_polygon(x, y, vertices)
   for index = 1, #vertices do
     local first = vertices[index]
     local second = vertices[index % #vertices + 1]
-    local cross = (second[1] - first[1]) * (y - first[2])
-      - (second[2] - first[2]) * (x - first[1])
+    local cross = (second[1] - first[1]) * (y - first[2]) - (second[2] - first[2]) * (x - first[1])
     if math.abs(cross) > 1e-7 then
       local current = cross > 0
       if sign ~= nil and current ~= sign then return false end
@@ -437,8 +377,7 @@ local function point_in_polygon(x, y, vertices)
 end
 
 local function point_in_sun_patch(x, y, patch)
-  return point_in_rectangles(x, y, patch.clip_rects)
-    and point_in_polygon(x, y, patch.vertices or {})
+  return point_in_rectangles(x, y, patch.clip_rects) and point_in_polygon(x, y, patch.vertices or {})
 end
 
 local function draw_sun_patch(context, primitive)
@@ -465,14 +404,15 @@ local function draw_sun_patch(context, primitive)
         local warmth = clamp(math.ceil(math.max(0, 35 - (primitive.elevation_deg or 35)) / 15), 0, 2)
         local level = clamp(math.floor(progress * 5) + 1 + warmth, 1, 5)
         add_visual(context, row, column, {
-          char = " ", layer = primitive.layer, role = "sunlight_" .. level,
+          char = " ",
+          layer = primitive.layer,
+          role = "sunlight_" .. level,
           order = primitive.order,
         })
       end
     end
   end
 end
-
 
 local function draw_sun_exposure(context, primitive)
   local exposure = primitive.exposure or {}
@@ -517,7 +457,9 @@ local function draw_sun_exposure(context, primitive)
           end
         end
         add_visual(context, row, column, {
-          char = " ", layer = primitive.layer, role = "sunlight_" .. clamp(level, 1, 5),
+          char = " ",
+          layer = primitive.layer,
+          role = "sunlight_" .. clamp(level, 1, 5),
           order = primitive.order,
         })
       end
@@ -531,9 +473,7 @@ local function draw_visual_axis(context, row1, column1, row2, column2, character
   min_row, max_row = clamp(min_row, 1, context.height), clamp(max_row, 1, context.height)
   min_column, max_column = clamp(min_column, 1, context.width), clamp(max_column, 1, context.width)
   if row1 == row2 then
-    if row1 < 1 or row1 > context.height then
-      return
-    end
+    if row1 < 1 or row1 > context.height then return end
     for column = min_column, max_column do
       add_visual(context, row1, column, {
         char = character,
@@ -547,9 +487,7 @@ local function draw_visual_axis(context, row1, column1, row2, column2, character
       })
     end
   elseif column1 == column2 then
-    if column1 < 1 or column1 > context.width then
-      return
-    end
+    if column1 < 1 or column1 > context.width then return end
     for row = min_row, max_row do
       add_visual(context, row, column1, {
         char = character,
@@ -572,9 +510,7 @@ local function draw_furniture_outline(context, primitive)
   local right = round(math.max(left_screen, right_screen)) + 1
   local top = round(math.min(top_screen, bottom_screen)) + 1
   local bottom = round(math.max(top_screen, bottom_screen)) + 1
-  if right < 1 or left > context.width or bottom < 1 or top > context.height then
-    return
-  end
+  if right < 1 or left > context.width or bottom < 1 or top > context.height then return end
 
   if left == right or top == bottom then
     local row = clamp(round((top + bottom) / 2), 1, context.height)
@@ -637,17 +573,24 @@ local function draw_door_leaf(context, primitive)
   local delta_column = x1 - x0
   local delta_row = y1 - y0
   local character = line_character(context, delta_column, delta_row)
-  line_cells(context, x0, y0, x1, y1, function(row, column)
-    add_visual(context, row, column, {
-      char = character,
-      layer = primitive.layer,
-      role = primitive.role or "door",
-      ref = primitive.ref,
-      hit_context = "leaf",
-      order = primitive.order,
-      critical = true,
-    })
-  end)
+  line_cells(
+    context,
+    x0,
+    y0,
+    x1,
+    y1,
+    function(row, column)
+      add_visual(context, row, column, {
+        char = character,
+        layer = primitive.layer,
+        role = primitive.role or "door",
+        ref = primitive.ref,
+        hit_context = "leaf",
+        order = primitive.order,
+        critical = true,
+      })
+    end
+  )
 end
 
 local function draw_door_aperture(context, primitive)
@@ -661,8 +604,11 @@ local function draw_door_aperture(context, primitive)
   if span < 1.5 then
     local midpoint_x = (x0 + x1) / 2
     local midpoint_y = (y0 + y1) / 2
-    if midpoint_x < -0.5 or midpoint_x > context.width - 0.5
-      or midpoint_y < -0.5 or midpoint_y > context.height - 0.5
+    if
+      midpoint_x < -0.5
+      or midpoint_x > context.width - 0.5
+      or midpoint_y < -0.5
+      or midpoint_y > context.height - 0.5
     then
       return
     end
@@ -688,20 +634,27 @@ local function draw_window_aperture(context, primitive)
   local x0, y0 = project(context.viewport, primitive.x1, primitive.y1)
   local x1, y1 = project(context.viewport, primitive.x2, primitive.y2)
   local span = math.max(math.abs(x1 - x0), math.abs(y1 - y0))
-  local character = math.abs(x1 - x0) >= math.abs(y1 - y0)
-      and context.glyphs.window_horizontal or context.glyphs.window_vertical
+  local character = math.abs(x1 - x0) >= math.abs(y1 - y0) and context.glyphs.window_horizontal
+    or context.glyphs.window_vertical
   if span < 1.5 then character = context.glyphs.window_marker end
-  line_cells(context, x0, y0, x1, y1, function(row, column)
-    add_visual(context, row, column, {
-      char = character,
-      layer = primitive.layer,
-      role = primitive.role or "window",
-      ref = primitive.ref,
-      hit_context = "aperture",
-      order = primitive.order,
-      critical = true,
-    })
-  end)
+  line_cells(
+    context,
+    x0,
+    y0,
+    x1,
+    y1,
+    function(row, column)
+      add_visual(context, row, column, {
+        char = character,
+        layer = primitive.layer,
+        role = primitive.role or "window",
+        ref = primitive.ref,
+        hit_context = "aperture",
+        order = primitive.order,
+        critical = true,
+      })
+    end
+  )
 end
 
 local function draw_outlet_marker(context, primitive)
@@ -711,7 +664,10 @@ local function draw_outlet_marker(context, primitive)
     local character = context.glyphs.outlet_marker
     if primitive.placement ~= "floor" and primitive.side then
       local directions = {
-        north = { 0, 1 }, east = { 1, 0 }, south = { 0, -1 }, west = { -1, 0 },
+        north = { 0, 1 },
+        east = { 1, 0 },
+        south = { 0, -1 },
+        west = { -1, 0 },
       }
       local direction = directions[primitive.side]
       local dx, dy = viewport_module.world_delta_to_view(context.viewport, direction[1], direction[2])
@@ -748,9 +704,7 @@ local function draw_door_hinge(context, primitive)
 end
 
 local function draw_door_swing(context, primitive)
-  if not finite(primitive.radius) or primitive.radius <= 0 then
-    return
-  end
+  if not finite(primitive.radius) or primitive.radius <= 0 then return end
   local projected_radius_x = primitive.radius / context.viewport.mm_per_column
   local projected_radius_y = primitive.radius / context.viewport.mm_per_row
   local projected_radius = math.max(projected_radius_x, projected_radius_y)
@@ -764,17 +718,24 @@ local function draw_door_swing(context, primitive)
     local world_y = primitive.cy + primitive.radius * math.sin(angle)
     local x, y = project(context.viewport, world_x, world_y)
     if previous_x then
-      line_cells(context, previous_x, previous_y, x, y, function(row, column)
-        add_visual(context, row, column, {
-          char = context.glyphs.door_arc,
-          layer = primitive.layer,
-          role = primitive.role or "door",
-          ref = primitive.ref,
-          hit_context = "swing",
-          order = primitive.order,
-          critical = true,
-        })
-      end)
+      line_cells(
+        context,
+        previous_x,
+        previous_y,
+        x,
+        y,
+        function(row, column)
+          add_visual(context, row, column, {
+            char = context.glyphs.door_arc,
+            layer = primitive.layer,
+            role = primitive.role or "door",
+            ref = primitive.ref,
+            hit_context = "swing",
+            order = primitive.order,
+            critical = true,
+          })
+        end
+      )
     end
     previous_x, previous_y = x, y
   end
@@ -783,18 +744,14 @@ end
 local function draw_annotation(context, primitive)
   local x, y = project(context.viewport, primitive.x, primitive.y)
   local row, column = round(y) + 1, round(x) + 1
-  if not in_bounds(context, row, column) then
-    return
-  end
+  if not in_bounds(context, row, column) then return end
   local character = primitive.char
   if primitive.role == "error" then
     character = context.glyphs.error
   elseif primitive.role == "warning" then
     character = context.glyphs.warning
   end
-  if type(character) ~= "string" or context.width_fn(character) ~= 1 then
-    character = context.glyphs.replacement
-  end
+  if type(character) ~= "string" or context.width_fn(character) ~= 1 then character = context.glyphs.replacement end
   add_visual(context, row, column, {
     char = character or context.glyphs.warning,
     layer = primitive.layer,
@@ -817,14 +774,21 @@ local function draw_snap_guide(context, primitive)
     character = horizontal and "." or ":"
   end
   if context.width_fn(character) ~= 1 then character = context.glyphs.grid end
-  line_cells(context, x0, y0, x1, y1, function(row, column)
-    add_visual(context, row, column, {
-      char = character,
-      layer = primitive.layer,
-      role = "snap",
-      order = primitive.order,
-    })
-  end)
+  line_cells(
+    context,
+    x0,
+    y0,
+    x1,
+    y1,
+    function(row, column)
+      add_visual(context, row, column, {
+        char = character,
+        layer = primitive.layer,
+        role = "snap",
+        order = primitive.order,
+      })
+    end
+  )
 end
 
 local function draw_snap_overlap(context, primitive)
@@ -838,22 +802,27 @@ local function draw_snap_overlap(context, primitive)
     character = horizontal and "=" or "#"
   end
   if context.width_fn(character) ~= 1 then character = horizontal and "=" or "#" end
-  line_cells(context, x0, y0, x1, y1, function(row, column)
-    add_visual(context, row, column, {
-      char = character,
-      layer = primitive.layer,
-      role = "snap_overlap",
-      order = primitive.order,
-      critical = true,
-    })
-  end)
+  line_cells(
+    context,
+    x0,
+    y0,
+    x1,
+    y1,
+    function(row, column)
+      add_visual(context, row, column, {
+        char = character,
+        layer = primitive.layer,
+        role = "snap_overlap",
+        order = primitive.order,
+        critical = true,
+      })
+    end
+  )
 end
 
 local function draw_grid(context, primitive)
   local spacing = primitive.spacing_mm
-  if not finite(spacing) or spacing <= 0 then
-    return
-  end
+  if not finite(spacing) or spacing <= 0 then return end
   local origin_x, origin_y = viewport_module.screen_to_world(context.viewport, 0, 0)
   local column_x, column_y = viewport_module.screen_to_world(context.viewport, 1, 0)
   local row_x, row_y = viewport_module.screen_to_world(context.viewport, 0, 1)
@@ -886,9 +855,7 @@ local function label_candidates(primitive)
       end
     end
   end
-  if #result == 0 then
-    result[1] = { primitive.x, primitive.y }
-  end
+  if #result == 0 then result[1] = { primitive.x, primitive.y } end
   return result
 end
 
@@ -897,9 +864,7 @@ local function can_place_label(context, row, first_column, count)
     return false
   end
   for column = first_column, first_column + count - 1 do
-    if context.grid[row][column].critical or context.grid[row][column].label_reserved then
-      return false
-    end
+    if context.grid[row][column].critical or context.grid[row][column].label_reserved then return false end
   end
   return true
 end
@@ -930,18 +895,20 @@ local function abbreviated_cells(cells, length, force_marker, width_fn)
   local prefix = math.ceil(available / 2)
   local suffix = math.floor(available / 2)
   local result = {}
-  for index = 1, prefix do result[#result + 1] = cells[index] end
+  for index = 1, prefix do
+    result[#result + 1] = cells[index]
+  end
   result[#result + 1] = marker
-  for index = #cells - suffix + 1, #cells do result[#result + 1] = cells[index] end
+  for index = #cells - suffix + 1, #cells do
+    result[#result + 1] = cells[index]
+  end
   return result
 end
 
 local function placement_positions(context, primitive, anchor_column, anchor_row, length)
   local result = {}
   local function add(row, first_column)
-    if row >= 1 and row <= context.height and first_column >= 1
-      and first_column + length - 1 <= context.width
-    then
+    if row >= 1 and row <= context.height and first_column >= 1 and first_column + length - 1 <= context.width then
       result[#result + 1] = { row = row, first_column = first_column }
     end
   end
@@ -954,8 +921,7 @@ local function placement_positions(context, primitive, anchor_column, anchor_row
     return result
   end
 
-  local row_offsets = primitive.placement == "horizontal_edge"
-      and offsets(math.min(4, context.height - 1), false)
+  local row_offsets = primitive.placement == "horizontal_edge" and offsets(math.min(4, context.height - 1), false)
     or offsets(math.min(6, context.height - 1), true)
   local maximum_start = context.width - length + 1
   local desired = clamp(label_start(anchor_column, length, primitive.align), 1, maximum_start)
@@ -995,9 +961,7 @@ end
 
 local function projected_span_cells(context, span)
   if type(span) ~= "table" then return nil end
-  if not finite(span.x1) or not finite(span.y1) or not finite(span.x2) or not finite(span.y2) then
-    return nil
-  end
+  if not finite(span.x1) or not finite(span.y1) or not finite(span.x2) or not finite(span.y2) then return nil end
   local x1, y1 = project(context.viewport, span.x1, span.y1)
   local x2, y2 = project(context.viewport, span.x2, span.y2)
   return math.max(math.abs(x2 - x1), math.abs(y2 - y1)) + 1
@@ -1009,9 +973,7 @@ end
 -- glyph. Dimensions also need air around their measured edge.
 local function label_cell_budget(context, primitive)
   local limit = math.min(context.width, primitive.max_cells or context.max_label_cells)
-  if finite(primitive.max_mm_per_column)
-    and context.viewport.mm_per_column > primitive.max_mm_per_column
-  then
+  if finite(primitive.max_mm_per_column) and context.viewport.mm_per_column > primitive.max_mm_per_column then
     return 0
   end
   local policy = LABEL_SCALE[primitive.scale_policy]
@@ -1022,9 +984,7 @@ local function label_cell_budget(context, primitive)
       -- A single-letter room name remains useful in a small but still
       -- recognizable outline. Longer text disappears instead of turning into
       -- a canvas full of ellipses.
-      if text_width <= 1 and width and width >= 4 and height and height >= 3 then
-        return math.min(limit, 1)
-      end
+      if text_width <= 1 and width and width >= 4 and height and height >= 3 then return math.min(limit, 1) end
       return 0
     end
     limit = math.min(limit, math.floor(math.max(0, width - 2) * policy.width_fraction))
@@ -1054,9 +1014,7 @@ local function draw_label(context, primitive)
     }
     return
   end
-  if #cells == 0 then
-    return
-  end
+  if #cells == 0 then return end
 
   if primitive.allow_truncate == false and (metadata.truncated or #cells > max_cells) then
     context.warnings[#context.warnings + 1] = {
@@ -1120,15 +1078,9 @@ local function draw_label(context, primitive)
 end
 
 local function visual_wins(candidate, current)
-  if not current then
-    return true
-  end
-  if candidate.layer ~= current.layer then
-    return candidate.layer > current.layer
-  end
-  if candidate.order ~= current.order then
-    return candidate.order > current.order
-  end
+  if not current then return true end
+  if candidate.layer ~= current.layer then return candidate.layer > current.layer end
+  if candidate.order ~= current.order then return candidate.order > current.order end
   return candidate.serial > current.serial
 end
 
@@ -1155,15 +1107,9 @@ local function sorted_hits(cell)
     result[#result + 1] = hit
   end
   table.sort(result, function(a, b)
-    if a.priority ~= b.priority then
-      return a.priority < b.priority
-    end
-    if a.order ~= b.order then
-      return a.order < b.order
-    end
-    if (a.id or "") ~= (b.id or "") then
-      return (a.id or "") < (b.id or "")
-    end
+    if a.priority ~= b.priority then return a.priority < b.priority end
+    if a.order ~= b.order then return a.order < b.order end
+    if (a.id or "") ~= (b.id or "") then return (a.id or "") < (b.id or "") end
     return (a.type or "") < (b.type or "")
   end)
   return result
@@ -1186,21 +1132,19 @@ local function resolve_cells(context)
       local cell = context.grid[row][column]
       local best_visual
       for i = 1, #cell.visuals do
-        if visual_wins(cell.visuals[i], best_visual) then
-          best_visual = cell.visuals[i]
-        end
+        if visual_wins(cell.visuals[i], best_visual) then best_visual = cell.visuals[i] end
       end
       local wall_present = cell.wall_mask ~= 0
-      local wall_candidate = wall_present and {
-        char = context.glyphs.wall[cell.wall_mask],
-        layer = 50,
-        role = "wall",
-        order = 0,
-        serial = 0,
-      } or nil
-      if wall_candidate and visual_wins(wall_candidate, best_visual) then
-        best_visual = wall_candidate
-      end
+      local wall_candidate = wall_present
+          and {
+            char = context.glyphs.wall[cell.wall_mask],
+            layer = 50,
+            role = "wall",
+            order = 0,
+            serial = 0,
+          }
+        or nil
+      if wall_candidate and visual_wins(wall_candidate, best_visual) then best_visual = wall_candidate end
       local character = best_visual and best_visual.char or " "
       -- Glyphs were validated up front; sanitized labels are one cell as well.
       characters[column] = character

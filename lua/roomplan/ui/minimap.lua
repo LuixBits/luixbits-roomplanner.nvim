@@ -11,21 +11,13 @@ local M = {}
 
 local next_id = 0
 
-local function valid_buffer(buffer)
-  return type(buffer) == "number" and vim.api.nvim_buf_is_valid(buffer)
-end
+local function valid_buffer(buffer) return type(buffer) == "number" and vim.api.nvim_buf_is_valid(buffer) end
 
-local function valid_window(window)
-  return type(window) == "number" and vim.api.nvim_win_is_valid(window)
-end
+local function valid_window(window) return type(window) == "number" and vim.api.nvim_win_is_valid(window) end
 
 local function current_model(session)
-  if type(session.current_model) == "function" then
-    return session:current_model()
-  end
-  if type(session.model) == "function" then
-    return session:model()
-  end
+  if type(session.current_model) == "function" then return session:current_model() end
+  if type(session.model) == "function" then return session:model() end
   return session.model or {}
 end
 
@@ -50,9 +42,7 @@ local function overview_model(model)
 end
 
 local function include_bounds(bounds, rectangle)
-  if not rectangle then
-    return
-  end
+  if not rectangle then return end
   if bounds.empty then
     bounds.left, bounds.right = rectangle.left, rectangle.right
     bounds.bottom, bounds.top = rectangle.bottom, rectangle.top
@@ -71,9 +61,7 @@ local function color_room_interiors(scene, model)
     colors[room.id] = color.resolve(room.color)
   end
   for _, primitive in ipairs(scene.primitives or {}) do
-    if primitive.kind == "room_interior" and primitive.ref then
-      primitive.color = colors[primitive.ref.id]
-    end
+    if primitive.kind == "room_interior" and primitive.ref then primitive.color = colors[primitive.ref.id] end
   end
 end
 
@@ -125,9 +113,7 @@ function M.render(session, canvas_output, opts)
 end
 
 local function color_group(value)
-  if type(value) ~= "string" or not value:match("^#%x%x%x%x%x%x$") then
-    return nil
-  end
+  if type(value) ~= "string" or not value:match("^#%x%x%x%x%x%x$") then return nil end
   local name = "RoomPlanMinimapRoom" .. value:sub(2):upper()
   vim.api.nvim_set_hl(0, name, require("roomplan.highlights").tint(value, 0.18, 0.28))
   return name
@@ -174,29 +160,21 @@ local function set_lines(state, lines)
 end
 
 local function dispose_window(state)
-  if valid_window(state.winid) then
-    pcall(vim.api.nvim_win_close, state.winid, true)
-  end
-  if valid_buffer(state.bufnr) then
-    pcall(vim.api.nvim_buf_delete, state.bufnr, { force = true })
-  end
+  if valid_window(state.winid) then pcall(vim.api.nvim_win_close, state.winid, true) end
+  if valid_buffer(state.bufnr) then pcall(vim.api.nvim_buf_delete, state.bufnr, { force = true }) end
   state.winid, state.bufnr, state.namespace = nil, nil, nil
 end
 
 local function dimensions(session)
   local canvas = session.canvas or {}
-  if not valid_window(canvas.winid) then
-    return nil
-  end
+  if not valid_window(canvas.winid) then return nil end
   local canvas_width = vim.api.nvim_win_get_width(canvas.winid)
   local canvas_height = vim.api.nvim_win_get_height(canvas.winid)
   local width = math.min(34, math.max(16, math.floor(canvas_width * 0.28)))
   local height = math.min(12, math.max(6, math.floor(canvas_height * 0.30)))
   width = math.min(width, canvas_width - 4)
   height = math.min(height, canvas_height - 4)
-  if width < 12 or height < 4 then
-    return nil
-  end
+  if width < 12 or height < 4 then return nil end
   return {
     relative = "win",
     win = canvas.winid,
@@ -215,9 +193,7 @@ local function dimensions(session)
 end
 
 local function same_position(window, desired)
-  if not valid_window(window) then
-    return false
-  end
+  if not valid_window(window) then return false end
   local current = vim.api.nvim_win_get_config(window)
   return current.relative == desired.relative
     and current.win == desired.win
@@ -263,18 +239,14 @@ end
 
 function M.refresh(session, canvas_output)
   local state = state_for(session)
-  if not state.enabled then
-    return false
-  end
+  if not state.enabled then return false end
   if #(current_model(session).rooms or {}) == 0 then
     M.close(session)
     return nil, "add a room before opening the RoomPlan minimap"
   end
   local canvas = session.canvas or {}
   canvas_output = canvas_output or (canvas.handle and canvas.handle.last_raster)
-  if not valid_window(canvas.winid) or not canvas_output then
-    return nil, "the RoomPlan canvas has not rendered yet"
-  end
+  if not valid_window(canvas.winid) or not canvas_output then return nil, "the RoomPlan canvas has not rendered yet" end
   local position = dimensions(session)
   if not position then
     dispose_window(state)
@@ -286,9 +258,7 @@ function M.refresh(session, canvas_output)
     width = position.width,
     height = position.height,
   })
-  if not output then
-    return nil, err
-  end
+  if not output then return nil, err end
   set_lines(state, output.lines)
   apply_highlights(state, output)
   state.last_raster = output
@@ -303,29 +273,21 @@ function M.toggle(session)
   end
   state.enabled = true
   local ok, err = M.refresh(session)
-  if not ok and err ~= "the RoomPlan canvas is too small for the minimap" then
-    state.enabled = false
-  end
+  if not ok and err ~= "the RoomPlan canvas is too small for the minimap" then state.enabled = false end
   return state.enabled, err
 end
 
 function M.close(session)
   local state = session and session.minimap
-  if not state then
-    return false
-  end
+  if not state then return false end
   state.enabled = false
   dispose_window(state)
   state.last_raster = nil
   return true
 end
 
-function M.is_enabled(session)
-  return session and session.minimap and session.minimap.enabled == true or false
-end
+function M.is_enabled(session) return session and session.minimap and session.minimap.enabled == true or false end
 
-function M.is_visible(session)
-  return M.is_enabled(session) and valid_window(session.minimap.winid)
-end
+function M.is_visible(session) return M.is_enabled(session) and valid_window(session.minimap.winid) end
 
 return M

@@ -22,8 +22,11 @@ function M.from_persisted(value)
   local parts = {}
   for index = 1, #value.parts do
     local part = value.parts[index]
-    if type(part) ~= "table" or type(part.id) ~= "string"
-      or type(part.origin_mm) ~= "table" or type(part.size_mm) ~= "table"
+    if
+      type(part) ~= "table"
+      or type(part.id) ~= "string"
+      or type(part.origin_mm) ~= "table"
+      or type(part.size_mm) ~= "table"
     then
       return internal.failure("FOOTPRINT_PERSISTED", "persisted footprint parts require id, origin_mm, and size_mm", {
         index = index,
@@ -82,10 +85,11 @@ function M.local_from_room(room, part_id)
     return internal.failure("FOOTPRINT_ROOM", "schema-v1 rooms must provide size_mm")
   end
   local width, depth = room.size_mm[1], room.size_mm[2]
-  if not internal.finite_integer(width) or width <= 0
-    or not internal.finite_integer(depth) or depth <= 0
-  then
-    return internal.failure("FOOTPRINT_ROOM", "room geometry must use an integer origin and positive integer dimensions")
+  if not internal.finite_integer(width) or width <= 0 or not internal.finite_integer(depth) or depth <= 0 then
+    return internal.failure(
+      "FOOTPRINT_ROOM",
+      "room geometry must use an integer origin and positive integer dimensions"
+    )
   end
   local width2, width_error = internal.checked_double(width, "room-local width")
   if width2 == nil then return nil, width_error end
@@ -134,9 +138,13 @@ function M.from_furniture(room, furniture, options)
     local anchor_x2, anchor_y2 = furniture.anchor2_mm[1], furniture.anchor2_mm[2]
     local room_x, room_y = room.origin_mm[1], room.origin_mm[2]
     local position_x, position_y = furniture.position_mm[1], furniture.position_mm[2]
-    if not internal.finite_integer(anchor_x2) or not internal.finite_integer(anchor_y2)
-      or not internal.finite_integer(room_x) or not internal.finite_integer(room_y)
-      or not internal.finite_integer(position_x) or not internal.finite_integer(position_y)
+    if
+      not internal.finite_integer(anchor_x2)
+      or not internal.finite_integer(anchor_y2)
+      or not internal.finite_integer(room_x)
+      or not internal.finite_integer(room_y)
+      or not internal.finite_integer(position_x)
+      or not internal.finite_integer(position_y)
       or not internal.rotations[rotation]
     then
       return internal.failure(
@@ -175,10 +183,15 @@ function M.from_furniture(room, furniture, options)
   if not internal.rotations[rotation] and internal.rotations[options.rotation_fallback] then
     rotation = options.rotation_fallback
   end
-  if not internal.finite_integer(width) or width <= 0
-    or not internal.finite_integer(depth) or depth <= 0
-    or not internal.finite_integer(center_x) or not internal.finite_integer(center_y)
-    or not internal.finite_integer(room_x) or not internal.finite_integer(room_y)
+  if
+    not internal.finite_integer(width)
+    or width <= 0
+    or not internal.finite_integer(depth)
+    or depth <= 0
+    or not internal.finite_integer(center_x)
+    or not internal.finite_integer(center_y)
+    or not internal.finite_integer(room_x)
+    or not internal.finite_integer(room_y)
     or not internal.rotations[rotation]
   then
     return internal.failure(

@@ -11,9 +11,7 @@ local ALIGNMENTS = {
   { value = "keep", label = "Keep current position along wall" },
 }
 
-local function decimal(value)
-  return value == math.floor(value) and tostring(value) or string.format("%.1f", value)
-end
+local function decimal(value) return value == math.floor(value) and tostring(value) or string.format("%.1f", value) end
 
 local function wall_choices(walls)
   local result = {}
@@ -39,9 +37,7 @@ end
 
 local function wall_by_id(context, id)
   for _, wall in ipairs(context.walls or {}) do
-    if wall.id == id then
-      return wall
-    end
+    if wall.id == id then return wall end
   end
 end
 
@@ -103,9 +99,7 @@ function M.new(session, furniture)
         label = "Wall segment",
         type = "enum",
         required = true,
-        choices = function(ctx)
-          return wall_choices(ctx.walls)
-        end,
+        choices = function(ctx) return wall_choices(ctx.walls) end,
       },
       { key = "alignment", label = "Along wall", type = "enum", required = true, choices = ALIGNMENTS },
       { key = "clearance_mm", label = "Clearance", type = "measurement", allow_zero = true },
@@ -130,9 +124,7 @@ function M.new(session, furniture)
     },
     preview = function(draft, ctx)
       local value, err = proposal(draft, ctx)
-      if not value then
-        return nil, err or ctx.wall_error
-      end
+      if not value then return nil, err or ctx.wall_error end
       local rounding = (value.residual_mm[1] ~= 0 or value.residual_mm[2] ~= 0)
           and " · rounded to the integer-mm document lattice"
         or ""
@@ -151,9 +143,7 @@ function M.new(session, furniture)
   }
   function spec.build(draft, ctx)
     local value, err = proposal(draft, ctx or context)
-    if not value then
-      return nil, err
-    end
+    if not value then return nil, err end
     return {
       type = "move_furniture",
       id = context.furniture_id,

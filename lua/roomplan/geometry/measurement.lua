@@ -19,9 +19,7 @@ function M.shape(model, reference)
   end
   if reference.kind == "room" then
     local shape, err = footprint.from_room(object)
-    if not shape then
-      return nil, err
-    end
+    if not shape then return nil, err end
     return shape, object
   end
   if reference.kind == "furniture" then
@@ -30,40 +28,26 @@ function M.shape(model, reference)
       return nil, { code = "MEASUREMENT_OWNER", message = "the furniture owner room no longer exists" }
     end
     local shape, err = footprint.from_furniture(owner, object)
-    if not shape then
-      return nil, err
-    end
+    if not shape then return nil, err end
     return shape, object
   end
   return nil, { code = "MEASUREMENT_KIND", message = "measurements support rooms and furniture" }
 end
 
 local function axis_points(a0, a1, b0, b1)
-  if a1 < b0 then
-    return a1, b0, b0 - a1
-  end
-  if b1 < a0 then
-    return a0, b1, a0 - b1
-  end
+  if a1 < b0 then return a1, b0, b0 - a1 end
+  if b1 < a0 then return a0, b1, a0 - b1 end
   local contact = math.max(a0, b0)
   return contact, contact, 0
 end
 
-local function positive_overlap(a0, a1, b0, b1)
-  return math.max(a0, b0) < math.min(a1, b1)
-end
+local function positive_overlap(a0, a1, b0, b1) return math.max(a0, b0) < math.min(a1, b1) end
 
 local function better(candidate, current)
-  if not current or candidate.distance2_squared < current.distance2_squared then
-    return true
-  end
-  if candidate.distance2_squared ~= current.distance2_squared then
-    return false
-  end
+  if not current or candidate.distance2_squared < current.distance2_squared then return true end
+  if candidate.distance2_squared ~= current.distance2_squared then return false end
   for _, key in ipairs({ "ax2", "ay2", "bx2", "by2" }) do
-    if candidate[key] ~= current[key] then
-      return candidate[key] < current[key]
-    end
+    if candidate[key] ~= current[key] then return candidate[key] < current[key] end
   end
   return false
 end
@@ -76,13 +60,9 @@ function M.between(model, left_reference, right_reference)
     return nil, { code = "MEASUREMENT_SAME_OBJECT", message = "choose two different objects" }
   end
   local left, left_object_or_error = M.shape(model, left_reference)
-  if not left then
-    return nil, left_object_or_error
-  end
+  if not left then return nil, left_object_or_error end
   local right, right_object_or_error = M.shape(model, right_reference)
-  if not right then
-    return nil, right_object_or_error
-  end
+  if not right then return nil, right_object_or_error end
   local best, horizontal_gap2, vertical_gap2
   for _, a in ipairs(left.parts or {}) do
     for _, b in ipairs(right.parts or {}) do
@@ -98,9 +78,7 @@ function M.between(model, left_reference, right_reference)
         dy2 = by2 - ay2,
         distance2_squared = dx2 * dx2 + dy2 * dy2,
       }
-      if better(candidate, best) then
-        best = candidate
-      end
+      if better(candidate, best) then best = candidate end
       if positive_overlap(a.bottom2, a.top2, b.bottom2, b.top2) then
         horizontal_gap2 = horizontal_gap2 and math.min(horizontal_gap2, gap_x2) or gap_x2
       end
@@ -131,12 +109,8 @@ function M.between(model, left_reference, right_reference)
 end
 
 function M.format_mm(value)
-  if value == nil then
-    return "not aligned on this axis"
-  end
-  if value == math.floor(value) then
-    return string.format("%d mm", value)
-  end
+  if value == nil then return "not aligned on this axis" end
+  if value == math.floor(value) then return string.format("%d mm", value) end
   return string.format("%.2f mm", value):gsub("0+ mm$", " mm"):gsub("%. mm$", " mm")
 end
 

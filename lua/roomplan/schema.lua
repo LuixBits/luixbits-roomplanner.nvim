@@ -41,12 +41,13 @@ M.validate_text = common.validate_text
 function M.normalize(document)
   local version = normalizers[M.CURRENT_VERSION]
   if not version then
-    return nil, common.diagnostic(
-      "SCHEMA_NORMALIZER_MISSING",
-      "$.schema_version",
-      "no normalizer is registered for schema version " .. M.CURRENT_VERSION,
-      M.CURRENT_VERSION
-    )
+    return nil,
+      common.diagnostic(
+        "SCHEMA_NORMALIZER_MISSING",
+        "$.schema_version",
+        "no normalizer is registered for schema version " .. M.CURRENT_VERSION,
+        M.CURRENT_VERSION
+      )
   end
   return version.normalize(document)
 end
@@ -59,18 +60,21 @@ function M.normalize_versioned(document)
   if not version then return nil, version_error end
   local normalizer = normalizers[version]
   if not normalizer then
-    return nil, common.diagnostic(
-      "SCHEMA_NORMALIZER_MISSING",
-      "$.schema_version",
-      "no normalizer is registered for schema version " .. version,
-      version
-    )
+    return nil,
+      common.diagnostic(
+        "SCHEMA_NORMALIZER_MISSING",
+        "$.schema_version",
+        "no normalizer is registered for schema version " .. version,
+        version
+      )
   end
   return normalizer.normalize(document)
 end
 
 local function append_all(target, source)
-  for _, value in ipairs(source or {}) do target[#target + 1] = value end
+  for _, value in ipairs(source or {}) do
+    target[#target + 1] = value
+  end
 end
 
 -- Normalize the source version first, then run and validate every sequential
@@ -79,22 +83,24 @@ end
 function M.migrate(document, target_version)
   local explicit_target = target_version ~= nil
   target_version = target_version or M.CURRENT_VERSION
-  if type(target_version) ~= "number" or target_version ~= math.floor(target_version)
-    or target_version < 1 or target_version > M.LATEST_VERSION
+  if
+    type(target_version) ~= "number"
+    or target_version ~= math.floor(target_version)
+    or target_version < 1
+    or target_version > M.LATEST_VERSION
   then
-    return nil, common.diagnostic(
-      "SCHEMA_TARGET_VERSION",
-      "$.schema_version",
-      "migration target must be a registered schema version",
-      target_version
-    )
+    return nil,
+      common.diagnostic(
+        "SCHEMA_TARGET_VERSION",
+        "$.schema_version",
+        "migration target must be a registered schema version",
+        target_version
+      )
   end
 
   local version_ceiling = explicit_target and M.LATEST_VERSION or target_version
   local version, err = common.document_version(document, version_ceiling)
-  if not version then
-    return nil, err
-  end
+  if not version then return nil, err end
   if version > target_version then
     local code = explicit_target and "SCHEMA_DOWNGRADE_UNSUPPORTED" or "SCHEMA_FUTURE_VERSION"
     local message = explicit_target
@@ -105,12 +111,13 @@ function M.migrate(document, target_version)
 
   local source_normalizer = normalizers[version]
   if not source_normalizer then
-    return nil, common.diagnostic(
-      "SCHEMA_NORMALIZER_MISSING",
-      "$.schema_version",
-      "no normalizer is registered for schema version " .. version,
-      version
-    )
+    return nil,
+      common.diagnostic(
+        "SCHEMA_NORMALIZER_MISSING",
+        "$.schema_version",
+        "no normalizer is registered for schema version " .. version,
+        version
+      )
   end
   local copy, source_info = source_normalizer.normalize(document)
   if not copy then return nil, source_info end
@@ -123,30 +130,35 @@ function M.migrate(document, target_version)
   while version < target_version do
     local migration = M.migrations[version]
     if type(migration) ~= "function" then
-      return nil, common.diagnostic(
-        "SCHEMA_MIGRATION_MISSING",
-        "$.schema_version",
-        "no migration is registered from schema version " .. version,
-        version
-      )
+      return nil,
+        common.diagnostic(
+          "SCHEMA_MIGRATION_MISSING",
+          "$.schema_version",
+          "no migration is registered from schema version " .. version,
+          version
+        )
     end
     local migrated, migration_notes = migration(copy)
     if not migrated then
-      return nil, migration_notes or common.diagnostic(
-        "SCHEMA_MIGRATION_FAILED", "$", "migration from schema version " .. version .. " failed"
-      )
+      return nil,
+        migration_notes or common.diagnostic(
+          "SCHEMA_MIGRATION_FAILED",
+          "$",
+          "migration from schema version " .. version .. " failed"
+        )
     end
     append_all(notes, migration_notes)
 
     local next_version = version + 1
     local target_normalizer = normalizers[next_version]
     if not target_normalizer then
-      return nil, common.diagnostic(
-        "SCHEMA_NORMALIZER_MISSING",
-        "$.schema_version",
-        "no normalizer is registered for schema version " .. next_version,
-        next_version
-      )
+      return nil,
+        common.diagnostic(
+          "SCHEMA_NORMALIZER_MISSING",
+          "$.schema_version",
+          "no normalizer is registered for schema version " .. next_version,
+          next_version
+        )
     end
     local normalized, normalization_info = target_normalizer.normalize(migrated)
     if not normalized then return nil, normalization_info end
@@ -156,18 +168,19 @@ function M.migrate(document, target_version)
     migrated_any = true
     version = next_version
   end
-  return copy, notes, migrated_any, {
-    normalized = normalized_any,
-    added_fields = added_fields,
-    migration_notes = notes,
-  }
+  return copy,
+    notes,
+    migrated_any,
+    {
+      normalized = normalized_any,
+      added_fields = added_fields,
+      migration_notes = notes,
+    }
 end
 
 function M.load(document)
   local migrated, notes_or_error, migrated_any, migration_info = M.migrate(document)
-  if not migrated then
-    return nil, notes_or_error
-  end
+  if not migrated then return nil, notes_or_error end
   migration_info.migration_notes = notes_or_error
   migration_info.migrated = migrated_any == true
   if migration_info.migrated then migration_info.normalized = true end
@@ -176,17 +189,13 @@ end
 
 function M.decode(text_value, options)
   local document, err = json.decode(text_value, options)
-  if document == nil then
-    return nil, err
-  end
+  if document == nil then return nil, err end
   return M.load(document)
 end
 
 function M.validate(model)
   local normalized, info_or_error = M.normalize(model)
-  if not normalized then
-    return false, info_or_error
-  end
+  if not normalized then return false, info_or_error end
   return true, info_or_error, normalized
 end
 
@@ -198,16 +207,14 @@ end
 
 function M.encode(model, options)
   local valid, info_or_error, normalized = M.validate(model)
-  if not valid then
-    return nil, info_or_error
-  end
+  if not valid then return nil, info_or_error end
   local encode_options = {}
-  for key, value in pairs(options or {}) do encode_options[key] = value end
+  for key, value in pairs(options or {}) do
+    encode_options[key] = value
+  end
   if encode_options.key_order == nil then encode_options.key_order = v4.KEY_ORDER end
   local encoded, encode_error = json.encode(normalized, encode_options)
-  if not encoded then
-    return nil, encode_error
-  end
+  if not encoded then return nil, encode_error end
   return encoded, info_or_error
 end
 

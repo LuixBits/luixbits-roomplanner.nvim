@@ -2,18 +2,31 @@ local registry = require("roomplan.ui.action_registry")
 
 local function ids(actions)
   local result = {}
-  for _, action in ipairs(actions) do result[#result + 1] = action.id end
+  for _, action in ipairs(actions) do
+    result[#result + 1] = action.id
+  end
   return result
 end
 
 local function context(focus, selection)
-  local focused_row = focus == "objects" and {
-    kind = "room", id = "room-1", expandable = true, expanded = true,
-  } or focus == "issues" and {
-    kind = "room", id = "room-1", index = 1,
-  } or focus == "properties" and {
-    kind = "section", section = "geometry", expanded = false,
-  } or nil
+  local focused_row = focus == "objects"
+      and {
+        kind = "room",
+        id = "room-1",
+        expandable = true,
+        expanded = true,
+      }
+    or focus == "issues" and {
+      kind = "room",
+      id = "room-1",
+      index = 1,
+    }
+    or focus == "properties" and {
+      kind = "section",
+      section = "geometry",
+      expanded = false,
+    }
+    or nil
   return {
     model = { rooms = { { id = "room-1" }, { id = "room-2" } } },
     mode = "NAV",
@@ -36,7 +49,10 @@ describe("action registry", function()
     local objects = registry.primary(context("objects", furniture))
     assert_equal({
       "activate_focused",
-      "toggle_mark", "collapse_focused", "filter_focused", "help",
+      "toggle_mark",
+      "collapse_focused",
+      "filter_focused",
+      "help",
     }, ids(objects))
     assert_equal("select_focused", objects[1].workspace_action)
     assert_equal("objects", objects[1].scopes[1])
@@ -46,10 +62,7 @@ describe("action registry", function()
       { "activate_focused", "filter_focused", "validate", "help" },
       ids(registry.primary(context("issues", furniture)))
     )
-    assert_equal(
-      { "toggle_details_section", "edit", "help" },
-      ids(registry.primary(context("properties", furniture)))
-    )
+    assert_equal({ "toggle_details_section", "edit", "help" }, ids(registry.primary(context("properties", furniture))))
   end)
 
   it("publishes direct room resize controls as one focused mode", function()
@@ -60,7 +73,14 @@ describe("action registry", function()
     ctx.shape_edge = "west"
     ctx.shape_snap = "X → Kitchen west wall"
     assert_equal({
-      "shape_apply", "select", "shape_next", "add", "delete", "toggle_snap", "leave_mode", "help",
+      "shape_apply",
+      "select",
+      "shape_next",
+      "add",
+      "delete",
+      "toggle_snap",
+      "leave_mode",
+      "help",
     }, ids(registry.primary(ctx)))
     local resize = registry.get("resize_dimensions", context("canvas", { kind = "room", id = "room-1" }))
     assert_equal("Resize dimensions", resize.label)
@@ -83,7 +103,12 @@ describe("action registry", function()
     move.mode = "MOVE"
     local move_controls = registry.context_controls(move)
     assert_equal({
-      "move_normal", "move_coarse", "move_fine", "toggle_snap", "save", "leave_mode",
+      "move_normal",
+      "move_coarse",
+      "move_fine",
+      "toggle_snap",
+      "save",
+      "leave_mode",
     }, ids(move_controls))
     assert_equal("h/j/k/l", move_controls[1].key_label)
     assert_equal("Finish moving", move_controls[#move_controls].label)
@@ -101,8 +126,13 @@ describe("action registry", function()
     sun.mode = "SUN STUDY"
     sun.sun_study = { time = "14:00", playing = true }
     assert_equal({
-      "sun_previous", "sun_next", "sun_previous_season", "sun_next_season",
-      "sun_toggle_playback", "sun_study", "sun_close",
+      "sun_previous",
+      "sun_next",
+      "sun_previous_season",
+      "sun_next_season",
+      "sun_toggle_playback",
+      "sun_study",
+      "sun_close",
     }, ids(registry.context_controls(sun)))
     assert_equal("Pause", registry.get("sun_toggle_playback", sun).label)
     assert_equal("SUN STUDY · 14:00 · PLAYING", registry.context_title(sun))
@@ -122,7 +152,9 @@ describe("action registry", function()
     ctx.can_redo = false
     local full = registry.full(ctx)
     local present = {}
-    for _, action in ipairs(full) do present[action.id] = action end
+    for _, action in ipairs(full) do
+      present[action.id] = action
+    end
 
     assert_true(present.activate_focused.primary)
     assert_true(present.edit.primary == false)
@@ -133,13 +165,31 @@ describe("action registry", function()
     assert_true(present.properties ~= nil)
     assert_true(present.issues ~= nil)
     for _, id in ipairs({
-      "add", "add_door", "add_window", "add_outlet", "add_furniture", "pan", "align", "rotate",
-      "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
+      "add",
+      "add_door",
+      "add_window",
+      "add_outlet",
+      "add_furniture",
+      "pan",
+      "align",
+      "rotate",
+      "cycle_detail_level",
+      "zoom_in",
+      "zoom_out",
+      "rotate_view_clockwise",
+      "rotate_view_counterclockwise",
+      "reset_view",
       "toggle_minimap",
-      "toggle_snap", "bypass_snap", "save_as", "next_issue", "previous_issue",
+      "toggle_snap",
+      "bypass_snap",
+      "save_as",
+      "next_issue",
+      "previous_issue",
       "measure",
       "history_list",
-      "aspect", "reload", "close",
+      "aspect",
+      "reload",
+      "close",
     }) do
       assert_true(present[id] ~= nil, "missing full action " .. id)
       assert_true(present[id].primary == false)
@@ -178,10 +228,21 @@ describe("action registry", function()
     assert_equal("add_outlet", present.add_outlet.handler)
     local controller = require("roomplan.controller")
     for _, id in ipairs({
-      "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
+      "cycle_detail_level",
+      "zoom_in",
+      "zoom_out",
+      "rotate_view_clockwise",
+      "rotate_view_counterclockwise",
+      "reset_view",
       "toggle_minimap",
-      "toggle_snap", "bypass_snap", "save_as", "next_issue", "previous_issue",
-      "aspect", "reload", "close",
+      "toggle_snap",
+      "bypass_snap",
+      "save_as",
+      "next_issue",
+      "previous_issue",
+      "aspect",
+      "reload",
+      "close",
     }) do
       assert_equal("function", type(controller[present[id].handler]))
     end
@@ -190,7 +251,9 @@ describe("action registry", function()
     assert_equal("pane", grouped[1].id)
     assert_equal("Current panel", grouped[1].label)
     for _, group in ipairs(grouped) do
-      for _, action in ipairs(group.actions) do assert_true(action.id ~= "help") end
+      for _, action in ipairs(group.actions) do
+        assert_true(action.id ~= "help")
+      end
     end
   end)
 
@@ -199,7 +262,9 @@ describe("action registry", function()
       local ctx = context("canvas", { kind = kind, id = kind .. "-1" })
       assert_equal({ "edit", "move", "delete", "help" }, ids(registry.primary(ctx)))
       local present = {}
-      for _, action in ipairs(registry.full(ctx)) do present[action.id] = action end
+      for _, action in ipairs(registry.full(ctx)) do
+        present[action.id] = action
+      end
       for _, id in ipairs({ "edit", "move", "duplicate", "delete" }) do
         assert_true(present[id] ~= nil, kind .. " is missing " .. id)
         assert_true(present[id].enabled, kind .. " unexpectedly disables " .. id)
@@ -213,9 +278,16 @@ describe("action registry", function()
   end)
 
   it("publishes one direct dimension shortcut without restoring the old hidden shape action", function()
-    assert_equal(nil, registry.get("edit_shape", context("canvas", {
-      kind = "furniture", id = "sofa-1",
-    })))
+    assert_equal(
+      nil,
+      registry.get(
+        "edit_shape",
+        context("canvas", {
+          kind = "furniture",
+          id = "sofa-1",
+        })
+      )
+    )
     for _, selection in ipairs({
       { kind = "room", id = "room-main" },
       { kind = "furniture", id = "sofa-1" },
@@ -285,14 +357,15 @@ describe("action registry", function()
     assert_true(lines:match("%[Enter%] Open") == nil)
     assert_true(lines:match("%[q%] Hide") == nil)
     assert_true(lines:match("%[%?%] More") == nil)
-    local enter = vim.api.nvim_buf_call(handle.bufnr, function()
-      return vim.fn.maparg("<CR>", "n", false, true)
-    end)
+    local enter = vim.api.nvim_buf_call(handle.bufnr, function() return vim.fn.maparg("<CR>", "n", false, true) end)
     assert_equal("Run RoomPlan action", enter.desc)
 
     local edit
     for _, action in pairs(handle.row_map) do
-      if action.id == "edit" then edit = action; break end
+      if action.id == "edit" then
+        edit = action
+        break
+      end
     end
     assert_true(require("roomplan.ui.palette").choose(handle, edit))
     assert_true(vim.wait(200, function() return chosen == "edit" end, 10))
@@ -317,7 +390,9 @@ describe("action registry", function()
     local lines = table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
     assert_true(lines:find("[h/j/k/l] Move", 1, true) ~= nil)
     assert_true(lines:find("[Esc] Finish moving", 1, true) ~= nil)
-    for _, action in pairs(handle.row_map) do assert_true(action.id ~= "move_normal") end
+    for _, action in pairs(handle.row_map) do
+      assert_true(action.id ~= "move_normal")
+    end
     require("roomplan.ui.palette").close(handle, "test cleanup")
   end)
 end)

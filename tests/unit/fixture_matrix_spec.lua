@@ -6,9 +6,7 @@ local validate = require("roomplan.validate")
 local source = debug.getinfo(1, "S").source:sub(2)
 local root = vim.fn.fnamemodify(source, ":p:h:h:h")
 
-local function fixture(name)
-  return table.concat(vim.fn.readfile(root .. "/tests/fixtures/" .. name, "b"), "\n")
-end
+local function fixture(name) return table.concat(vim.fn.readfile(root .. "/tests/fixtures/" .. name, "b"), "\n") end
 
 local function diagnostic_codes(diagnostics)
   local result = {}

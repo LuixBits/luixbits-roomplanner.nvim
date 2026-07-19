@@ -12,23 +12,57 @@ local inward = {
   east = { -1, 0 },
 }
 
-function M.opposite(side)
-  return opposites[side]
-end
+function M.opposite(side) return opposites[side] end
 
 local function rectangle_edge(x, y, width, depth, side)
   if side == "south" then
-    return { side = side, axis = "x", fixed_mm = y, start_mm = x, finish_mm = x + width,
-      p0 = { x, y }, p1 = { x + width, y }, inward = { 0, 1 }, outward = { 0, -1 } }
+    return {
+      side = side,
+      axis = "x",
+      fixed_mm = y,
+      start_mm = x,
+      finish_mm = x + width,
+      p0 = { x, y },
+      p1 = { x + width, y },
+      inward = { 0, 1 },
+      outward = { 0, -1 },
+    }
   elseif side == "north" then
-    return { side = side, axis = "x", fixed_mm = y + depth, start_mm = x, finish_mm = x + width,
-      p0 = { x, y + depth }, p1 = { x + width, y + depth }, inward = { 0, -1 }, outward = { 0, 1 } }
+    return {
+      side = side,
+      axis = "x",
+      fixed_mm = y + depth,
+      start_mm = x,
+      finish_mm = x + width,
+      p0 = { x, y + depth },
+      p1 = { x + width, y + depth },
+      inward = { 0, -1 },
+      outward = { 0, 1 },
+    }
   elseif side == "west" then
-    return { side = side, axis = "y", fixed_mm = x, start_mm = y, finish_mm = y + depth,
-      p0 = { x, y }, p1 = { x, y + depth }, inward = { 1, 0 }, outward = { -1, 0 } }
+    return {
+      side = side,
+      axis = "y",
+      fixed_mm = x,
+      start_mm = y,
+      finish_mm = y + depth,
+      p0 = { x, y },
+      p1 = { x, y + depth },
+      inward = { 1, 0 },
+      outward = { -1, 0 },
+    }
   elseif side == "east" then
-    return { side = side, axis = "y", fixed_mm = x + width, start_mm = y, finish_mm = y + depth,
-      p0 = { x + width, y }, p1 = { x + width, y + depth }, inward = { -1, 0 }, outward = { 1, 0 } }
+    return {
+      side = side,
+      axis = "y",
+      fixed_mm = x + width,
+      start_mm = y,
+      finish_mm = y + depth,
+      p0 = { x + width, y },
+      p1 = { x + width, y + depth },
+      inward = { -1, 0 },
+      outward = { 1, 0 },
+    }
   end
   return nil, "invalid room side " .. tostring(side)
 end
@@ -43,21 +77,15 @@ end
 ---Return a room edge. Compound rooms require a part ID because a cardinal
 ---side can occur more than once on their silhouette.
 function M.edge(room, side, part_id)
-  if type(room) ~= "table" or type(room.origin_mm) ~= "table" then
-    return nil, "invalid room geometry"
-  end
+  if type(room) ~= "table" or type(room.origin_mm) ~= "table" then return nil, "invalid room geometry" end
   if room.footprint == nil then
     if type(room.size_mm) ~= "table" then return nil, "invalid room geometry" end
-    local edge, err = rectangle_edge(
-      room.origin_mm[1], room.origin_mm[2], room.size_mm[1], room.size_mm[2], side
-    )
+    local edge, err = rectangle_edge(room.origin_mm[1], room.origin_mm[2], room.size_mm[1], room.size_mm[2], side)
     if edge and part_id ~= nil then edge.part_id = part_id end
     return edge, err
   end
 
-  if type(part_id) ~= "string" then
-    return nil, "compound room edges require a part_id"
-  end
+  if type(part_id) ~= "string" then return nil, "compound room edges require a part_id" end
   local shape, shape_error = footprint.from_room(room)
   if not shape then return nil, shape_error and shape_error.message or "invalid room footprint" end
   local part = part_by_id(shape, part_id)
@@ -96,8 +124,13 @@ function M.is_exterior_interval(room, edge, start_mm, finish_mm, part_id)
     local fixed = segment.fixed2 / 2
     local segment_start = segment.start2 / 2
     local segment_finish = segment.finish2 / 2
-    if axis == edge.axis and fixed == edge.fixed_mm and segment.side == edge.side and has_part(segment, part_id)
-      and segment_finish > cursor and segment_start <= cursor
+    if
+      axis == edge.axis
+      and fixed == edge.fixed_mm
+      and segment.side == edge.side
+      and has_part(segment, part_id)
+      and segment_finish > cursor
+      and segment_start <= cursor
     then
       cursor = math.max(cursor, segment_finish)
       if cursor >= finish_mm then return true end
@@ -157,7 +190,9 @@ function M.between(a, b)
     for _, ae in ipairs(a_edges) do
       if ae.side == a_side then
         for _, be in ipairs(b_edges) do
-          if be.side == b_side and ae.fixed_mm == be.fixed_mm
+          if
+            be.side == b_side
+            and ae.fixed_mm == be.fixed_mm
             and interval.overlaps_positive(ae.start_mm, ae.finish_mm, be.start_mm, be.finish_mm)
           then
             return {

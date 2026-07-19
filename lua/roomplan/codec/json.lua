@@ -39,27 +39,17 @@ local function raw_kind(value)
   return nil
 end
 
-function M.is_object(value)
-  return raw_kind(value) == "object"
-end
+function M.is_object(value) return raw_kind(value) == "object" end
 
-function M.is_array(value)
-  return raw_kind(value) == "array"
-end
+function M.is_array(value) return raw_kind(value) == "array" end
 
-function M.is_null(value)
-  return value == NULL
-end
+function M.is_null(value) return value == NULL end
 
-function M.is_decimal(value)
-  return raw_kind(value) == "decimal"
-end
+function M.is_decimal(value) return raw_kind(value) == "decimal" end
 
 function M.object(value)
   value = value or {}
-  if type(value) ~= "table" then
-    error("JSON object storage must be a table", 2)
-  end
+  if type(value) ~= "table" then error("JSON object storage must be a table", 2) end
   if getmetatable(value) ~= nil and getmetatable(value) ~= OBJECT_MT then
     error("JSON object storage already has a metatable", 2)
   end
@@ -68,9 +58,7 @@ end
 
 function M.array(value)
   value = value or {}
-  if type(value) ~= "table" then
-    error("JSON array storage must be a table", 2)
-  end
+  if type(value) ~= "table" then error("JSON array storage must be a table", 2) end
   if getmetatable(value) ~= nil and getmetatable(value) ~= ARRAY_MT then
     error("JSON array storage already has a metatable", 2)
   end
@@ -84,9 +72,7 @@ end
 
 local function normalize_decimal(sign, coefficient, exponent)
   coefficient = strip_leading_zeroes(coefficient)
-  if coefficient == "0" then
-    return 1, "0", 0
-  end
+  if coefficient == "0" then return 1, "0", 0 end
   while #coefficient > 1 and coefficient:sub(-1) == "0" do
     coefficient = coefficient:sub(1, -2)
     exponent = exponent + 1
@@ -95,21 +81,15 @@ local function normalize_decimal(sign, coefficient, exponent)
 end
 
 function M.decimal(sign, coefficient, exponent)
-  if sign ~= 1 and sign ~= -1 then
-    error("decimal sign must be 1 or -1", 2)
-  end
+  if sign ~= 1 and sign ~= -1 then error("decimal sign must be 1 or -1", 2) end
   if type(coefficient) ~= "string" or not coefficient:match("^%d+$") then
     error("decimal coefficient must contain ASCII digits", 2)
   end
-  if #coefficient > HARD_LIMITS.max_number_bytes then
-    error("decimal coefficient exceeds the hard byte limit", 2)
-  end
+  if #coefficient > HARD_LIMITS.max_number_bytes then error("decimal coefficient exceeds the hard byte limit", 2) end
   if type(exponent) ~= "number" or exponent ~= math.floor(exponent) then
     error("decimal exponent must be an integer", 2)
   end
-  if math.abs(exponent) > HARD_LIMITS.max_abs_exponent then
-    error("decimal exponent exceeds the hard limit", 2)
-  end
+  if math.abs(exponent) > HARD_LIMITS.max_abs_exponent then error("decimal exponent exceeds the hard limit", 2) end
   sign, coefficient, exponent = normalize_decimal(sign, coefficient, exponent)
   if math.abs(exponent) > HARD_LIMITS.max_abs_exponent then
     error("normalized decimal exponent exceeds the hard limit", 2)
@@ -118,9 +98,7 @@ function M.decimal(sign, coefficient, exponent)
 end
 
 function M.decimal_parts(value)
-  if not M.is_decimal(value) then
-    return nil
-  end
+  if not M.is_decimal(value) then return nil end
   return value.sign, value.coefficient, value.exponent
 end
 
@@ -135,8 +113,11 @@ function M.decimal_from_string(value)
     mantissa, exponent_text = value, "0"
   end
   local sign_text = mantissa:sub(1, 1)
-  if sign_text == "+" or sign_text == "-" then mantissa = mantissa:sub(2)
-  else sign_text = "" end
+  if sign_text == "+" or sign_text == "-" then
+    mantissa = mantissa:sub(2)
+  else
+    sign_text = ""
+  end
   local whole, fraction
   if mantissa:match("^%d+$") then
     whole, fraction = mantissa, ""
@@ -157,9 +138,7 @@ function M.decimal_from_string(value)
   if decimal.exponent >= 0 and #decimal.coefficient + decimal.exponent <= 15 then
     integer = tonumber(decimal.coefficient) * (10 ^ decimal.exponent) * decimal.sign
   end
-  if integer and integer == math.floor(integer) and math.abs(integer) <= 9007199254740991 then
-    return integer
-  end
+  if integer and integer == math.floor(integer) and math.abs(integer) <= 9007199254740991 then return integer end
   return decimal
 end
 
@@ -182,13 +161,9 @@ end
 local function effective_limit(options, name)
   local hard = HARD_LIMITS[name]
   local requested = options and options[name]
-  if type(requested) ~= "number" or requested < 1 then
-    return hard
-  end
+  if type(requested) ~= "number" or requested < 1 then return hard end
   requested = math.floor(requested)
-  if requested > hard then
-    return hard
-  end
+  if requested > hard then return hard end
   return requested
 end
 
@@ -212,21 +187,15 @@ local function utf8_error_position(text)
       else
         return index, "invalid UTF-8 leading byte"
       end
-      if index + count - 1 > length then
-        return index, "truncated UTF-8 sequence"
-      end
+      if index + count - 1 > length then return index, "truncated UTF-8 sequence" end
       local cursor = index + 1
       while cursor < index + count do
         local byte = text:byte(cursor)
-        if byte < 0x80 or byte > 0xBF then
-          return cursor, "invalid UTF-8 continuation byte"
-        end
+        if byte < 0x80 or byte > 0xBF then return cursor, "invalid UTF-8 continuation byte" end
         codepoint = codepoint * 64 + byte - 0x80
         cursor = cursor + 1
       end
-      if codepoint < minimum or codepoint > 0x10FFFF
-        or (codepoint >= 0xD800 and codepoint <= 0xDFFF)
-      then
+      if codepoint < minimum or codepoint > 0x10FFFF or (codepoint >= 0xD800 and codepoint <= 0xDFFF) then
         return index, "invalid UTF-8 code point"
       end
       index = index + count
@@ -236,13 +205,9 @@ local function utf8_error_position(text)
 end
 
 function M.valid_utf8(text)
-  if type(text) ~= "string" then
-    return false, 1, "expected a string"
-  end
+  if type(text) ~= "string" then return false, 1, "expected a string" end
   local position, message = utf8_error_position(text)
-  if position then
-    return false, position, message
-  end
+  if position then return false, position, message end
   return true
 end
 
@@ -279,10 +244,7 @@ local function encode_codepoint(codepoint)
   if codepoint <= 0x7F then
     return string.char(codepoint)
   elseif codepoint <= 0x7FF then
-    return string.char(
-      0xC0 + math.floor(codepoint / 0x40),
-      0x80 + codepoint % 0x40
-    )
+    return string.char(0xC0 + math.floor(codepoint / 0x40), 0x80 + codepoint % 0x40)
   elseif codepoint <= 0xFFFF then
     return string.char(
       0xE0 + math.floor(codepoint / 0x1000),
@@ -322,7 +284,13 @@ local function read_hex4(state, position)
   while cursor < position + 4 do
     local digit = HEX[state.text:sub(cursor, cursor)]
     if digit == nil then
-      return nil, decode_error(state, "JSON_INVALID_UNICODE_ESCAPE", "Unicode escape contains a non-hexadecimal character", cursor)
+      return nil,
+        decode_error(
+          state,
+          "JSON_INVALID_UNICODE_ESCAPE",
+          "Unicode escape contains a non-hexadecimal character",
+          cursor
+        )
     end
     value = value * 16 + digit
     cursor = cursor + 1
@@ -362,18 +330,14 @@ local function parse_string(state)
     if byte == 34 then
       if state.position > raw_start then
         local ok, err = append(state.text:sub(raw_start, state.position - 1))
-        if not ok then
-          return nil, err
-        end
+        if not ok then return nil, err end
       end
       state.position = state.position + 1
       return table.concat(pieces)
     elseif byte == 92 then
       if state.position > raw_start then
         local ok, err = append(state.text:sub(raw_start, state.position - 1))
-        if not ok then
-          return nil, err
-        end
+        if not ok then return nil, err end
       end
       local escape_position = state.position
       state.position = state.position + 1
@@ -383,21 +347,29 @@ local function parse_string(state)
       local escape = state.text:sub(state.position, state.position)
       if escape == "u" then
         local codepoint, err = read_hex4(state, state.position + 1)
-        if not codepoint then
-          return nil, err
-        end
+        if not codepoint then return nil, err end
         state.position = state.position + 5
         if codepoint >= 0xD800 and codepoint <= 0xDBFF then
           if state.text:sub(state.position, state.position + 1) ~= "\\u" then
-            return nil, decode_error(state, "JSON_INVALID_SURROGATE", "high surrogate is not followed by a low surrogate", escape_position)
+            return nil,
+              decode_error(
+                state,
+                "JSON_INVALID_SURROGATE",
+                "high surrogate is not followed by a low surrogate",
+                escape_position
+              )
           end
           local low
           low, err = read_hex4(state, state.position + 2)
-          if not low then
-            return nil, err
-          end
+          if not low then return nil, err end
           if low < 0xDC00 or low > 0xDFFF then
-            return nil, decode_error(state, "JSON_INVALID_SURROGATE", "high surrogate is followed by an invalid low surrogate", state.position)
+            return nil,
+              decode_error(
+                state,
+                "JSON_INVALID_SURROGATE",
+                "high surrogate is followed by an invalid low surrogate",
+                state.position
+              )
           end
           codepoint = 0x10000 + (codepoint - 0xD800) * 0x400 + (low - 0xDC00)
           state.position = state.position + 6
@@ -406,18 +378,15 @@ local function parse_string(state)
         end
         local ok
         ok, err = append(encode_codepoint(codepoint))
-        if not ok then
-          return nil, err
-        end
+        if not ok then return nil, err end
       else
         local replacement = ESCAPES[escape]
         if replacement == nil then
-          return nil, decode_error(state, "JSON_INVALID_ESCAPE", "invalid JSON escape '\\" .. escape .. "'", escape_position)
+          return nil,
+            decode_error(state, "JSON_INVALID_ESCAPE", "invalid JSON escape '\\" .. escape .. "'", escape_position)
         end
         local ok, err = append(replacement)
-        if not ok then
-          return nil, err
-        end
+        if not ok then return nil, err end
         state.position = state.position + 1
       end
       raw_start = state.position
@@ -449,9 +418,7 @@ local function decimal_from_components(negative, integer, fraction, exponent_sig
       exponent = exponent * 10 + exponent_digits:byte(cursor) - 48
       cursor = cursor + 1
     end
-    if exponent_sign == "-" then
-      exponent = -exponent
-    end
+    if exponent_sign == "-" then exponent = -exponent end
   end
   local coefficient = integer .. (fraction or "")
   exponent = exponent - #(fraction or "")
@@ -515,15 +482,14 @@ local function parse_number(state)
     end
     local bounded = 0
     repeat
-      if bounded <= state.max_abs_exponent then
-        bounded = bounded * 10 + byte - 48
-      end
+      if bounded <= state.max_abs_exponent then bounded = bounded * 10 + byte - 48 end
       state.position = state.position + 1
       byte = state.text:byte(state.position)
     until not byte or byte < 48 or byte > 57
     exponent_digits = state.text:sub(exponent_start, state.position - 1)
     if bounded > state.max_abs_exponent then
-      return nil, decode_error(state, "JSON_EXPONENT_LIMIT", "number exponent exceeds the absolute limit", exponent_start)
+      return nil,
+        decode_error(state, "JSON_EXPONENT_LIMIT", "number exponent exceeds the absolute limit", exponent_start)
     end
   end
   if state.position - start > state.max_number_bytes then
@@ -531,7 +497,8 @@ local function parse_number(state)
   end
   local value = decimal_from_components(negative, integer, fraction, exponent_sign, exponent_digits)
   if math.abs(value.exponent) > state.max_abs_exponent then
-    return nil, decode_error(state, "JSON_EXPONENT_LIMIT", "normalized number exponent exceeds the absolute limit", start)
+    return nil,
+      decode_error(state, "JSON_EXPONENT_LIMIT", "normalized number exponent exceeds the absolute limit", start)
   end
   return value
 end
@@ -559,9 +526,7 @@ local function parse_array(state, depth)
   end
   while true do
     local value, err = parse_value(state, depth)
-    if value == nil then
-      return nil, err
-    end
+    if value == nil then return nil, err end
     result[#result + 1] = value
     skip_whitespace(state)
     local token = state.text:sub(state.position, state.position)
@@ -569,7 +534,8 @@ local function parse_array(state, depth)
       state.position = state.position + 1
       return result
     elseif token ~= "," then
-      return nil, decode_error(state, "JSON_EXPECTED_ARRAY_DELIMITER", "expected ',' or ']' after array item", state.position)
+      return nil,
+        decode_error(state, "JSON_EXPECTED_ARRAY_DELIMITER", "expected ',' or ']' after array item", state.position)
     end
     state.position = state.position + 1
     skip_whitespace(state)
@@ -597,9 +563,7 @@ local function parse_object(state, depth)
     end
     local key_position = state.position
     local key, err = parse_string(state)
-    if key == nil then
-      return nil, err
-    end
+    if key == nil then return nil, err end
     if seen[key] then
       return nil, decode_error(state, "JSON_DUPLICATE_KEY", "duplicate object key '" .. key .. "'", key_position)
     end
@@ -612,9 +576,7 @@ local function parse_object(state, depth)
     skip_whitespace(state)
     local value
     value, err = parse_value(state, depth)
-    if value == nil then
-      return nil, err
-    end
+    if value == nil then return nil, err end
     result[key] = value
     skip_whitespace(state)
     local token = state.text:sub(state.position, state.position)
@@ -622,7 +584,8 @@ local function parse_object(state, depth)
       state.position = state.position + 1
       return result
     elseif token ~= "," then
-      return nil, decode_error(state, "JSON_EXPECTED_OBJECT_DELIMITER", "expected ',' or '}' after object member", state.position)
+      return nil,
+        decode_error(state, "JSON_EXPECTED_OBJECT_DELIMITER", "expected ',' or '}' after object member", state.position)
     end
     state.position = state.position + 1
     skip_whitespace(state)
@@ -634,9 +597,7 @@ end
 
 parse_value = function(state, depth)
   local ok, err = count_value(state)
-  if not ok then
-    return nil, err
-  end
+  if not ok then return nil, err end
   skip_whitespace(state)
   local token = state.text:sub(state.position, state.position)
   if token == '"' then
@@ -659,31 +620,57 @@ parse_value = function(state, depth)
   elseif token == "" then
     return nil, decode_error(state, "JSON_UNEXPECTED_EOF", "expected a JSON value", state.position)
   end
-  return nil, decode_error(state, "JSON_UNEXPECTED_TOKEN", "unexpected token while parsing a JSON value", state.position)
+  return nil,
+    decode_error(state, "JSON_UNEXPECTED_TOKEN", "unexpected token while parsing a JSON value", state.position)
 end
 
 function M.decode(text, options)
   if type(text) ~= "string" then
-    return nil, { code = "JSON_INPUT_TYPE", message = "JSON input must be a string", offset = 1, byte_offset = 0, line = 1, column = 1 }
+    return nil,
+      {
+        code = "JSON_INPUT_TYPE",
+        message = "JSON input must be a string",
+        offset = 1,
+        byte_offset = 0,
+        line = 1,
+        column = 1,
+      }
   end
   local max_bytes = effective_limit(options, "max_bytes")
   if #text > max_bytes then
-    return nil, { code = "JSON_PAYLOAD_LIMIT", message = "JSON payload exceeds the byte limit", offset = max_bytes + 1, byte_offset = max_bytes, line = 1, column = 1 }
+    return nil,
+      {
+        code = "JSON_PAYLOAD_LIMIT",
+        message = "JSON payload exceeds the byte limit",
+        offset = max_bytes + 1,
+        byte_offset = max_bytes,
+        line = 1,
+        column = 1,
+      }
   end
   if text:sub(1, 3) == "\239\187\191" then
-    return nil, { code = "JSON_BOM", message = "JSON payload must not start with a UTF-8 BOM", offset = 1, byte_offset = 0, line = 1, column = 1 }
+    return nil,
+      {
+        code = "JSON_BOM",
+        message = "JSON payload must not start with a UTF-8 BOM",
+        offset = 1,
+        byte_offset = 0,
+        line = 1,
+        column = 1,
+      }
   end
   local invalid_position, invalid_message = utf8_error_position(text)
   if invalid_position then
     local line, column = location(text, invalid_position)
-    return nil, {
-      code = "JSON_INVALID_UTF8",
-      message = invalid_message,
-      offset = invalid_position,
-      byte_offset = invalid_position - 1,
-      line = line,
-      column = column,
-    }
+    return nil,
+      {
+        code = "JSON_INVALID_UTF8",
+        message = invalid_message,
+        offset = invalid_position,
+        byte_offset = invalid_position - 1,
+        line = line,
+        column = column,
+      }
   end
   local state = {
     text = text,
@@ -698,9 +685,7 @@ function M.decode(text, options)
   }
   skip_whitespace(state)
   local value, err = parse_value(state, 0)
-  if value == nil then
-    return nil, err
-  end
+  if value == nil then return nil, err end
   skip_whitespace(state)
   if state.position <= state.length then
     return nil, decode_error(state, "JSON_TRAILING_CONTENT", "trailing content after the JSON value", state.position)
@@ -709,12 +694,44 @@ function M.decode(text, options)
 end
 
 local ORDER_BY_PATH = {
-  ["$"] = { "format", "schema_version", "units", "metadata", "settings", "rooms", "doors", "furniture", "custom_templates", "extensions" },
+  ["$"] = {
+    "format",
+    "schema_version",
+    "units",
+    "metadata",
+    "settings",
+    "rooms",
+    "doors",
+    "furniture",
+    "custom_templates",
+    "extensions",
+  },
   ["$.metadata"] = { "name", "notes" },
   ["$.settings"] = { "grid_mm", "fine_step_mm", "normal_step_mm", "coarse_step_mm", "default_door_width_mm" },
   ["$.rooms[]"] = { "id", "name", "origin_mm", "size_mm", "color" },
-  ["$.doors[]"] = { "id", "kind", "room_id", "connects_to_room_id", "side", "offset_mm", "width_mm", "hinge", "opens_into", "open_angle_deg" },
-  ["$.furniture[]"] = { "id", "room_id", "template_id", "name", "category", "center_mm", "size_mm", "rotation_deg", "color" },
+  ["$.doors[]"] = {
+    "id",
+    "kind",
+    "room_id",
+    "connects_to_room_id",
+    "side",
+    "offset_mm",
+    "width_mm",
+    "hinge",
+    "opens_into",
+    "open_angle_deg",
+  },
+  ["$.furniture[]"] = {
+    "id",
+    "room_id",
+    "template_id",
+    "name",
+    "category",
+    "center_mm",
+    "size_mm",
+    "rotation_deg",
+    "color",
+  },
   ["$.custom_templates[]"] = { "id", "name", "category", "shape", "default_size_mm" },
 }
 
@@ -722,30 +739,22 @@ local function decimal_to_string(value)
   local sign = value.sign < 0 and "-" or ""
   local coefficient = value.coefficient
   local exponent = value.exponent
-  if coefficient == "0" then
-    return "0"
-  end
+  if coefficient == "0" then return "0" end
   local adjusted = #coefficient - 1 + exponent
   if exponent >= 0 and adjusted <= 20 then
     return sign .. coefficient .. string.rep("0", exponent)
   elseif exponent < 0 and adjusted >= -6 and adjusted <= 20 then
     local point = #coefficient + exponent
-    if point > 0 then
-      return sign .. coefficient:sub(1, point) .. "." .. coefficient:sub(point + 1)
-    end
+    if point > 0 then return sign .. coefficient:sub(1, point) .. "." .. coefficient:sub(point + 1) end
     return sign .. "0." .. string.rep("0", -point) .. coefficient
   end
   local mantissa = coefficient:sub(1, 1)
-  if #coefficient > 1 then
-    mantissa = mantissa .. "." .. coefficient:sub(2)
-  end
+  if #coefficient > 1 then mantissa = mantissa .. "." .. coefficient:sub(2) end
   return sign .. mantissa .. "e" .. tostring(adjusted)
 end
 
 local function integer_to_string(value)
-  if value == 0 then
-    return "0"
-  end
+  if value == 0 then return "0" end
   return string.format("%.0f", value)
 end
 
@@ -774,24 +783,18 @@ local function escape_string(value)
       replacement = string.format("\\u%04x", byte)
     end
     if replacement then
-      if cursor > start then
-        pieces[#pieces + 1] = value:sub(start, cursor - 1)
-      end
+      if cursor > start then pieces[#pieces + 1] = value:sub(start, cursor - 1) end
       pieces[#pieces + 1] = replacement
       start = cursor + 1
     end
     cursor = cursor + 1
   end
-  if start <= #value then
-    pieces[#pieces + 1] = value:sub(start)
-  end
+  if start <= #value then pieces[#pieces + 1] = value:sub(start) end
   pieces[#pieces + 1] = '"'
   return table.concat(pieces)
 end
 
-local function encode_error(code, message, path)
-  return { code = code, message = message, path = path }
-end
+local function encode_error(code, message, path) return { code = code, message = message, path = path } end
 
 local function ordered_keys(value, path, options)
   local keys = {}
@@ -833,9 +836,7 @@ local function ordered_keys(value, path, options)
   local index = 1
   while index <= #keys do
     local key = keys[index]
-    if not consumed[key] then
-      unknown[#unknown + 1] = key
-    end
+    if not consumed[key] then unknown[#unknown + 1] = key end
     index = index + 1
   end
   table.sort(unknown)
@@ -849,9 +850,7 @@ end
 
 local encode_value
 
-local function indent(level)
-  return string.rep("  ", level)
-end
+local function indent(level) return string.rep("  ", level) end
 
 local function encode_array(value, state, path, depth)
   local maximum = 0
@@ -861,23 +860,15 @@ local function encode_array(value, state, path, depth)
       return nil, encode_error("JSON_ARRAY_KEY", "JSON array contains a non-positive-integer key", path)
     end
     count = count + 1
-    if key > maximum then
-      maximum = key
-    end
+    if key > maximum then maximum = key end
   end
-  if maximum ~= count then
-    return nil, encode_error("JSON_SPARSE_ARRAY", "JSON array is sparse", path)
-  end
-  if count == 0 then
-    return "[]"
-  end
+  if maximum ~= count then return nil, encode_error("JSON_SPARSE_ARRAY", "JSON array is sparse", path) end
+  if count == 0 then return "[]" end
   local pieces = { "[\n" }
   local index = 1
   while index <= count do
     local encoded, err = encode_value(value[index], state, path .. "[]", depth + 1)
-    if not encoded then
-      return nil, err
-    end
+    if not encoded then return nil, err end
     pieces[#pieces + 1] = indent(depth + 1) .. encoded
     pieces[#pieces + 1] = index == count and "\n" or ",\n"
     index = index + 1
@@ -888,12 +879,8 @@ end
 
 local function encode_object(value, state, path, depth)
   local keys, err = ordered_keys(value, path, state.options)
-  if not keys then
-    return nil, err
-  end
-  if #keys == 0 then
-    return "{}"
-  end
+  if not keys then return nil, err end
+  if #keys == 0 then return "{}" end
   local pieces = { "{\n" }
   local index = 1
   while index <= #keys do
@@ -901,9 +888,7 @@ local function encode_object(value, state, path, depth)
     local child_path = path .. "." .. key
     local encoded
     encoded, err = encode_value(value[key], state, child_path, depth + 1)
-    if not encoded then
-      return nil, err
-    end
+    if not encoded then return nil, err end
     pieces[#pieces + 1] = indent(depth + 1) .. escape_string(key) .. ": " .. encoded
     pieces[#pieces + 1] = index == #keys and "\n" or ",\n"
     index = index + 1
@@ -925,9 +910,7 @@ encode_value = function(value, state, path, depth)
     return "null"
   elseif value_type == "string" then
     local position, message = utf8_error_position(value)
-    if position then
-      return nil, encode_error("JSON_INVALID_UTF8", message .. " at string byte " .. position, path)
-    end
+    if position then return nil, encode_error("JSON_INVALID_UTF8", message .. " at string byte " .. position, path) end
     if #value > state.max_string_bytes then
       return nil, encode_error("JSON_STRING_LIMIT", "string exceeds the byte limit", path)
     end
@@ -939,7 +922,8 @@ encode_value = function(value, state, path, depth)
       return nil, encode_error("JSON_NONFINITE_NUMBER", "JSON cannot encode a non-finite number", path)
     end
     if value ~= math.floor(value) then
-      return nil, encode_error("JSON_UNTAGGED_FRACTION", "non-integer Lua numbers must be represented as tagged decimals", path)
+      return nil,
+        encode_error("JSON_UNTAGGED_FRACTION", "non-integer Lua numbers must be represented as tagged decimals", path)
     end
     if math.abs(value) > 9007199254740991 then
       return nil, encode_error("JSON_UNSAFE_INTEGER", "Lua integer exceeds the exact JSON safety limit", path)
@@ -976,13 +960,9 @@ function M.encode(value, options)
     active = {},
   }
   local encoded, err = encode_value(value, state, "$", 0)
-  if not encoded then
-    return nil, err
-  end
+  if not encoded then return nil, err end
   local final_newline = not options or options.final_newline ~= false
-  if final_newline then
-    encoded = encoded .. "\n"
-  end
+  if final_newline then encoded = encoded .. "\n" end
   if #encoded > effective_limit(options, "max_bytes") then
     return nil, encode_error("JSON_PAYLOAD_LIMIT", "encoded JSON exceeds the byte limit", "$")
   end
@@ -991,18 +971,12 @@ end
 
 local function deep_copy(value, seen)
   local value_type = type(value)
-  if value_type ~= "table" then
-    return value
-  end
-  if value == NULL then
-    return NULL
-  end
+  if value_type ~= "table" then return value end
+  if value == NULL then return NULL end
   if M.is_decimal(value) then
     return setmetatable({ sign = value.sign, coefficient = value.coefficient, exponent = value.exponent }, DECIMAL_MT)
   end
-  if seen[value] then
-    return seen[value]
-  end
+  if seen[value] then return seen[value] end
   local result
   if M.is_array(value) then
     result = M.array()
@@ -1018,42 +992,24 @@ local function deep_copy(value, seen)
   return result
 end
 
-function M.deep_copy(value)
-  return deep_copy(value, {})
-end
+function M.deep_copy(value) return deep_copy(value, {}) end
 
 local function deep_equal(left, right, seen)
-  if left == right then
-    return true
-  end
-  if type(left) ~= type(right) then
-    return false
-  end
-  if type(left) ~= "table" then
-    return false
-  end
-  if raw_kind(left) ~= raw_kind(right) then
-    return false
-  end
+  if left == right then return true end
+  if type(left) ~= type(right) then return false end
+  if type(left) ~= "table" then return false end
+  if raw_kind(left) ~= raw_kind(right) then return false end
   if M.is_decimal(left) then
-    return left.sign == right.sign
-      and left.coefficient == right.coefficient
-      and left.exponent == right.exponent
+    return left.sign == right.sign and left.coefficient == right.coefficient and left.exponent == right.exponent
   end
-  if left == NULL or right == NULL then
-    return false
-  end
+  if left == NULL or right == NULL then return false end
   seen[left] = seen[left] or {}
-  if seen[left][right] then
-    return true
-  end
+  if seen[left][right] then return true end
   seen[left][right] = true
   local count = 0
   for key, value in pairs(left) do
     count = count + 1
-    if right[key] == nil or not deep_equal(value, right[key], seen) then
-      return false
-    end
+    if right[key] == nil or not deep_equal(value, right[key], seen) then return false end
   end
   local right_count = 0
   for _ in pairs(right) do
@@ -1062,8 +1018,6 @@ local function deep_equal(left, right, seen)
   return count == right_count
 end
 
-function M.deep_equal(left, right)
-  return deep_equal(left, right, {})
-end
+function M.deep_equal(left, right) return deep_equal(left, right, {}) end
 
 return M

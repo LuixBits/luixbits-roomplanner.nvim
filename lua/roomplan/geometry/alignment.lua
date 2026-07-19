@@ -120,9 +120,7 @@ end
 function M.auto_place(moving_or_size, rooms, options)
   options = options or {}
   rooms = rooms or {}
-  if #rooms == 0 then
-    return { origin_mm = { 0, 0 }, direction = "origin", reference_id = nil }
-  end
+  if #rooms == 0 then return { origin_mm = { 0, 0 }, direction = "origin", reference_id = nil } end
   local moving = moving_or_size
   if type(moving_or_size) == "table" and moving_or_size.origin_mm == nil then
     moving = { origin_mm = { 0, 0 }, size_mm = moving_or_size }
@@ -145,8 +143,10 @@ function M.auto_place(moving_or_size, rooms, options)
   local maximum = options.max_distance_mm
   local candidates = {}
   local operations = {
-    { "place_east", "east" }, { "place_north", "north" },
-    { "place_west", "west" }, { "place_south", "south" },
+    { "place_east", "east" },
+    { "place_north", "north" },
+    { "place_west", "west" },
+    { "place_south", "south" },
   }
   local function candidate_shape(origin)
     return footprint.translate(moving_shape, origin[1] - origin_x, origin[2] - origin_y)
@@ -170,8 +170,11 @@ function M.auto_place(moving_or_size, rooms, options)
         local distance = math.sqrt(squared_distance(x, y, cursor[1], cursor[2]))
         if not maximum or distance <= maximum then
           candidates[#candidates + 1] = {
-            origin_mm = { x, y }, direction = operations[j][2], direction_rank = direction_rank[operations[j][2]],
-            reference_id = rooms[i].id, reference_index = i,
+            origin_mm = { x, y },
+            direction = operations[j][2],
+            direction_rank = direction_rank[operations[j][2]],
+            reference_id = rooms[i].id,
+            reference_index = i,
             cursor_distance2 = squared_distance(x, y, cursor[1], cursor[2]),
             origin_distance2 = squared_distance(x, y, 0, 0),
           }
@@ -179,7 +182,6 @@ function M.auto_place(moving_or_size, rooms, options)
       end
     end
   end
-
 
   -- Add deterministic grid-aligned candidates around the complete plan bounds.
   -- These cover cases where every immediate reference placement is occupied by
@@ -205,20 +207,42 @@ function M.auto_place(moving_or_size, rooms, options)
   local function grid_ceil(value) return math.ceil(value / grid) * grid end
   local grid_candidates = {
     { grid_ceil(bounds.right + (options.gap_mm or 0) - offsets.left), number.round_to_grid(cursor[2], grid), "east" },
-    { grid_ceil(bounds.right + (options.gap_mm or 0) - offsets.left), grid_floor(bounds.bottom - offsets.bottom), "east" },
+    {
+      grid_ceil(bounds.right + (options.gap_mm or 0) - offsets.left),
+      grid_floor(bounds.bottom - offsets.bottom),
+      "east",
+    },
     { grid_ceil(bounds.right + (options.gap_mm or 0) - offsets.left), grid_ceil(bounds.top - offsets.top), "east" },
     { grid_floor(bounds.left - (options.gap_mm or 0) - offsets.right), number.round_to_grid(cursor[2], grid), "west" },
-    { grid_floor(bounds.left - (options.gap_mm or 0) - offsets.right), grid_floor(bounds.bottom - offsets.bottom), "west" },
+    {
+      grid_floor(bounds.left - (options.gap_mm or 0) - offsets.right),
+      grid_floor(bounds.bottom - offsets.bottom),
+      "west",
+    },
     { grid_floor(bounds.left - (options.gap_mm or 0) - offsets.right), grid_ceil(bounds.top - offsets.top), "west" },
     { number.round_to_grid(cursor[1], grid), grid_ceil(bounds.top + (options.gap_mm or 0) - offsets.bottom), "north" },
     { grid_floor(bounds.left - offsets.left), grid_ceil(bounds.top + (options.gap_mm or 0) - offsets.bottom), "north" },
-    { grid_ceil(bounds.right - offsets.right), grid_ceil(bounds.top + (options.gap_mm or 0) - offsets.bottom), "north" },
+    {
+      grid_ceil(bounds.right - offsets.right),
+      grid_ceil(bounds.top + (options.gap_mm or 0) - offsets.bottom),
+      "north",
+    },
     { number.round_to_grid(cursor[1], grid), grid_floor(bounds.bottom - (options.gap_mm or 0) - offsets.top), "south" },
-    { grid_floor(bounds.left - offsets.left), grid_floor(bounds.bottom - (options.gap_mm or 0) - offsets.top), "south" },
-    { grid_ceil(bounds.right - offsets.right), grid_floor(bounds.bottom - (options.gap_mm or 0) - offsets.top), "south" },
+    {
+      grid_floor(bounds.left - offsets.left),
+      grid_floor(bounds.bottom - (options.gap_mm or 0) - offsets.top),
+      "south",
+    },
+    {
+      grid_ceil(bounds.right - offsets.right),
+      grid_floor(bounds.bottom - (options.gap_mm or 0) - offsets.top),
+      "south",
+    },
   }
   local seen = {}
-  for i = 1, #candidates do seen[candidates[i].origin_mm[1] .. ":" .. candidates[i].origin_mm[2]] = true end
+  for i = 1, #candidates do
+    seen[candidates[i].origin_mm[1] .. ":" .. candidates[i].origin_mm[2]] = true
+  end
   for i = 1, #grid_candidates do
     local raw = grid_candidates[i]
     local key = raw[1] .. ":" .. raw[2]
@@ -229,10 +253,14 @@ function M.auto_place(moving_or_size, rooms, options)
       local distance = math.sqrt(squared_distance(raw[1], raw[2], cursor[1], cursor[2]))
       if not overlaps and (not maximum or distance <= maximum) then
         candidates[#candidates + 1] = {
-          origin_mm = { raw[1], raw[2] }, direction = raw[3], direction_rank = direction_rank[raw[3]],
-          reference_id = nil, reference_index = #rooms + 1,
+          origin_mm = { raw[1], raw[2] },
+          direction = raw[3],
+          direction_rank = direction_rank[raw[3]],
+          reference_id = nil,
+          reference_index = #rooms + 1,
           cursor_distance2 = squared_distance(raw[1], raw[2], cursor[1], cursor[2]),
-          origin_distance2 = squared_distance(raw[1], raw[2], 0, 0), grid_candidate = true,
+          origin_distance2 = squared_distance(raw[1], raw[2], 0, 0),
+          grid_candidate = true,
         }
       end
       seen[key] = true

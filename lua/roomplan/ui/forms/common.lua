@@ -12,9 +12,7 @@ function M.model(context)
   return context and context.model or nil
 end
 
-function M.find(context, kind, id)
-  return model_helpers.find(M.model(context), kind, id)
-end
+function M.find(context, kind, id) return model_helpers.find(M.model(context), kind, id) end
 
 function M.rooms(context, exclude_id)
   local result = {}

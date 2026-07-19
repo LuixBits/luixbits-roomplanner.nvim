@@ -12,9 +12,7 @@ local descriptions = {
   none = "labels and dimensions hidden",
 }
 
-function M.valid(value)
-  return valid[value] == true
-end
+function M.valid(value) return valid[value] == true end
 
 function M.normalize(value)
   if type(value) ~= "string" then return nil end
@@ -30,8 +28,6 @@ function M.next(value)
   return M.default
 end
 
-function M.description(value)
-  return descriptions[M.normalize(value) or M.default]
-end
+function M.description(value) return descriptions[M.normalize(value) or M.default] end
 
 return M

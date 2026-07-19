@@ -11,7 +11,10 @@ h.describe("controller facade", function()
     local menu = h.truthy(require("roomplan.controller").menu(session))
     local hide
     for _, item in ipairs(menu.items) do
-      if item.label == "Hide canvas" then hide = item; break end
+      if item.label == "Hide canvas" then
+        hide = item
+        break
+      end
     end
     h.truthy(hide)
     local ok, err = pcall(hide.callback)

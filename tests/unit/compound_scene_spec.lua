@@ -54,15 +54,21 @@ describe("compound scene extraction", function()
     })
 
     assert_equal(6, #scene.wall_data.segments)
-    assert_equal(nil, (function()
-      for _, segment in ipairs(scene.wall_data.segments) do
-        if segment.orientation == "vertical" and segment.fixed == 1000
-          and segment.start < 250 and segment.finish > 250
-        then
-          return segment
+    assert_equal(
+      nil,
+      (function()
+        for _, segment in ipairs(scene.wall_data.segments) do
+          if
+            segment.orientation == "vertical"
+            and segment.fixed == 1000
+            and segment.start < 250
+            and segment.finish > 250
+          then
+            return segment
+          end
         end
-      end
-    end)())
+      end)()
+    )
     assert_equal(2, count_kind(scene, "room_interior"))
     assert_equal(1, #scene.objects)
 
@@ -76,31 +82,37 @@ describe("compound scene extraction", function()
   end)
 
   it("keeps compound furniture parts under one logical object", function()
-    local scene = scene_builder.build({
-      rooms = { compound_room() },
-      doors = {},
-      furniture = {
-        {
-          id = "furniture-l",
-          room_id = "room-l",
-          name = "Sectional",
-          position_mm = { 250, 250 },
-          anchor2_mm = { 0, 0 },
-          footprint = {
-            kind = "rect_union",
-            parts = {
-              part("part-main", 0, 0, 400, 200),
-              part("part-return", 0, 200, 200, 200),
+    local scene = scene_builder.build(
+      {
+        rooms = { compound_room() },
+        doors = {},
+        furniture = {
+          {
+            id = "furniture-l",
+            room_id = "room-l",
+            name = "Sectional",
+            position_mm = { 250, 250 },
+            anchor2_mm = { 0, 0 },
+            footprint = {
+              kind = "rect_union",
+              parts = {
+                part("part-main", 0, 0, 400, 200),
+                part("part-return", 0, 200, 200, 200),
+              },
             },
+            rotation_deg = 0,
           },
-          rotation_deg = 0,
         },
       },
-    }, nil, {
-      shape_edit = {
-        kind = "furniture", entity_id = "furniture-l", selected_part_id = "part-return",
-      },
-    })
+      nil,
+      {
+        shape_edit = {
+          kind = "furniture",
+          entity_id = "furniture-l",
+          selected_part_id = "part-return",
+        },
+      }
+    )
 
     assert_equal(2, count_kind(scene, "furniture_interior"))
     assert_equal(2, count_kind(scene, "furniture_outline"))
@@ -114,8 +126,10 @@ describe("compound scene extraction", function()
         first_ref = first_ref or primitive.ref
         assert_true(first_ref == primitive.ref)
       end
-      if (primitive.kind == "furniture_interior" or primitive.kind == "furniture_outline")
-        and primitive.part_id == "part-return" and primitive.role == "selected"
+      if
+        (primitive.kind == "furniture_interior" or primitive.kind == "furniture_outline")
+        and primitive.part_id == "part-return"
+        and primitive.role == "selected"
       then
         selected_parts = selected_parts + 1
       end
@@ -128,10 +142,14 @@ describe("compound scene extraction", function()
     local model = {
       settings = { grid_mm = 100 },
       rooms = { compound_room() },
-      doors = {}, windows = {}, outlets = {}, furniture = {},
+      doors = {},
+      windows = {},
+      outlets = {},
+      furniture = {},
       custom_templates = {
         {
-          id = "custom:sectional", name = "Sectional",
+          id = "custom:sectional",
+          name = "Sectional",
           default_footprint = {
             kind = "rect_union",
             parts = {
@@ -143,12 +161,16 @@ describe("compound scene extraction", function()
       },
     }
     local edit = {
-      kind = "template", entity_id = "custom:sectional", selected_part_id = "part-return",
+      kind = "template",
+      entity_id = "custom:sectional",
+      selected_part_id = "part-return",
       footprint = model.custom_templates[1].default_footprint,
       snap_guides = {},
     }
     local scene = scene_builder.build(model, nil, {
-      shape_edit = edit, show_grid = true, detail_level = "high",
+      shape_edit = edit,
+      show_grid = true,
+      detail_level = "high",
     })
     assert_equal(0, #scene.wall_data.segments)
     assert_equal(1, #scene.objects)

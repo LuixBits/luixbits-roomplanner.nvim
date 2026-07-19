@@ -15,12 +15,8 @@ local function finite(value)
 end
 
 local function clamp(value, minimum, maximum)
-  if finite_positive(minimum) and value < minimum then
-    value = minimum
-  end
-  if finite_positive(maximum) and value > maximum then
-    value = maximum
-  end
+  if finite_positive(minimum) and value < minimum then value = minimum end
+  if finite_positive(maximum) and value > maximum then value = maximum end
   return value
 end
 
@@ -30,9 +26,7 @@ local function normalized_rotation(value)
   return math.floor(value) % 4
 end
 
-function M.rotation(viewport)
-  return normalized_rotation(type(viewport) == "table" and viewport.rotation_quarters or 0)
-end
+function M.rotation(viewport) return normalized_rotation(type(viewport) == "table" and viewport.rotation_quarters or 0) end
 
 ---Convert a direction expressed in screen axes (right/up) to world axes
 ---(east/north) for the active quarter-turn projection.
@@ -63,9 +57,7 @@ end
 
 ---Return the visible cell scale for each world axis.
 function M.world_axis_scales(viewport)
-  if M.rotation(viewport) % 2 == 1 then
-    return viewport.mm_per_row, viewport.mm_per_column
-  end
+  if M.rotation(viewport) % 2 == 1 then return viewport.mm_per_row, viewport.mm_per_column end
   return viewport.mm_per_column, viewport.mm_per_row
 end
 
@@ -74,9 +66,13 @@ end
 function M.visible_move_step(viewport, dx, dy, minimum_mm)
   local scale_x, scale_y = M.world_axis_scales(viewport)
   local cell_mm
-  if dx ~= 0 and dy ~= 0 then cell_mm = math.max(scale_x, scale_y)
-  elseif dx ~= 0 then cell_mm = scale_x
-  else cell_mm = scale_y end
+  if dx ~= 0 and dy ~= 0 then
+    cell_mm = math.max(scale_x, scale_y)
+  elseif dx ~= 0 then
+    cell_mm = scale_x
+  else
+    cell_mm = scale_y
+  end
   if not finite_positive(cell_mm) then return math.max(1, math.floor(minimum_mm or 1)) end
   local minimum = finite_positive(minimum_mm) and math.floor(minimum_mm) or 1
   local multiples = math.max(1, math.ceil(cell_mm / minimum - 1e-9))
@@ -103,9 +99,7 @@ function M.new(opts)
   local aspect = finite_positive(opts.cell_aspect) and opts.cell_aspect or nil
   local mm_per_row = finite_positive(opts.mm_per_row) and opts.mm_per_row or nil
 
-  if not aspect and mm_per_row then
-    aspect = mm_per_row / mm_per_column
-  end
+  if not aspect and mm_per_row then aspect = mm_per_row / mm_per_column end
   aspect = finite_positive(aspect) and aspect or DEFAULT_CELL_ASPECT
   if not mm_per_row then
     mm_per_row = mm_per_column * aspect
@@ -200,16 +194,12 @@ local function origin_for_anchor(rotation, world_x, world_y, screen_x, screen_y,
 end
 
 local function normalized_bounds(bounds)
-  if type(bounds) ~= "table" or bounds.empty then
-    return nil
-  end
+  if type(bounds) ~= "table" or bounds.empty then return nil end
   local left = bounds.left or bounds.min_x
   local right = bounds.right or bounds.max_x
   local bottom = bounds.bottom or bounds.min_y
   local top = bounds.top or bounds.max_y
-  if not finite(left) or not finite(right) or not finite(bottom) or not finite(top) then
-    return nil
-  end
+  if not finite(left) or not finite(right) or not finite(bottom) or not finite(top) then return nil end
   if right < left then
     left, right = right, left
   end
@@ -241,9 +231,7 @@ function M.fit(bounds, columns, rows, opts)
   if not left then
     local scale = clamp(base.mm_per_column, opts.min_mm_per_column, opts.max_mm_per_column)
     local row_scale = scale * aspect
-    local origin_x, origin_y = origin_for_anchor(
-      rotation, 0, 0, (columns - 1) / 2, (rows - 1) / 2, scale, row_scale
-    )
+    local origin_x, origin_y = origin_for_anchor(rotation, 0, 0, (columns - 1) / 2, (rows - 1) / 2, scale, row_scale)
     return M.new({
       world_left_mm = origin_x,
       world_top_mm = origin_y,
@@ -264,16 +252,13 @@ function M.fit(bounds, columns, rows, opts)
     scale_y = span_y > 0 and span_y / (usable_rows * aspect) or 0
   end
   local scale = math.max(scale_x, scale_y)
-  if not finite_positive(scale) then
-    scale = base.mm_per_column
-  end
+  if not finite_positive(scale) then scale = base.mm_per_column end
   scale = clamp(scale, opts.min_mm_per_column, opts.max_mm_per_column)
   local row_scale = scale * aspect
   local center_x = (left + right) / 2
   local center_y = (bottom + top) / 2
-  local origin_x, origin_y = origin_for_anchor(
-    rotation, center_x, center_y, (columns - 1) / 2, (rows - 1) / 2, scale, row_scale
-  )
+  local origin_x, origin_y =
+    origin_for_anchor(rotation, center_x, center_y, (columns - 1) / 2, (rows - 1) / 2, scale, row_scale)
 
   return M.new({
     world_left_mm = origin_x,
@@ -284,20 +269,14 @@ function M.fit(bounds, columns, rows, opts)
   })
 end
 
-function M.fit_scene(scene, columns, rows, opts)
-  return M.fit(scene and scene.bounds or nil, columns, rows, opts)
-end
+function M.fit_scene(scene, columns, rows, opts) return M.fit(scene and scene.bounds or nil, columns, rows, opts) end
 
 local function anchor_values(viewport, anchor, columns, rows)
   anchor = anchor or {}
   local screen_x = anchor.screen_x or anchor.column or anchor.col
   local screen_y = anchor.screen_y or anchor.row
-  if not finite(screen_x) then
-    screen_x = math.max(0, ((columns or 1) - 1) / 2)
-  end
-  if not finite(screen_y) then
-    screen_y = math.max(0, ((rows or 1) - 1) / 2)
-  end
+  if not finite(screen_x) then screen_x = math.max(0, ((columns or 1) - 1) / 2) end
+  if not finite(screen_y) then screen_y = math.max(0, ((rows or 1) - 1) / 2) end
   local world_x = anchor.world_x or anchor.x
   local world_y = anchor.world_y or anchor.y
   if not finite(world_x) or not finite(world_y) then
@@ -313,23 +292,13 @@ function M.zoom(viewport, factor, anchor, limits)
   assert(M.valid(viewport), "invalid viewport")
   assert(finite_positive(factor), "zoom factor must be positive")
   limits = limits or {}
-  local world_x, world_y, screen_x, screen_y = anchor_values(
-    viewport,
-    anchor,
-    limits.columns,
-    limits.rows
-  )
-  local new_column_scale = clamp(
-    viewport.mm_per_column * factor,
-    limits.min_mm_per_column,
-    limits.max_mm_per_column
-  )
+  local world_x, world_y, screen_x, screen_y = anchor_values(viewport, anchor, limits.columns, limits.rows)
+  local new_column_scale = clamp(viewport.mm_per_column * factor, limits.min_mm_per_column, limits.max_mm_per_column)
   local ratio = viewport.mm_per_row / viewport.mm_per_column
   local new_row_scale = new_column_scale * ratio
   local rotation = M.rotation(viewport)
-  local origin_x, origin_y = origin_for_anchor(
-    rotation, world_x, world_y, screen_x, screen_y, new_column_scale, new_row_scale
-  )
+  local origin_x, origin_y =
+    origin_for_anchor(rotation, world_x, world_y, screen_x, screen_y, new_column_scale, new_row_scale)
   return M.new({
     world_left_mm = origin_x,
     world_top_mm = origin_y,
@@ -344,31 +313,17 @@ function M.zoom_in(viewport, factor, anchor, limits)
   return M.zoom(viewport, 1 / factor, anchor, limits)
 end
 
-function M.zoom_out(viewport, factor, anchor, limits)
-  return M.zoom(viewport, factor or 1.25, anchor, limits)
-end
+function M.zoom_out(viewport, factor, anchor, limits) return M.zoom(viewport, factor or 1.25, anchor, limits) end
 
 ---Rotate the view in 90-degree clockwise steps while preserving an anchor.
 ---The model remains in world coordinates; only projection changes.
 function M.rotate(viewport, delta_quarters, anchor, limits)
   assert(M.valid(viewport), "invalid viewport")
   limits = limits or {}
-  local world_x, world_y, screen_x, screen_y = anchor_values(
-    viewport,
-    anchor,
-    limits.columns,
-    limits.rows
-  )
+  local world_x, world_y, screen_x, screen_y = anchor_values(viewport, anchor, limits.columns, limits.rows)
   local rotation = normalized_rotation(M.rotation(viewport) + (tonumber(delta_quarters) or 1))
-  local origin_x, origin_y = origin_for_anchor(
-    rotation,
-    world_x,
-    world_y,
-    screen_x,
-    screen_y,
-    viewport.mm_per_column,
-    viewport.mm_per_row
-  )
+  local origin_x, origin_y =
+    origin_for_anchor(rotation, world_x, world_y, screen_x, screen_y, viewport.mm_per_column, viewport.mm_per_row)
   return M.new({
     world_left_mm = origin_x,
     world_top_mm = origin_y,
@@ -411,15 +366,8 @@ function M.ensure_visible(viewport, x, y, columns, rows, margin_cells)
   local max_row = rows - 1 - row_margin
   local target_column = math.max(min_column, math.min(max_column, column))
   local target_row = math.max(min_row, math.min(max_row, row))
-  result.world_left_mm, result.world_top_mm = origin_for_anchor(
-    M.rotation(result),
-    x,
-    y,
-    target_column,
-    target_row,
-    result.mm_per_column,
-    result.mm_per_row
-  )
+  result.world_left_mm, result.world_top_mm =
+    origin_for_anchor(M.rotation(result), x, y, target_column, target_row, result.mm_per_column, result.mm_per_row)
   return result
 end
 

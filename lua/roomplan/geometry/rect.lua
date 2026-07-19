@@ -7,12 +7,8 @@ local function unpack_rect(rect)
   local bottom = rect.bottom or rect.y or rect[2]
   local right = rect.right
   local top = rect.top
-  if right == nil then
-    right = left + (rect.width or rect.w or rect[3])
-  end
-  if top == nil then
-    top = bottom + (rect.depth or rect.height or rect.h or rect[4])
-  end
+  if right == nil then right = left + (rect.width or rect.w or rect[3]) end
+  if top == nil then top = bottom + (rect.depth or rect.height or rect.h or rect[4]) end
   return left, bottom, right, top
 end
 
@@ -33,9 +29,7 @@ function M.from_room(room)
   return M.new(room.origin_mm[1], room.origin_mm[2], room.size_mm[1], room.size_mm[2])
 end
 
-function M.bounds(rect)
-  return unpack_rect(rect)
-end
+function M.bounds(rect) return unpack_rect(rect) end
 
 function M.overlaps_positive(a, b)
   local al, ab, ar, at = unpack_rect(a)
@@ -51,9 +45,7 @@ end
 
 function M.contains_point(rect, x, y, include_boundary)
   local left, bottom, right, top = unpack_rect(rect)
-  if include_boundary == false then
-    return x > left and x < right and y > bottom and y < top
-  end
+  if include_boundary == false then return x > left and x < right and y > bottom and y < top end
   return x >= left and x <= right and y >= bottom and y <= top
 end
 
@@ -64,16 +56,12 @@ function M.intersection(a, b)
   local bottom = math.max(ab, bb)
   local right = math.min(ar, br)
   local top = math.min(at, bt)
-  if left < right and bottom < top then
-    return M.new(left, bottom, right - left, top - bottom)
-  end
+  if left < right and bottom < top then return M.new(left, bottom, right - left, top - bottom) end
   return nil
 end
 
 function M.union(rectangles)
-  if not rectangles or #rectangles == 0 then
-    return nil
-  end
+  if not rectangles or #rectangles == 0 then return nil end
   local left, bottom, right, top = unpack_rect(rectangles[1])
   local i
   for i = 2, #rectangles do
@@ -143,8 +131,10 @@ function M.overlaps_positive2(a, b)
 end
 
 function M.contains_rect2(outer, inner)
-  return inner.left2 >= outer.left2 and inner.right2 <= outer.right2
-    and inner.bottom2 >= outer.bottom2 and inner.top2 <= outer.top2
+  return inner.left2 >= outer.left2
+    and inner.right2 <= outer.right2
+    and inner.bottom2 >= outer.bottom2
+    and inner.top2 <= outer.top2
 end
 
 function M.intersection2(a, b)

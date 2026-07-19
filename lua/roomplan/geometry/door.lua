@@ -6,25 +6,15 @@ local wall_attachment = require("roomplan.geometry.wall_attachment")
 
 local M = {}
 
-local function point(x, y)
-  return { x = x, y = y, [1] = x, [2] = y }
-end
+local function point(x, y) return { x = x, y = y, [1] = x, [2] = y } end
 
-local function xy(value)
-  return value.x or value[1], value.y or value[2]
-end
+local function xy(value) return value.x or value[1], value.y or value[2] end
 
-function M.edge_length(room, side, part_id)
-  return wall_attachment.edge_length(room, side, part_id)
-end
+function M.edge_length(room, side, part_id) return wall_attachment.edge_length(room, side, part_id) end
 
-function M.aperture(room, door)
-  return wall_attachment.aperture(room, door)
-end
+function M.aperture(room, door) return wall_attachment.aperture(room, door) end
 
-function M.apertures_overlap(a, b)
-  return wall_attachment.apertures_overlap(a, b)
-end
+function M.apertures_overlap(a, b) return wall_attachment.apertures_overlap(a, b) end
 
 local function rotated_endpoint(hinge, vector_x, vector_y, radians)
   local hx, hy = xy(hinge)
@@ -58,9 +48,7 @@ function M.swing(room, door)
   return sector
 end
 
-function M.connection(room, other_room, door)
-  return wall_attachment.connection(room, other_room, door)
-end
+function M.connection(room, other_room, door) return wall_attachment.connection(room, other_room, door) end
 
 function M.interferes(room_a, door_a, room_b, door_b)
   local swing_a = M.swing(room_a, door_a)
@@ -74,13 +62,16 @@ function M.interferes(room_a, door_a, room_b, door_b)
   local a0 = point(0, 0)
   local a1 = swing_a.open_vector or point(swing_a.open_endpoint.x - origin_x, swing_a.open_endpoint.y - origin_y)
   local b0 = point(swing_b.hinge.x - origin_x, swing_b.hinge.y - origin_y)
-  local bvector = swing_b.open_vector or point(swing_b.open_endpoint.x - swing_b.hinge.x,
-    swing_b.open_endpoint.y - swing_b.hinge.y)
+  local bvector = swing_b.open_vector
+    or point(swing_b.open_endpoint.x - swing_b.hinge.x, swing_b.open_endpoint.y - swing_b.hinge.y)
   local b1 = point(b0.x + bvector.x, b0.y + bvector.y)
   local hit, kind, value = segment.intersection(a0, a1, b0, b1, epsilon)
   if hit then
-    if kind ~= "point" or not exclusions or not (number.almost_equal(value.x, 0, epsilon)
-      and number.almost_equal(value.y, 0, epsilon)) then
+    if
+      kind ~= "point"
+      or not exclusions
+      or not (number.almost_equal(value.x, 0, epsilon) and number.almost_equal(value.y, 0, epsilon))
+    then
       return true, { kind = "leaf-leaf", intersection = value }
     end
   end
@@ -90,9 +81,7 @@ function M.interferes(room_a, door_a, room_b, door_b)
 end
 
 function M.wall_piece_segment(edge, start_mm, finish_mm)
-  if edge.axis == "x" then
-    return point(start_mm, edge.fixed_mm), point(finish_mm, edge.fixed_mm)
-  end
+  if edge.axis == "x" then return point(start_mm, edge.fixed_mm), point(finish_mm, edge.fixed_mm) end
   return point(edge.fixed_mm, start_mm), point(edge.fixed_mm, finish_mm)
 end
 

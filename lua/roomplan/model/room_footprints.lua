@@ -13,13 +13,17 @@ local CORNERS = {
   southwest = true,
 }
 
-local function invalid(field, message)
-  return nil, { code = "ROOM_FOOTPRINT_PRESET", field = field, message = message }
-end
+local function invalid(field, message) return nil, { code = "ROOM_FOOTPRINT_PRESET", field = field, message = message } end
 
 local function dimension(value, field, label)
-  if type(value) ~= "number" or value ~= value or value == math.huge or value == -math.huge
-    or value ~= math.floor(value) or value <= 0 or value > number.MAX_LOCAL_DIMENSION
+  if
+    type(value) ~= "number"
+    or value ~= value
+    or value == math.huge
+    or value == -math.huge
+    or value ~= math.floor(value)
+    or value <= 0
+    or value > number.MAX_LOCAL_DIMENSION
   then
     return invalid(field, label .. " must be a positive whole number of millimetres")
   end
@@ -35,23 +39,28 @@ local function part(id, x, y, width, depth)
 end
 
 local function integer(value)
-  return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
+  return type(value) == "number"
+    and value == value
+    and value ~= math.huge
+    and value ~= -math.huge
     and value == math.floor(value)
 end
 
-local function persisted_dimension(value)
-  return integer(value) and value > 0 and value <= number.MAX_LOCAL_DIMENSION
-end
+local function persisted_dimension(value) return integer(value) and value > 0 and value <= number.MAX_LOCAL_DIMENSION end
 
 local function tuple2(value)
   if type(value) ~= "table" or not integer(value[1]) or not integer(value[2]) then return false end
-  for key in pairs(value) do if key ~= 1 and key ~= 2 then return false end end
+  for key in pairs(value) do
+    if key ~= 1 and key ~= 2 then return false end
+  end
   return true
 end
 
 local function exact_keys(value, allowed)
   if type(value) ~= "table" then return false end
-  for key in pairs(value) do if not allowed[key] then return false end end
+  for key in pairs(value) do
+    if not allowed[key] then return false end
+  end
   return true
 end
 
@@ -101,17 +110,24 @@ end
 -- Recognize only the canonical presets emitted above. Unknown compound
 -- footprints deliberately remain read-only in the ordinary room form.
 function M.classify(value)
-  if not exact_keys(value, { kind = true, parts = true })
-    or value.kind ~= "rect_union" or not exact_keys(value.parts, { [1] = true, [2] = true })
+  if
+    not exact_keys(value, { kind = true, parts = true })
+    or value.kind ~= "rect_union"
+    or not exact_keys(value.parts, { [1] = true, [2] = true })
   then
     return nil
   end
   if #value.parts == 1 then
     local main = value.parts[1]
-    if not exact_keys(main, { id = true, origin_mm = true, size_mm = true }) or main.id ~= "part-main"
-      or not tuple2(main.origin_mm) or not tuple2(main.size_mm)
-      or main.origin_mm[1] ~= 0 or main.origin_mm[2] ~= 0
-      or not persisted_dimension(main.size_mm[1]) or not persisted_dimension(main.size_mm[2])
+    if
+      not exact_keys(main, { id = true, origin_mm = true, size_mm = true })
+      or main.id ~= "part-main"
+      or not tuple2(main.origin_mm)
+      or not tuple2(main.size_mm)
+      or main.origin_mm[1] ~= 0
+      or main.origin_mm[2] ~= 0
+      or not persisted_dimension(main.size_mm[1])
+      or not persisted_dimension(main.size_mm[2])
     then
       return nil
     end
@@ -120,11 +136,15 @@ function M.classify(value)
   if #value.parts ~= 2 then return nil end
 
   local horizontal, vertical = value.parts[1], value.parts[2]
-  if not exact_keys(horizontal, { id = true, origin_mm = true, size_mm = true })
+  if
+    not exact_keys(horizontal, { id = true, origin_mm = true, size_mm = true })
     or not exact_keys(vertical, { id = true, origin_mm = true, size_mm = true })
-    or horizontal.id ~= "part-horizontal" or vertical.id ~= "part-vertical"
-    or not tuple2(horizontal.origin_mm) or not tuple2(horizontal.size_mm)
-    or not tuple2(vertical.origin_mm) or not tuple2(vertical.size_mm)
+    or horizontal.id ~= "part-horizontal"
+    or vertical.id ~= "part-vertical"
+    or not tuple2(horizontal.origin_mm)
+    or not tuple2(horizontal.size_mm)
+    or not tuple2(vertical.origin_mm)
+    or not tuple2(vertical.size_mm)
   then
     return nil
   end
@@ -133,9 +153,12 @@ function M.classify(value)
   local leg_depth = horizontal.size_mm[2]
   local leg_width = vertical.size_mm[1]
   local remainder_depth = vertical.size_mm[2]
-  if horizontal.origin_mm[1] ~= 0
-    or not persisted_dimension(width) or not persisted_dimension(leg_depth)
-    or not persisted_dimension(leg_width) or not persisted_dimension(remainder_depth)
+  if
+    horizontal.origin_mm[1] ~= 0
+    or not persisted_dimension(width)
+    or not persisted_dimension(leg_depth)
+    or not persisted_dimension(leg_width)
+    or not persisted_dimension(remainder_depth)
     or leg_width >= width
   then
     return nil

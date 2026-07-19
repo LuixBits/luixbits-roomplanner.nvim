@@ -21,36 +21,22 @@ local function ensure_exit_autocmd()
   })
 end
 
-local function valid_buffer(bufnr)
-  return bufnr and vim.api.nvim_buf_is_valid(bufnr)
-end
+local function valid_buffer(bufnr) return bufnr and vim.api.nvim_buf_is_valid(bufnr) end
 
 local function set_modified(bufnr, value)
-  if not valid_buffer(bufnr) then
-    return
-  end
+  if not valid_buffer(bufnr) then return end
   pcall(vim.api.nvim_set_option_value, "modified", value, { buf = bufnr })
 end
 
-local function session_group(session)
-  return "RoomPlanSession" .. session.id:gsub("[^%w]", "")
-end
+local function session_group(session) return "RoomPlanSession" .. session.id:gsub("[^%w]", "") end
 
-function Session:model()
-  return self.history:current_model()
-end
+function Session:model() return self.history:current_model() end
 
-function Session:current_model()
-  return self.preview_model or self:model()
-end
+function Session:current_model() return self.preview_model or self:model() end
 
-function Session:revision_id()
-  return self.history:current_revision_id()
-end
+function Session:revision_id() return self.history:current_revision_id() end
 
-function Session:model_dirty()
-  return self.history:is_dirty()
-end
+function Session:model_dirty() return self.history:is_dirty() end
 
 function Session:schema_rewrite_pending()
   local info = self.normalization_info
@@ -66,7 +52,10 @@ function Session:requires_protection()
     or self.pending_disk_write
     or self.retained_model_at_risk
     or self.source_rebind_pending ~= nil
-    or (self.buffer_payload_revision_id ~= nil and self.buffer_payload_revision_id ~= self.history.durable_savepoint_revision_id)
+    or (
+      self.buffer_payload_revision_id ~= nil
+      and self.buffer_payload_revision_id ~= self.history.durable_savepoint_revision_id
+    )
 end
 
 function Session:status_flags()
@@ -85,24 +74,20 @@ end
 
 function Session:status_text()
   local flags = self:status_flags()
-  for index, flag in ipairs(flags) do flags[index] = "[" .. flag .. "]" end
+  for index, flag in ipairs(flags) do
+    flags[index] = "[" .. flag .. "]"
+  end
   return table.concat(flags, " ")
 end
 
 function Session:update_guard()
-  if self.closed or self.tearing_down then
-    return
-  end
-  if not valid_buffer(self.guard_bufnr) then
-    self:create_guard()
-  end
+  if self.closed or self.tearing_down then return end
+  if not valid_buffer(self.guard_bufnr) then self:create_guard() end
   set_modified(self.guard_bufnr, self:requires_protection())
 end
 
 function Session:create_guard()
-  if self.closed or self.tearing_down or valid_buffer(self.guard_bufnr) then
-    return self.guard_bufnr
-  end
+  if self.closed or self.tearing_down or valid_buffer(self.guard_bufnr) then return self.guard_bufnr end
   local bufnr = vim.api.nvim_create_buf(false, true)
   self.guard_bufnr = bufnr
   vim.api.nvim_buf_set_name(bufnr, "roomplan://guard/" .. self.id)
@@ -181,9 +166,7 @@ function Session:attach_source_autocmds()
       if self.closed or self.internal_source_write then return end
       self.source_needs_recheck = true
       vim.schedule(function()
-        if not self.closed and self.source_needs_recheck then
-          require("roomplan.controller").check_source(self)
-        end
+        if not self.closed and self.source_needs_recheck then require("roomplan.controller").check_source(self) end
       end)
     end,
   })
@@ -231,9 +214,7 @@ function Session:commit(snapshot, result)
   local node, info = self.history:push(snapshot, result)
   if not node then return nil, info end
   self.validation_revision_id = nil
-  if result and result.touched and result.touched[1] then
-    self.selection = result.touched[1]
-  end
+  if result and result.touched and result.touched[1] then self.selection = result.touched[1] end
   self:update_guard()
   require("roomplan.controller").refresh(self)
   require("roomplan.controller").maybe_autosave(self)
@@ -266,9 +247,7 @@ end
 
 function Session:restore_revision(revision_id)
   local snapshot, node = self.history:checkout(revision_id)
-  if not snapshot then
-    return nil, node
-  end
+  if not snapshot then return nil, node end
   self.validation_revision_id = nil
   self.selection = node.touched and node.touched[1] or nil
   self.marked_objects = {}

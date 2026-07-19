@@ -6,9 +6,7 @@ local util = require("roomplan.util")
 
 local M = {}
 
-local function parts(draft)
-  return draft.footprint and draft.footprint.parts or {}
-end
+local function parts(draft) return draft.footprint and draft.footprint.parts or {} end
 
 local function find(draft, id)
   for _, part in ipairs(parts(draft)) do
@@ -27,9 +25,7 @@ local function selected_patch(footprint, id)
   }
 end
 
-function M.initial(room)
-  return selected_patch(util.deepcopy(room.footprint), room.footprint.parts[1].id)
-end
+function M.initial(room) return selected_patch(util.deepcopy(room.footprint), room.footprint.parts[1].id) end
 
 function M.fields(runtime, room)
   local multiple = #(room.footprint.parts or {}) > 1
@@ -69,9 +65,7 @@ function M.fields(runtime, room)
 end
 
 function M.on_change(key, value, _, draft)
-  if key == "section_id" then
-    return selected_patch(util.deepcopy(draft.footprint), value)
-  end
+  if key == "section_id" then return selected_patch(util.deepcopy(draft.footprint), value) end
   local dimension = key == "section_width_mm" and 1 or key == "section_depth_mm" and 2 or nil
   if not dimension then return nil end
   local footprint = util.deepcopy(draft.footprint)
@@ -87,8 +81,6 @@ function M.validate(draft)
   return err and (err.message or err.code) or nil
 end
 
-function M.footprint(draft)
-  return util.deepcopy(draft.footprint)
-end
+function M.footprint(draft) return util.deepcopy(draft.footprint) end
 
 return M

@@ -12,14 +12,10 @@ local MAX_ABS_COORDINATE2 = M.MAX_ABS_COORDINATE2
 local ROTATIONS = { [0] = true, [90] = true, [180] = true, [270] = true }
 
 local function valid_part_id(value)
-  return type(value) == "string"
-    and #value <= 128
-    and value:match("^part%-%w[%w._-]*$") ~= nil
+  return type(value) == "string" and #value <= 128 and value:match("^part%-%w[%w._-]*$") ~= nil
 end
 
-local function failure(code, message, details)
-  return nil, { code = code, message = message, details = details or {} }
-end
+local function failure(code, message, details) return nil, { code = code, message = message, details = details or {} } end
 
 local function finite_integer(value)
   return type(value) == "number"
@@ -29,13 +25,9 @@ local function finite_integer(value)
     and value == math.floor(value)
 end
 
-local function integer(value)
-  return finite_integer(value) and math.abs(value) <= MAX_SAFE_INTEGER
-end
+local function integer(value) return finite_integer(value) and math.abs(value) <= MAX_SAFE_INTEGER end
 
-local function positive_integer(value)
-  return integer(value) and value > 0
-end
+local function positive_integer(value) return integer(value) and value > 0 end
 
 local function finite_number(value)
   return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
@@ -68,9 +60,7 @@ end
 
 local function checked_add(left, right, operation)
   if not integer(left) or not integer(right) then return range_failure(operation) end
-  if (right > 0 and left > MAX_SAFE_INTEGER - right)
-    or (right < 0 and left < -MAX_SAFE_INTEGER - right)
-  then
+  if (right > 0 and left > MAX_SAFE_INTEGER - right) or (right < 0 and left < -MAX_SAFE_INTEGER - right) then
     return range_failure(operation)
   end
   return left + right
@@ -78,18 +68,14 @@ end
 
 local function checked_subtract(left, right, operation)
   if not integer(left) or not integer(right) then return range_failure(operation) end
-  if (right > 0 and left < -MAX_SAFE_INTEGER + right)
-    or (right < 0 and left > MAX_SAFE_INTEGER + right)
-  then
+  if (right > 0 and left < -MAX_SAFE_INTEGER + right) or (right < 0 and left > MAX_SAFE_INTEGER + right) then
     return range_failure(operation)
   end
   return left - right
 end
 
 local function checked_double(value, operation)
-  if not integer(value) or math.abs(value) > math.floor(MAX_SAFE_INTEGER / 2) then
-    return range_failure(operation)
-  end
+  if not integer(value) or math.abs(value) > math.floor(MAX_SAFE_INTEGER / 2) then return range_failure(operation) end
   return value + value
 end
 
@@ -100,29 +86,19 @@ local function checked_midpoint(left, right, operation)
 end
 
 local function checked_double_coordinate_number(value, operation)
-  if not finite_number(value) or math.abs(value) > MAX_ABS_COORDINATE2 / 2 then
-    return range_failure(operation)
-  end
+  if not finite_number(value) or math.abs(value) > MAX_ABS_COORDINATE2 / 2 then return range_failure(operation) end
   return value + value
 end
 
 local function safe_product(left, right, operation)
-  if not integer(left) or not integer(right) or left < 0 or right < 0 then
-    return range_failure(operation)
-  end
-  if left ~= 0 and right > math.floor(MAX_SAFE_INTEGER / left) then
-    return range_failure(operation)
-  end
+  if not integer(left) or not integer(right) or left < 0 or right < 0 then return range_failure(operation) end
+  if left ~= 0 and right > math.floor(MAX_SAFE_INTEGER / left) then return range_failure(operation) end
   return left * right
 end
 
 local function safe_sum(total, value, operation)
-  if not integer(total) or not integer(value) or total < 0 or value < 0 then
-    return range_failure(operation)
-  end
-  if value > MAX_SAFE_INTEGER - total then
-    return range_failure(operation)
-  end
+  if not integer(total) or not integer(value) or total < 0 or value < 0 then return range_failure(operation) end
+  if value > MAX_SAFE_INTEGER - total then return range_failure(operation) end
   return total + value
 end
 
@@ -132,15 +108,21 @@ local function part_copy(part, index)
   end
   local left2, bottom2 = part.left2, part.bottom2
   local right2, top2 = part.right2, part.top2
-  if not finite_integer(left2) or not finite_integer(bottom2)
-    or not finite_integer(right2) or not finite_integer(top2)
+  if
+    not finite_integer(left2)
+    or not finite_integer(bottom2)
+    or not finite_integer(right2)
+    or not finite_integer(top2)
   then
     return failure("FOOTPRINT_COORDINATE", "footprint part coordinates must be exact doubled-millimetre integers", {
       index = index,
     })
   end
   local coordinates = {
-    { "left2", left2 }, { "bottom2", bottom2 }, { "right2", right2 }, { "top2", top2 },
+    { "left2", left2 },
+    { "bottom2", bottom2 },
+    { "right2", right2 },
+    { "top2", top2 },
   }
   for coordinate_index = 1, #coordinates do
     local coordinate = coordinates[coordinate_index]
@@ -158,9 +140,13 @@ local function part_copy(part, index)
   local _, depth_error = checked_subtract(top2, bottom2, "footprint part depth")
   if depth_error then return nil, depth_error end
   if part.id ~= nil and not valid_part_id(part.id) then
-    return failure("FOOTPRINT_PART_ID", "footprint part IDs must match part-<name>; names start with a letter, digit, or underscore, use only letters, digits, '.', '_', or '-', and are at most 128 bytes", {
-      index = index,
-    })
+    return failure(
+      "FOOTPRINT_PART_ID",
+      "footprint part IDs must match part-<name>; names start with a letter, digit, or underscore, use only letters, digits, '.', '_', or '-', and are at most 128 bytes",
+      {
+        index = index,
+      }
+    )
   end
   local result = { left2 = left2, bottom2 = bottom2, right2 = right2, top2 = top2 }
   if part.id ~= nil then result.id = part.id end
@@ -214,7 +200,9 @@ end
 
 local function connected_components_parts(parts)
   local adjacency = {}
-  for index = 1, #parts do adjacency[index] = {} end
+  for index = 1, #parts do
+    adjacency[index] = {}
+  end
   for left = 1, #parts do
     for right = left + 1, #parts do
       local edge, edge_error = shared_edge2(parts[left], parts[right])
@@ -398,9 +386,7 @@ function M.normalize(value, options)
   if not part_count then
     return failure("FOOTPRINT_PARTS_ARRAY", "footprint parts must be a dense positive-integer array")
   end
-  if part_count == 0 then
-    return failure("FOOTPRINT_EMPTY", "footprint must contain at least one rectangle")
-  end
+  if part_count == 0 then return failure("FOOTPRINT_EMPTY", "footprint must contain at least one rectangle") end
 
   options = options or {}
   if options.max_parts and part_count > options.max_parts then
@@ -424,9 +410,13 @@ function M.normalize(value, options)
       end
       ids[part.id] = index
     elseif options.require_ids then
-      return failure("FOOTPRINT_PART_ID", "every footprint part requires a stable ID matching the part-<name> contract", {
-        index = index,
-      })
+      return failure(
+        "FOOTPRINT_PART_ID",
+        "every footprint part requires a stable ID matching the part-<name> contract",
+        {
+          index = index,
+        }
+      )
     end
     for previous = 1, #result.parts do
       if overlaps_positive(part, result.parts[previous]) then
@@ -467,8 +457,13 @@ end
 
 ---Construct one rectangular footprint from integer-mm origin and dimensions.
 function M.rectangle(left, bottom, width, depth)
-  if not finite_integer(left) or not finite_integer(bottom)
-    or not finite_integer(width) or not finite_integer(depth) or width <= 0 or depth <= 0
+  if
+    not finite_integer(left)
+    or not finite_integer(bottom)
+    or not finite_integer(width)
+    or not finite_integer(depth)
+    or width <= 0
+    or depth <= 0
   then
     return failure("FOOTPRINT_RECTANGLE", "rectangle origin and dimensions must use integer millimetres")
   end
@@ -518,9 +513,7 @@ function M.compound(parts, options)
   })
 end
 
-function M.with_part_ids(value, prefix)
-  return M.normalize(value, { assign_ids = true, id_prefix = prefix })
-end
+function M.with_part_ids(value, prefix) return M.normalize(value, { assign_ids = true, id_prefix = prefix }) end
 
 function M.part_id(part, index)
   if type(part) == "table" and valid_part_id(part.id) then return part.id end

@@ -8,7 +8,9 @@ local defaults = require("roomplan.ui.workspace_defaults").get()
 local function copy(value)
   if type(value) ~= "table" then return value end
   local result = {}
-  for key, item in pairs(value) do result[key] = copy(item) end
+  for key, item in pairs(value) do
+    result[key] = copy(item)
+  end
   return result
 end
 
@@ -20,15 +22,12 @@ local function merged(opts)
   return result
 end
 
-local function clamp(value, minimum, maximum)
-  return math.max(minimum, math.min(maximum, value))
-end
+local function clamp(value, minimum, maximum) return math.max(minimum, math.min(maximum, value)) end
 
 local function choose_kind(columns, lines, opts)
   if opts.layout ~= "auto" then return opts.layout end
   local usable_height = lines - math.min(opts.footer_height, math.max(0, lines - 1))
-  if columns <= opts.compact_max_columns or lines < opts.compact_min_rows
-    or usable_height < opts.min_canvas_height then
+  if columns <= opts.compact_max_columns or lines < opts.compact_min_rows or usable_height < opts.min_canvas_height then
     return "compact"
   end
   if columns >= opts.wide_min_columns then return "wide" end
@@ -36,9 +35,7 @@ local function choose_kind(columns, lines, opts)
 end
 
 local function pane_name(pane)
-  if pane == "navigator" or pane == "left" or pane == "objects" or pane == "issues" then
-    return "navigator"
-  end
+  if pane == "navigator" or pane == "left" or pane == "objects" or pane == "issues" then return "navigator" end
   if pane == "details" or pane == "right" or pane == "properties" then return "details" end
   return nil
 end
@@ -74,7 +71,9 @@ local function pane(width, height, visible, extra)
     persistent = visible,
     visible = visible,
   }
-  for key, value in pairs(extra or {}) do result[key] = value end
+  for key, value in pairs(extra or {}) do
+    result[key] = value
+  end
   return result
 end
 
@@ -147,10 +146,8 @@ function M.calculate_layout(columns, lines, options, visibility)
   local side_count = (requested.navigator and 1 or 0) + (requested.details and 1 or 0)
   local separators = side_count
   local maximum_budget = math.max(0, columns - separators - 1)
-  local side_budget = math.min(maximum_budget,
-    math.max(0, columns - opts.min_canvas_width - separators))
-  local desired_total = (requested.navigator and opts.left_width or 0)
-    + (requested.details and opts.right_width or 0)
+  local side_budget = math.min(maximum_budget, math.max(0, columns - opts.min_canvas_width - separators))
+  local desired_total = (requested.navigator and opts.left_width or 0) + (requested.details and opts.right_width or 0)
   local left, right = 0, 0
   if desired_total > 0 and desired_total <= side_budget then
     left = requested.navigator and opts.left_width or 0
@@ -196,9 +193,7 @@ function M.initial(options)
 end
 
 function M.focus_order(state)
-  if not state or state.layout == "compact" then
-    return { "objects", "issues", "canvas", "properties" }
-  end
+  if not state or state.layout == "compact" then return { "objects", "issues", "canvas", "properties" } end
   local visibility = state.visibility or { navigator = true, details = false }
   local order = {}
   if visibility.navigator ~= false then
@@ -214,7 +209,10 @@ function M.next_focus(state, direction)
   local order = M.focus_order(state)
   local current
   for index, pane in ipairs(order) do
-    if pane == state.focused_pane then current = index; break end
+    if pane == state.focused_pane then
+      current = index
+      break
+    end
   end
   if current == nil then return "canvas" end
   direction = direction == -1 and -1 or 1
@@ -222,17 +220,13 @@ function M.next_focus(state, direction)
 end
 
 local function ensure_transient_state(state)
-  if type(state.visibility) ~= "table" then
-    state.visibility = { navigator = true, details = false }
-  end
+  if type(state.visibility) ~= "table" then state.visibility = { navigator = true, details = false } end
   if state.visibility.navigator == nil then state.visibility.navigator = true end
   if state.visibility.details == nil then state.visibility.details = false end
   if state.active_side ~= "navigator" and state.active_side ~= "details" then
     state.active_side = state.focused_pane == "properties" and "details" or "navigator"
   end
-  if type(state.collapsed_sections) ~= "table" then
-    state.collapsed_sections = { advanced = true, source = true }
-  end
+  if type(state.collapsed_sections) ~= "table" then state.collapsed_sections = { advanced = true, source = true } end
   return state
 end
 
@@ -340,8 +334,6 @@ function M.reduce(state, event)
   return state
 end
 
-function M.defaults()
-  return copy(defaults)
-end
+function M.defaults() return copy(defaults) end
 
 return M

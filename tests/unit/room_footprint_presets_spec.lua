@@ -5,16 +5,24 @@ local presets = require("roomplan.model.room_footprints")
 
 local layouts = {
   northeast = {
-    { 0, 0, 4001, 1201 }, { 0, 1201, 1501, 1800 }, notch = { 4000, 3000 },
+    { 0, 0, 4001, 1201 },
+    { 0, 1201, 1501, 1800 },
+    notch = { 4000, 3000 },
   },
   northwest = {
-    { 0, 0, 4001, 1201 }, { 2500, 1201, 1501, 1800 }, notch = { 1, 3000 },
+    { 0, 0, 4001, 1201 },
+    { 2500, 1201, 1501, 1800 },
+    notch = { 1, 3000 },
   },
   southeast = {
-    { 0, 1800, 4001, 1201 }, { 0, 0, 1501, 1800 }, notch = { 4000, 1 },
+    { 0, 1800, 4001, 1201 },
+    { 0, 0, 1501, 1800 },
+    notch = { 4000, 1 },
   },
   southwest = {
-    { 0, 1800, 4001, 1201 }, { 2500, 0, 1501, 1800 }, notch = { 1, 1 },
+    { 0, 1800, 4001, 1201 },
+    { 2500, 0, 1501, 1800 },
+    notch = { 1, 1 },
   },
 }
 
@@ -65,15 +73,23 @@ describe("room footprint presets", function()
 
   it("rejects degenerate L dimensions at the preset boundary", function()
     local value, err = presets.build({
-      shape = "l_shape", width_mm = 4000, depth_mm = 3000,
-      leg_width_mm = 4000, leg_depth_mm = 1200, missing_corner = "northeast",
+      shape = "l_shape",
+      width_mm = 4000,
+      depth_mm = 3000,
+      leg_width_mm = 4000,
+      leg_depth_mm = 1200,
+      missing_corner = "northeast",
     })
     assert_equal(nil, value)
     assert_equal("leg_width_mm", err.field)
 
     value, err = presets.build({
-      shape = "l_shape", width_mm = 4000, depth_mm = 3000,
-      leg_width_mm = 1500, leg_depth_mm = 3000, missing_corner = "northeast",
+      shape = "l_shape",
+      width_mm = 4000,
+      depth_mm = 3000,
+      leg_width_mm = 1500,
+      leg_depth_mm = 3000,
+      missing_corner = "northeast",
     })
     assert_equal(nil, value)
     assert_equal("leg_depth_mm", err.field)
@@ -81,12 +97,18 @@ describe("room footprint presets", function()
 
   it("classifies only losslessly editable canonical presets", function()
     local canonical = assert(presets.build({
-      shape = "l_shape", width_mm = 4000, depth_mm = 3000,
-      leg_width_mm = 1500, leg_depth_mm = 1200, missing_corner = "northeast",
+      shape = "l_shape",
+      width_mm = 4000,
+      depth_mm = 3000,
+      leg_width_mm = 1500,
+      leg_depth_mm = 1200,
+      missing_corner = "northeast",
     }))
     local mutations = {
       function(value) value.parts[1].id = "part-other" end,
-      function(value) value.parts[1], value.parts[2] = value.parts[2], value.parts[1] end,
+      function(value)
+        value.parts[1], value.parts[2] = value.parts[2], value.parts[1]
+      end,
       function(value) value.parts[3] = json.deep_copy(value.parts[2]) end,
       function(value) value.parts[1].origin_mm[1] = 1 end,
       function(value) value.parts[2].origin_mm[2] = 1202 end,

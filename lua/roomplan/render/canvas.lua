@@ -12,15 +12,11 @@ local handles_by_buffer = {}
 local next_handle_id = 0
 
 local function round(value)
-  if value >= 0 then
-    return math.floor(value + 0.5)
-  end
+  if value >= 0 then return math.floor(value + 0.5) end
   return math.ceil(value - 0.5)
 end
 
-local function clamp(value, minimum, maximum)
-  return math.max(minimum, math.min(maximum, value))
-end
+local function clamp(value, minimum, maximum) return math.max(minimum, math.min(maximum, value)) end
 
 local HIGHLIGHTS = {
   wall = "RoomPlanWall",
@@ -48,32 +44,18 @@ local HIGHLIGHTS = {
   muted = "RoomPlanMuted",
 }
 
-local function valid_buffer(buffer)
-  return type(buffer) == "number" and vim.api.nvim_buf_is_valid(buffer)
-end
+local function valid_buffer(buffer) return type(buffer) == "number" and vim.api.nvim_buf_is_valid(buffer) end
 
-local function valid_window(window)
-  return type(window) == "number" and vim.api.nvim_win_is_valid(window)
-end
+local function valid_window(window) return type(window) == "number" and vim.api.nvim_win_is_valid(window) end
 
 local function resolve_handle(value)
-  if type(value) ~= "table" then
-    return nil
-  end
-  if value.buf and value.namespace then
-    return value
-  end
+  if type(value) ~= "table" then return nil end
+  if value.buf and value.namespace then return value end
   if type(value.canvas) == "table" then
-    if value.canvas.handle then
-      return value.canvas.handle
-    end
-    if value.canvas.bufnr then
-      return handles_by_buffer[value.canvas.bufnr]
-    end
+    if value.canvas.handle then return value.canvas.handle end
+    if value.canvas.bufnr then return handles_by_buffer[value.canvas.bufnr] end
   end
-  if value.bufnr then
-    return handles_by_buffer[value.bufnr]
-  end
+  if value.bufnr then return handles_by_buffer[value.bufnr] end
   return nil
 end
 
@@ -85,16 +67,12 @@ local function is_session(value)
 end
 
 local function current_model(session)
-  if type(session.current_model) == "function" then
-    return session:current_model()
-  end
+  if type(session.current_model) == "function" then return session:current_model() end
   return session:model()
 end
 
 local function selected_object(model, selection)
-  if not selection then
-    return nil
-  end
+  if not selection then return nil end
   local collection = selection.kind == "room" and model.rooms
     or selection.kind == "door" and model.doors
     or selection.kind == "window" and model.windows
@@ -102,9 +80,7 @@ local function selected_object(model, selection)
     or selection.kind == "furniture" and model.furniture
     or selection.kind == "template" and model.custom_templates
   for _, object in ipairs(collection or {}) do
-    if object.id == selection.id then
-      return object
-    end
+    if object.id == selection.id then return object end
   end
   return nil
 end
@@ -140,8 +116,11 @@ local function session_header(session, canvas_config)
   local plan_name = plan.metadata and plan.metadata.name or "Untitled plan"
   local selected_text = plan_name
   if selection then
-    selected_text = string.format("%s: %s", selection.kind or "object",
-      tostring(object and (object.name or object.id) or selection.id))
+    selected_text = string.format(
+      "%s: %s",
+      selection.kind or "object",
+      tostring(object and (object.name or object.id) or selection.id)
+    )
   end
   local display_mode = session.mode or "NAV"
   if session.workspace and session.workspace.state and session.workspace.state.interaction then
@@ -155,9 +134,13 @@ local function session_header(session, canvas_config)
     local snap = directions.replace_cardinals(require("roomplan.room_shape").snap_summary(edit), session)
     local edge = directions.replace_cardinals(require("roomplan.room_shape").edge_summary(edit), session)
     display_mode = edit.kind == "template" and "TEMPLATE RESIZE" or "RESIZE"
-    shape_notice = string.format(" · %s · section %d/%d · edge %s",
+    shape_notice = string.format(
+      " · %s · section %d/%d · edge %s",
       display_mode,
-      index or 0, #(edit.footprint.parts or {}), edge or "choose with h/j/k/l")
+      index or 0,
+      #(edit.footprint.parts or {}),
+      edge or "choose with h/j/k/l"
+    )
     if snap then shape_notice = shape_notice .. " · SNAP " .. snap end
   elseif session.mode == "MOVE" then
     local snap = require("roomplan.directions").replace_cardinals(snapping.summary(session.snap_guides), session)
@@ -181,8 +164,14 @@ local function session_header(session, canvas_config)
     local sun = session.sun_study.calculation
     local arrow = require("roomplan.directions").arrow(sun.incoming_dx, sun.incoming_dy, session, false)
     local display = session.sun_study.overlay == "daily" and "DAY EXPOSURE" or (session.sun_study.time or "")
-    sun_status = string.format(" · SUN%s %s %s · az %.1f° el %.1f°",
-      arrow, session.sun_study.date or "", display, sun.azimuth_deg, sun.elevation_deg)
+    sun_status = string.format(
+      " · SUN%s %s %s · az %.1f° el %.1f°",
+      arrow,
+      session.sun_study.date or "",
+      display,
+      sun.azimuth_deg,
+      sun.elevation_deg
+    )
   end
   return {
     string.format("RoomPlan · %s%s%s%s%s", subject, shape_notice, sun_status, context_status, issues),
@@ -218,27 +207,32 @@ local function session_footer(session)
     local snap = require("roomplan.room_shape").snap_summary(edit)
       or (session.snap_enabled == false and "off" or "ready")
     local edge = require("roomplan.directions").replace_cardinals(
-      require("roomplan.room_shape").edge_summary(edit), session) or "choose h/j/k/l"
+      require("roomplan.room_shape").edge_summary(edit),
+      session
+    ) or "choose h/j/k/l"
     local label = edit.kind == "template" and "TEMPLATE RESIZE"
-      or edit.kind == "furniture" and "FURNITURE RESIZE" or "ROOM RESIZE"
+      or edit.kind == "furniture" and "FURNITURE RESIZE"
+      or "ROOM RESIZE"
     return string.format(
       " %s · section %d/%d · edge %s · snap %s | [Enter/Tab] Select  [a/d] Add/Remove  [gs] Snap  [s] Save  [Esc] Cancel ",
-      label, index or 0, #(edit.footprint.parts or {}), edge, snap
+      label,
+      index or 0,
+      #(edit.footprint.parts or {}),
+      edge,
+      snap
     )
   end
   if session.sun_study and session.sun_study.viewing then
     local playback = session.sun_study.playing and "Pause" or "Play day"
-    return " SUN STUDY | [h/l] Time  [j/k] Next/previous season  [Space] " .. playback
-      .. "  [S] Settings  [Esc] Close "
+    return " SUN STUDY | [h/l] Time  [j/k] Next/previous season  [Space] " .. playback .. "  [S] Settings  [Esc] Close "
   end
-  if #rooms == 0 then
-    return " [a] Add first room  [?] Help  [q] Hide "
-  end
+  if #rooms == 0 then return " [a] Add first room  [?] Help  [q] Hide " end
   if session.mode == "PAN" then
     return " PAN | [h/j/k/l] Pan  [H/J/K/L] Pan far  [Esc] Navigation  [f] Fit "
   elseif session.mode == "MOVE" then
     local snap = require("roomplan.directions").replace_cardinals(snapping.summary(session.snap_guides), session)
-    return " MOVE" .. (session.move_feedback and (" · " .. session.move_feedback) or "")
+    return " MOVE"
+      .. (session.move_feedback and (" · " .. session.move_feedback) or "")
       .. (snap and (" · snap " .. snap) or "")
       .. " | [h/j/k/l] Move  [H/J/K/L] Coarse  [Ctrl-h/j/k/l] Fine  [Esc] Done "
   end
@@ -286,23 +280,18 @@ local function options_for_session(session, callbacks)
       sun_study = session.sun_study,
       sun_config = configured.sun_study,
     })
-    if session.sun_study and scene.sunlight then
-      session.sun_study.assumed_count = scene.sunlight.assumed_count or 0
-    end
+    if session.sun_study and scene.sunlight then session.sun_study.assumed_count = scene.sunlight.assumed_count or 0 end
     return scene
   end
-  options.get_viewport = function()
-    return session.viewport
-  end
-  options.get_header = function()
-    return session_header(session, canvas_config)
-  end
-  options.get_footer = function()
-    return session_footer(session)
-  end
+  options.get_viewport = function() return session.viewport end
+  options.get_header = function() return session_header(session, canvas_config) end
+  options.get_footer = function() return session_footer(session) end
   options.get_compass = function(_, ascii)
-    return require("roomplan.directions").compass(current_model(session).site and current_model(session).site.north_deg,
-      session, ascii)
+    return require("roomplan.directions").compass(
+      current_model(session).site and current_model(session).site.north_deg,
+      session,
+      ascii
+    )
   end
   options.get_counts = function()
     local plan = current_model(session)
@@ -316,33 +305,21 @@ local function options_for_session(session, callbacks)
   end
   options.on_viewport = function(_, value)
     session.viewport = value
-    if type(callbacks.on_viewport) == "function" then
-      callbacks.on_viewport(value)
-    end
+    if type(callbacks.on_viewport) == "function" then callbacks.on_viewport(value) end
   end
   options.on_cursor = callbacks.on_cursor
   options.on_redraw = callbacks.on_redraw
   options.on_close = function(handle)
-    if session.canvas and session.canvas.handle == handle then
-      session.canvas = { bufnr = nil, winid = nil }
-    end
-    if type(callbacks.on_wipe) == "function" then
-      callbacks.on_wipe(handle)
-    end
-    if type(callbacks.on_close) == "function" then
-      callbacks.on_close(handle)
-    end
+    if session.canvas and session.canvas.handle == handle then session.canvas = { bufnr = nil, winid = nil } end
+    if type(callbacks.on_wipe) == "function" then callbacks.on_wipe(handle) end
+    if type(callbacks.on_close) == "function" then callbacks.on_close(handle) end
   end
   return options
 end
 
-local function display_width(value)
-  return vim.fn.strdisplaywidth(value)
-end
+local function display_width(value) return vim.fn.strdisplaywidth(value) end
 
-local function define_highlights()
-  require("roomplan.highlights").setup()
-end
+local function define_highlights() require("roomplan.highlights").setup() end
 
 local function color_highlight(value)
   if type(value) ~= "string" or not value:match("^#%x%x%x%x%x%x$") then return nil end
@@ -433,9 +410,7 @@ end
 
 local function header_lines(handle, width)
   local configured = math.max(0, math.floor(handle.opts.header_lines or 2))
-  if configured == 0 then
-    return {}
-  end
+  if configured == 0 then return {} end
   local value
   if type(handle.opts.get_header) == "function" then
     value = handle.opts.get_header(handle)
@@ -454,9 +429,7 @@ local function header_lines(handle, width)
   end
   local lines = {}
   for index = 1, configured do
-    local line_width = index == 1 and handle.opts.show_compass ~= false and width >= 3
-        and width - 3
-      or width
+    local line_width = index == 1 and handle.opts.show_compass ~= false and width >= 3 and width - 3 or width
     lines[index] = safe_header_line(value[index] or "", line_width, "?")
   end
   return lines
@@ -469,12 +442,8 @@ local function footer_lines(handle, width)
   elseif handle.opts.footer ~= nil then
     value = handle.opts.footer
   end
-  if value == nil or value == false then
-    return {}
-  end
-  if type(value) ~= "table" then
-    value = { value }
-  end
+  if value == nil or value == false then return {} end
+  if type(value) ~= "table" then value = { value } end
   local lines = {}
   for index = 1, #value do
     lines[index] = safe_header_line(value[index] or "", width, "?")
@@ -486,11 +455,17 @@ local function centered_cells(value, width)
   local content = text.sanitize_cells(tostring(value or ""), width, display_width, "?") or {}
   local left = math.max(0, math.floor((width - #content) / 2))
   local cells = {}
-  for _ = 1, left do cells[#cells + 1] = " " end
+  for _ = 1, left do
+    cells[#cells + 1] = " "
+  end
   local start_cell = #cells + 1
-  for i = 1, #content do cells[#cells + 1] = content[i] end
+  for i = 1, #content do
+    cells[#cells + 1] = content[i]
+  end
   local end_cell = #cells + 1
-  while #cells < width do cells[#cells + 1] = " " end
+  while #cells < width do
+    cells[#cells + 1] = " "
+  end
   return cells, start_cell, end_cell
 end
 
@@ -558,9 +533,7 @@ end
 local function has_visible_object(output)
   for row = 1, output.height do
     for column = 1, output.width do
-      if output.hit_map[row] and output.hit_map[row][column] and #output.hit_map[row][column] > 0 then
-        return true
-      end
+      if output.hit_map[row] and output.hit_map[row][column] and #output.hit_map[row][column] > 0 then return true end
     end
   end
   return false
@@ -607,9 +580,7 @@ local function apply_canvas_chrome(handle, scene, output, fitted)
 end
 
 local function controlled_set_lines(handle, lines)
-  if not valid_buffer(handle.buf) then
-    return
-  end
+  if not valid_buffer(handle.buf) then return end
   vim.bo[handle.buf].readonly = false
   vim.bo[handle.buf].modifiable = true
   vim.api.nvim_buf_set_lines(handle.buf, 0, -1, false, lines)
@@ -619,9 +590,7 @@ local function controlled_set_lines(handle, lines)
 end
 
 local function apply_highlights(handle, output, header_count, footer_count)
-  if not valid_buffer(handle.buf) then
-    return
-  end
+  if not valid_buffer(handle.buf) then return end
   vim.api.nvim_buf_clear_namespace(handle.buf, handle.namespace, 0, -1)
   local color_groups = {}
   for i = 1, #output.highlight_spans do
@@ -692,23 +661,15 @@ local function apply_highlights(handle, output, header_count, footer_count)
 end
 
 local function cleanup(handle)
-  if handle.cleaned then
-    return
-  end
+  if handle.cleaned then return end
   handle.cleaned = true
   handles_by_buffer[handle.buf] = nil
-  if handle.augroup then
-    pcall(vim.api.nvim_del_augroup_by_id, handle.augroup)
-  end
-  if type(handle.opts.on_close) == "function" then
-    handle.opts.on_close(handle)
-  end
+  if handle.augroup then pcall(vim.api.nvim_del_augroup_by_id, handle.augroup) end
+  if type(handle.opts.on_close) == "function" then handle.opts.on_close(handle) end
 end
 
 local function reset_native_scroll(handle)
-  if handle.resetting_scroll or not valid_window(handle.win) then
-    return
-  end
+  if handle.resetting_scroll or not valid_window(handle.win) then return end
   handle.resetting_scroll = true
   vim.api.nvim_win_call(handle.win, function()
     local view = vim.fn.winsaveview()
@@ -727,25 +688,19 @@ local function install_autocommands(handle)
   vim.api.nvim_create_autocmd({ "VimResized", "WinResized" }, {
     group = handle.augroup,
     callback = function()
-      if valid_window(handle.win) then
-        M.schedule_redraw(handle, "resize")
-      end
+      if valid_window(handle.win) then M.schedule_redraw(handle, "resize") end
     end,
   })
   vim.api.nvim_create_autocmd("CursorMoved", {
     group = handle.augroup,
     buffer = handle.buf,
     callback = function()
-      if type(handle.opts.on_cursor) == "function" then
-        handle.opts.on_cursor(handle, M.logical_cursor(handle))
-      end
+      if type(handle.opts.on_cursor) == "function" then handle.opts.on_cursor(handle, M.logical_cursor(handle)) end
     end,
   })
   vim.api.nvim_create_autocmd("WinScrolled", {
     group = handle.augroup,
-    callback = function()
-      reset_native_scroll(handle)
-    end,
+    callback = function() reset_native_scroll(handle) end,
   })
   vim.api.nvim_create_autocmd("BufWinEnter", {
     group = handle.augroup,
@@ -760,17 +715,11 @@ local function install_autocommands(handle)
         local canonical = valid_window(handle.win) and handle.win or windows[1]
         handle.win = canonical
         handle.winid = canonical
-        if handle.session and handle.session.canvas then
-          handle.session.canvas.winid = canonical
-        end
+        if handle.session and handle.session.canvas then handle.session.canvas.winid = canonical end
         for _, window in ipairs(windows) do
-          if window ~= canonical and valid_window(window) then
-            pcall(vim.api.nvim_win_close, window, true)
-          end
+          if window ~= canonical and valid_window(window) then pcall(vim.api.nvim_win_close, window, true) end
         end
-        if valid_window(canonical) then
-          vim.api.nvim_set_current_win(canonical)
-        end
+        if valid_window(canonical) then vim.api.nvim_set_current_win(canonical) end
       end)
     end,
   })
@@ -778,9 +727,7 @@ local function install_autocommands(handle)
     group = handle.augroup,
     buffer = handle.buf,
     once = true,
-    callback = function()
-      cleanup(handle)
-    end,
+    callback = function() cleanup(handle) end,
   })
   vim.api.nvim_create_autocmd("ColorScheme", {
     group = handle.augroup,
@@ -804,17 +751,13 @@ end
 
 local function capture_cursor_world(handle)
   local logical = M.logical_cursor(handle)
-  if not logical or not handle.last_raster then
-    return nil
-  end
+  if not logical or not handle.last_raster then return nil end
   local x, y = viewport_module.screen_to_world(handle.last_raster.viewport, logical.column - 1, logical.row - 1)
   return { x = x, y = y }
 end
 
 local function restore_cursor_world(handle, world)
-  if not world or not valid_window(handle.win) or not handle.last_raster then
-    return
-  end
+  if not world or not valid_window(handle.win) or not handle.last_raster then return end
   local column, row = viewport_module.world_to_screen(handle.last_raster.viewport, world.x, world.y)
   M.set_logical_cursor(handle, round(row) + 1, round(column) + 1)
 end
@@ -843,10 +786,11 @@ end
 
 local function place_initial_cursor(handle, output)
   if not valid_window(handle.win) or not output then return end
-  local target = selected_cursor_cell(handle, output) or {
-    row = math.max(1, math.floor((output.height + 1) / 2)),
-    column = math.max(1, math.floor((output.width + 1) / 2)),
-  }
+  local target = selected_cursor_cell(handle, output)
+    or {
+      row = math.max(1, math.floor((output.height + 1) / 2)),
+      column = math.max(1, math.floor((output.width + 1) / 2)),
+    }
   M.set_logical_cursor(handle, target.row, target.column)
 end
 
@@ -855,9 +799,7 @@ end
 function M.redraw(handle, scene, viewport, redraw_opts)
   handle = resolve_handle(handle) or handle
   assert(type(handle) == "table" and not handle.cleaned, "invalid canvas handle")
-  if not valid_buffer(handle.buf) or not valid_window(handle.win) then
-    return nil, "canvas is no longer visible"
-  end
+  if not valid_buffer(handle.buf) or not valid_window(handle.win) then return nil, "canvas is no longer visible" end
   redraw_opts = redraw_opts or {}
   local cursor_world = capture_cursor_world(handle)
   scene = scene or (type(handle.opts.get_scene) == "function" and handle.opts.get_scene(handle)) or handle.scene
@@ -930,20 +872,14 @@ function M.redraw(handle, scene, viewport, redraw_opts)
     place_initial_cursor(handle, output)
   end
   reset_native_scroll(handle)
-  if type(handle.opts.on_viewport) == "function" then
-    handle.opts.on_viewport(handle, viewport)
-  end
-  if type(handle.opts.on_redraw) == "function" then
-    handle.opts.on_redraw(handle, output)
-  end
+  if type(handle.opts.on_viewport) == "function" then handle.opts.on_viewport(handle, viewport) end
+  if type(handle.opts.on_redraw) == "function" then handle.opts.on_redraw(handle, output) end
   return output
 end
 
 function M.schedule_redraw(handle, reason)
   handle = resolve_handle(handle)
-  if not handle or handle.redraw_pending or handle.cleaned then
-    return
-  end
+  if not handle or handle.redraw_pending or handle.cleaned then return end
   handle.redraw_pending = true
   vim.schedule(function()
     handle.redraw_pending = false
@@ -979,9 +915,7 @@ function M.open(opts, callbacks)
     session = session,
   }
   handle.bufnr = buffer
-  if opts.name then
-    vim.api.nvim_buf_set_name(buffer, opts.name)
-  end
+  if opts.name then vim.api.nvim_buf_set_name(buffer, opts.name) end
   set_buffer_options(buffer)
   handle.win = create_window(buffer, opts)
   handle.winid = handle.win
@@ -989,15 +923,11 @@ function M.open(opts, callbacks)
   handles_by_buffer[buffer] = handle
   if session then
     session.canvas = { bufnr = buffer, winid = handle.win, handle = handle }
-    if require("roomplan.config").get().keymaps.enabled then
-      require("roomplan.ui.keymaps").apply(buffer, session)
-    end
+    if require("roomplan.config").get().keymaps.enabled then require("roomplan.ui.keymaps").apply(buffer, session) end
   end
   install_autocommands(handle)
   local fit_on_open = opts.fit_on_open
-  if fit_on_open == nil then
-    fit_on_open = not viewport_module.valid(opts.viewport)
-  end
+  if fit_on_open == nil then fit_on_open = not viewport_module.valid(opts.viewport) end
   M.redraw(handle, opts.scene, opts.viewport, { fit = fit_on_open, reason = "open" })
   return handle
 end
@@ -1015,18 +945,12 @@ end
 function M.logical_cursor(handle)
   local compatibility_session = is_session(handle)
   handle = resolve_handle(handle) or handle
-  if not handle or not valid_window(handle.win) or not handle.last_raster then
-    return nil
-  end
+  if not handle or not valid_window(handle.win) or not handle.last_raster then return nil end
   local cursor = vim.api.nvim_win_get_cursor(handle.win)
   local row = cursor[1] - (handle.header_count or 0)
-  if row < 1 or row > handle.last_raster.height then
-    return nil
-  end
+  if row < 1 or row > handle.last_raster.height then return nil end
   local column = text.byte_to_cell(handle.last_raster.byte_offsets[row], cursor[2])
-  if not column then
-    return nil
-  end
+  if not column then return nil end
   local result = {
     row = row,
     column = column,
@@ -1044,9 +968,7 @@ end
 function M.set_logical_cursor(handle, row, column)
   local compatibility_session = is_session(handle)
   handle = resolve_handle(handle) or handle
-  if not handle or not valid_window(handle.win) or not handle.last_raster then
-    return false
-  end
+  if not handle or not valid_window(handle.win) or not handle.last_raster then return false end
   if compatibility_session then
     row = (row or 0) + 1
     column = (column or 0) + 1
@@ -1060,14 +982,10 @@ end
 
 function M.hit_candidates(handle, row, column)
   handle = resolve_handle(handle) or handle
-  if not handle or not handle.last_raster then
-    return {}
-  end
+  if not handle or not handle.last_raster then return {} end
   if row == nil or column == nil then
     local cursor = M.logical_cursor(handle)
-    if not cursor then
-      return {}
-    end
+    if not cursor then return {} end
     row, column = cursor.row, cursor.column
   end
   local hit_row = handle.last_raster.hit_map[row]
@@ -1077,9 +995,7 @@ end
 function M.world_at_cursor(handle)
   handle = resolve_handle(handle) or handle
   local cursor = M.logical_cursor(handle)
-  if not cursor or not handle.last_raster then
-    return nil
-  end
+  if not cursor or not handle.last_raster then return nil end
   local x, y = viewport_module.screen_to_world(handle.last_raster.viewport, cursor.column - 1, cursor.row - 1)
   return { x = x, y = y }
 end
@@ -1088,9 +1004,7 @@ function M.set_keymap(handle, lhs, callback, opts)
   handle = resolve_handle(handle) or handle
   assert(valid_buffer(handle.buf), "invalid canvas buffer")
   opts = opts or {}
-  vim.keymap.set(opts.mode or "n", lhs, function()
-    callback(handle)
-  end, {
+  vim.keymap.set(opts.mode or "n", lhs, function() callback(handle) end, {
     buffer = handle.buf,
     silent = opts.silent ~= false,
     nowait = opts.nowait,
@@ -1102,9 +1016,7 @@ end
 ---buffer; session/model lifetime remains the controller's responsibility.
 function M.close(handle)
   handle = resolve_handle(handle)
-  if not handle or handle.cleaned then
-    return false
-  end
+  if not handle or handle.cleaned then return false end
   if valid_window(handle.win) then
     if #vim.api.nvim_list_wins() == 1 then
       -- Neovim refuses to close the final editor window (E444).  Replace the
@@ -1124,8 +1036,6 @@ function M.close(handle)
   return true
 end
 
-function M.for_buffer(buffer)
-  return handles_by_buffer[buffer]
-end
+function M.for_buffer(buffer) return handles_by_buffer[buffer] end
 
 return M

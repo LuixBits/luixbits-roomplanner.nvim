@@ -17,40 +17,28 @@ local SUPPORTED = {
 }
 
 local function resolve(value, context, draft, field, state)
-  if type(value) == "function" then
-    return value(context, draft, field, state)
-  end
+  if type(value) == "function" then return value(context, draft, field, state) end
   return value
 end
 
 local function error_message(err)
-  if type(err) == "table" then
-    return err.message or err.code or tostring(err)
-  end
+  if type(err) == "table" then return err.message or err.code or tostring(err) end
   return tostring(err)
 end
 
-local function trimmed(value)
-  return (value:gsub("^[ \t\r\n]+", ""):gsub("[ \t\r\n]+$", ""))
-end
+local function trimmed(value) return (value:gsub("^[ \t\r\n]+", ""):gsub("[ \t\r\n]+$", "")) end
 
-function M.supported(kind)
-  return SUPPORTED[kind] == true
-end
+function M.supported(kind) return SUPPORTED[kind] == true end
 
 function M.visible(field, context, draft, state)
   if field.hidden == true then return false end
-  if type(field.visible) == "function" then
-    return field.visible(context, draft, field, state) ~= false
-  end
+  if type(field.visible) == "function" then return field.visible(context, draft, field, state) ~= false end
   return field.visible ~= false
 end
 
 function M.enabled(field, context, draft, state)
   if field.type == "readonly" or field.readonly == true then return false end
-  if type(field.enabled) == "function" then
-    return field.enabled(context, draft, field, state) ~= false
-  end
+  if type(field.enabled) == "function" then return field.enabled(context, draft, field, state) ~= false end
   return field.enabled ~= false
 end
 
@@ -61,14 +49,10 @@ function M.value(field, context, draft, state)
   return draft[field.key]
 end
 
-function M.default(field, context, draft, state)
-  return resolve(field.default, context, draft, field, state)
-end
+function M.default(field, context, draft, state) return resolve(field.default, context, draft, field, state) end
 
 local function normalize_choice(item)
-  if type(item) ~= "table" then
-    return { value = item, label = tostring(item) }
-  end
+  if type(item) ~= "table" then return { value = item, label = tostring(item) } end
   if item.value ~= nil or item.label ~= nil then
     return {
       value = item.value,
@@ -175,9 +159,7 @@ function M.validate(field, value, context, draft, state)
   local kind = field.type or "text"
   if kind == "action" then return nil end
   if kind ~= "readonly" and field.required == true then
-    if value == nil or (type(value) == "string" and trimmed(value) == "") then
-      return "is required"
-    end
+    if value == nil or (type(value) == "string" and trimmed(value) == "") then return "is required" end
   end
   if (kind == "enum" or kind == "object_ref") and value ~= nil and field.allow_unknown ~= true then
     local choice = M.choice(field, value, context, draft, state)
@@ -217,9 +199,7 @@ function M.validate(field, value, context, draft, state)
 end
 
 function M.format(field, value, context, draft, state)
-  if type(field.format) == "function" then
-    return tostring(field.format(value, context, draft, field, state) or "")
-  end
+  if type(field.format) == "function" then return tostring(field.format(value, context, draft, field, state) or "") end
   local kind = field.type or "text"
   if kind == "action" then return tostring(value or field.action_label or "Open…") end
   if value == nil then return field.empty_text or "—" end
@@ -233,7 +213,9 @@ function M.format(field, value, context, draft, state)
     return value and (field.true_label or "yes") or (field.false_label or "no")
   elseif type(value) == "table" then
     local parts = {}
-    for index = 1, #value do parts[index] = tostring(value[index]) end
+    for index = 1, #value do
+      parts[index] = tostring(value[index])
+    end
     if #parts > 0 then return table.concat(parts, ", ") end
   end
   return tostring(value)

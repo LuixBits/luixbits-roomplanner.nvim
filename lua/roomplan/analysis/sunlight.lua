@@ -6,7 +6,10 @@ local M = {}
 local EXPOSURE_THRESHOLDS_MINUTES = { 60, 120, 240, 360 }
 
 local OUTWARD = {
-  north = { 0, 1 }, east = { 1, 0 }, south = { 0, -1 }, west = { -1, 0 },
+  north = { 0, 1 },
+  east = { 1, 0 },
+  south = { 0, -1 },
+  west = { -1, 0 },
 }
 
 local function room_rectangles(room)
@@ -22,7 +25,8 @@ local function room_rectangles(room)
     end
   elseif room and room.origin_mm and room.size_mm then
     result[1] = {
-      left = room.origin_mm[1], bottom = room.origin_mm[2],
+      left = room.origin_mm[1],
+      bottom = room.origin_mm[2],
       right = room.origin_mm[1] + room.size_mm[1],
       top = room.origin_mm[2] + room.size_mm[2],
     }
@@ -50,8 +54,11 @@ function M.build(model, wall_scene, calculation, defaults)
 
   for _, aperture in ipairs(wall_scene.window_apertures or {}) do
     local window = aperture.window
-    if aperture.owner_edge_valid and not aperture.connection_requested
-      and window and faces_sun(window.side, calculation)
+    if
+      aperture.owner_edge_valid
+      and not aperture.connection_requested
+      and window
+      and faces_sun(window.side, calculation)
     then
       local explicit = window.sill_height_mm ~= nil and window.head_height_mm ~= nil
       local sill = explicit and window.sill_height_mm or defaults.sill_height_mm
@@ -136,7 +143,9 @@ function M.build_day(model, wall_scene, site, date, step_minutes, defaults)
       local contributor = segment.contributors and segment.contributors[1]
       if contributor and contributor.side then result.wall_sides[contributor.side] = true end
     end
-    for window_id in pairs(frame.windows) do result.windows[window_id] = true end
+    for window_id in pairs(frame.windows) do
+      result.windows[window_id] = true
+    end
     result.samples[#result.samples + 1] = {
       minutes = duration,
       calculation = calculation,
@@ -145,7 +154,9 @@ function M.build_day(model, wall_scene, site, date, step_minutes, defaults)
     result.total_minutes = result.total_minutes + duration
     cursor = finish
   end
-  for _ in pairs(assumed) do result.assumed_count = result.assumed_count + 1 end
+  for _ in pairs(assumed) do
+    result.assumed_count = result.assumed_count + 1
+  end
   return result
 end
 

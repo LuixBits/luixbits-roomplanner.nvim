@@ -21,9 +21,7 @@ local function touch(history)
 end
 
 local function clamp_integer(value, default, minimum, maximum)
-  if type(value) ~= "number" or value ~= math.floor(value) then
-    return default
-  end
+  if type(value) ~= "number" or value ~= math.floor(value) then return default end
   if value < minimum then
     return minimum
   elseif value > maximum then
@@ -51,47 +49,33 @@ local function subtract_bytes(history, amount)
 end
 
 local function clear_savepoint_if(history, revision_id)
-  if history.durable_savepoint_revision_id == revision_id then
-    history.durable_savepoint_revision_id = nil
-  end
+  if history.durable_savepoint_revision_id == revision_id then history.durable_savepoint_revision_id = nil end
 end
 
 local function remove_node(history, index)
   local node = history.nodes[index]
-  if not node or index == history.cursor then
-    return false
-  end
+  if not node or index == history.cursor then return false end
   clear_savepoint_if(history, node.revision_id)
   subtract_bytes(history, node.estimated_bytes)
   table.remove(history.nodes, index)
-  if index < history.cursor then
-    history.cursor = history.cursor - 1
-  end
+  if index < history.cursor then history.cursor = history.cursor - 1 end
   return true
 end
 
 local function trim_one(history)
-  if #history.nodes <= 1 then
-    return false
-  end
-  if history.cursor > 1 then
-    return remove_node(history, 1)
-  end
+  if #history.nodes <= 1 then return false end
+  if history.cursor > 1 then return remove_node(history, 1) end
   return remove_node(history, #history.nodes)
 end
 
 local function trim_local(history)
   local trimmed = 0
   while #history.nodes > history.max_nodes do
-    if not trim_one(history) then
-      break
-    end
+    if not trim_one(history) then break end
     trimmed = trimmed + 1
   end
   while history.bytes > history.max_bytes and #history.nodes > 1 do
-    if not trim_one(history) then
-      break
-    end
+    if not trim_one(history) then break end
     trimmed = trimmed + 1
   end
   history.last_trimmed = trimmed
@@ -106,14 +90,10 @@ local function trim_global(requesting_history)
     local candidate
     for history in pairs(histories) do
       if not history.disposed and #history.nodes > 1 then
-        if not candidate or history.last_access < candidate.last_access then
-          candidate = history
-        end
+        if not candidate or history.last_access < candidate.last_access then candidate = history end
       end
     end
-    if not candidate or not trim_one(candidate) then
-      break
-    end
+    if not candidate or not trim_one(candidate) then break end
     candidate.reduced_capacity = true
     candidate.last_trimmed = (candidate.last_trimmed or 0) + 1
     trimmed = trimmed + 1
@@ -148,7 +128,12 @@ function M.new(initial_model, options)
     bytes = 0,
     max_nodes = clamp_integer(requested_max_nodes, M.DEFAULT_MAX_NODES, 1, 10001),
     max_bytes = clamp_integer(options.max_bytes, M.DEFAULT_MAX_BYTES, 1024, 1024 * 1024 * 1024),
-    global_max_bytes = clamp_integer(options.global_max_bytes, M.DEFAULT_GLOBAL_MAX_BYTES, 1024, 4 * 1024 * 1024 * 1024),
+    global_max_bytes = clamp_integer(
+      options.global_max_bytes,
+      M.DEFAULT_GLOBAL_MAX_BYTES,
+      1024,
+      4 * 1024 * 1024 * 1024
+    ),
     reduced_capacity = false,
     last_trimmed = 0,
     disposed = false,
@@ -158,9 +143,7 @@ function M.new(initial_model, options)
   local initial = make_node(history, initial_model, options.label or "Initial load", options.touched, options.metadata)
   history.nodes[1] = initial
   add_bytes(history, initial.estimated_bytes)
-  if options.durable ~= false then
-    history.durable_savepoint_revision_id = initial.revision_id
-  end
+  if options.durable ~= false then history.durable_savepoint_revision_id = initial.revision_id end
   trim_local(history)
   trim_global(history)
   return history
@@ -186,18 +169,12 @@ function History:is_dirty()
   return node == nil or node.revision_id ~= self.durable_savepoint_revision_id
 end
 
-function History:can_undo()
-  return self.cursor > 1
-end
+function History:can_undo() return self.cursor > 1 end
 
-function History:can_redo()
-  return self.cursor < #self.nodes
-end
+function History:can_redo() return self.cursor < #self.nodes end
 
 function History:push(snapshot, result)
-  if self.disposed then
-    return nil, { code = "HISTORY_DISPOSED", message = "history has been disposed" }
-  end
+  if self.disposed then return nil, { code = "HISTORY_DISPOSED", message = "history has been disposed" } end
   result = result or {}
   local current = self.nodes[self.cursor]
   if current and model.deep_equal(current.model, snapshot) then
@@ -227,9 +204,7 @@ function History:push(snapshot, result)
 end
 
 function History:undo()
-  if self.disposed then
-    return nil, { code = "HISTORY_DISPOSED", message = "history has been disposed" }
-  end
+  if self.disposed then return nil, { code = "HISTORY_DISPOSED", message = "history has been disposed" } end
   if self.cursor <= 1 then
     touch(self)
     return nil, { code = "HISTORY_AT_OLDEST", message = "there is no older model revision" }
@@ -241,9 +216,7 @@ function History:undo()
 end
 
 function History:redo()
-  if self.disposed then
-    return nil, { code = "HISTORY_DISPOSED", message = "history has been disposed" }
-  end
+  if self.disposed then return nil, { code = "HISTORY_DISPOSED", message = "history has been disposed" } end
   if self.cursor >= #self.nodes then
     touch(self)
     return nil, { code = "HISTORY_AT_NEWEST", message = "there is no newer model revision" }
@@ -258,7 +231,8 @@ function History:mark_saved(revision_id)
   local current = self.nodes[self.cursor]
   revision_id = revision_id or (current and current.revision_id)
   if not current or revision_id ~= current.revision_id then
-    return nil, { code = "HISTORY_SAVEPOINT_REVISION", message = "only the current revision can become the durable savepoint" }
+    return nil,
+      { code = "HISTORY_SAVEPOINT_REVISION", message = "only the current revision can become the durable savepoint" }
   end
   self.durable_savepoint_revision_id = revision_id
   touch(self)
@@ -300,9 +274,7 @@ end
 ---branches normally and discards newer nodes, exactly like undo followed by
 ---an edit.
 function History:checkout(revision_id)
-  if self.disposed then
-    return nil, { code = "HISTORY_DISPOSED", message = "history has been disposed" }
-  end
+  if self.disposed then return nil, { code = "HISTORY_DISPOSED", message = "history has been disposed" } end
   for index, node in ipairs(self.nodes) do
     if node.revision_id == revision_id then
       self.cursor = index
@@ -370,9 +342,7 @@ function History:stats()
 end
 
 function History:dispose()
-  if self.disposed then
-    return
-  end
+  if self.disposed then return end
   local position = 1
   while position <= #self.nodes do
     subtract_bytes(self, self.nodes[position].estimated_bytes)
@@ -388,9 +358,7 @@ end
 function M.global_stats()
   local count = 0
   for history in pairs(histories) do
-    if not history.disposed then
-      count = count + 1
-    end
+    if not history.disposed then count = count + 1 end
   end
   return { histories = count, bytes = global_bytes, default_max_bytes = M.DEFAULT_GLOBAL_MAX_BYTES }
 end

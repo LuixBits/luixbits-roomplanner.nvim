@@ -17,9 +17,7 @@ local function sorted(actions)
   return result
 end
 
-local function compact_mode(ctx)
-  return registry.context_title(ctx)
-end
+local function compact_mode(ctx) return registry.context_title(ctx) end
 
 local function breadcrumb_text(ctx)
   if type(ctx.breadcrumb) == "table" then return ctx.breadcrumb.text end
@@ -58,9 +56,7 @@ local function status(ctx, show_breadcrumb)
   return table.concat(values, " · ")
 end
 
-local function is_primary(action)
-  return action.id ~= "help" and action.enabled == true and action.key ~= nil
-end
+local function is_primary(action) return action.id ~= "help" and action.enabled == true and action.key ~= nil end
 
 local function find_help(actions)
   for _, action in ipairs(actions) do
@@ -70,7 +66,9 @@ end
 
 local function overflow(actions, shown, ctx)
   local visible = {}
-  for _, action in ipairs(shown) do visible[action] = true end
+  for _, action in ipairs(shown) do
+    visible[action] = true
+  end
   local result = {}
   for _, action in ipairs(actions) do
     if action.id ~= "help" and not visible[action] then result[#result + 1] = action end
@@ -81,7 +79,9 @@ end
 
 local function compose(shown, actions, status_text, ctx)
   local parts = {}
-  for _, action in ipairs(shown) do parts[#parts + 1] = hint(action) end
+  for _, action in ipairs(shown) do
+    parts[#parts + 1] = hint(action)
+  end
   local hidden, hidden_count = overflow(actions, shown, ctx)
   local help = find_help(actions)
   local more_key = help and (help.key_label or registry.display_key(help.key)) or nil
@@ -142,7 +142,9 @@ function M.render(ctx, width, opts)
   end
 
   local shown = {}
-  for index = 1, math.min(opts.max_actions or 5, #candidates) do shown[index] = candidates[index] end
+  for index = 1, math.min(opts.max_actions or 5, #candidates) do
+    shown[index] = candidates[index]
+  end
   local fitting_status = status(ctx, false)
   local fitting_line = compose(shown, actions, fitting_status, ctx)
   while #shown > 0 and common.width(fitting_line) > width do

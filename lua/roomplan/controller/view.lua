@@ -99,13 +99,20 @@ function M.attach(controller)
     if type(direction) == "table" then direction = direction.direction end
     direction = direction == -1 and -1 or 1
     local diagnostics = controller.validate(resolved)
-    if #diagnostics == 0 then compat.notify("RoomPlan has no validation issues") return end
-    resolved.validation_index = ((resolved.validation_index or (direction < 0 and 1 or 0)) - 1 + direction) % #diagnostics + 1
+    if #diagnostics == 0 then
+      compat.notify("RoomPlan has no validation issues")
+      return
+    end
+    resolved.validation_index = ((resolved.validation_index or (direction < 0 and 1 or 0)) - 1 + direction)
+        % #diagnostics
+      + 1
     local diagnostic = diagnostics[resolved.validation_index]
     if diagnostic.object then resolved.selection = { kind = diagnostic.object.kind, id = diagnostic.object.id } end
     controller.reveal_selection(resolved)
-    compat.notify(string.format("%s: %s", diagnostic.code, diagnostic.message),
-      diagnostic.severity == "error" and vim.log.levels.ERROR or vim.log.levels.WARN)
+    compat.notify(
+      string.format("%s: %s", diagnostic.code, diagnostic.message),
+      diagnostic.severity == "error" and vim.log.levels.ERROR or vim.log.levels.WARN
+    )
     return diagnostic
   end
 
@@ -125,9 +132,7 @@ function M.attach(controller)
   function controller.reveal_selection(session, selection)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
-    if type(selection) == "table" then
-      resolved.selection = { kind = selection.kind, id = selection.id }
-    end
+    if type(selection) == "table" then resolved.selection = { kind = selection.kind, id = selection.id } end
     local focused, focus_err = controller.focus_canvas(resolved)
     if not focused then return nil, focus_err end
     local selected = resolved.selection
@@ -156,9 +161,8 @@ function M.attach(controller)
     local width, height = canvas_size(resolved)
     local viewport_module = require("roomplan.render.viewport")
     local current = ensure_viewport(resolved)
-    local centre_x, centre_y = viewport_module.screen_to_world(
-      current, math.max(0, (width - 1) / 2), math.max(0, (height - 1) / 2)
-    )
+    local centre_x, centre_y =
+      viewport_module.screen_to_world(current, math.max(0, (width - 1) / 2), math.max(0, (height - 1) / 2))
     resolved.viewport = viewport_module.pan(current, point[1] - centre_x, point[2] - centre_y)
     local canvas_ok, canvas = pcall(require, "roomplan.render.canvas")
     if canvas_ok and handle and canvas.redraw then
@@ -303,10 +307,9 @@ function M.attach(controller)
     elseif normalized == "reset" or normalized == "north" or normalized == 0 then
       delta = -viewport_module.rotation(current)
     else
-      return notify_error(util.err(
-        "VIEW_ROTATION_INVALID",
-        "view rotation must be clockwise, counterclockwise, or reset"
-      ))
+      return notify_error(
+        util.err("VIEW_ROTATION_INVALID", "view rotation must be clockwise, counterclockwise, or reset")
+      )
     end
 
     local width, height = canvas_size(resolved)
@@ -317,8 +320,10 @@ function M.attach(controller)
       local world = canvas.world_at_cursor(resolved)
       if logical and world then
         anchor = {
-          world_x = world.x, world_y = world.y,
-          screen_x = logical.column, screen_y = logical.row,
+          world_x = world.x,
+          world_y = world.y,
+          screen_x = logical.column,
+          screen_y = logical.row,
         }
       end
     end
@@ -328,7 +333,9 @@ function M.attach(controller)
     })
     controller.refresh(resolved)
     if not opts.quiet then
-      compat.notify("RoomPlan view rotated: plan top points " .. rotation_labels[viewport_module.rotation(resolved.viewport)])
+      compat.notify(
+        "RoomPlan view rotated: plan top points " .. rotation_labels[viewport_module.rotation(resolved.viewport)]
+      )
     end
     return resolved.viewport
   end
@@ -352,8 +359,10 @@ function M.attach(controller)
       local world = canvas.world_at_cursor(resolved)
       if logical and world then
         anchor = {
-          world_x = world.x, world_y = world.y,
-          screen_x = logical.column, screen_y = logical.row,
+          world_x = world.x,
+          world_y = world.y,
+          screen_x = logical.column,
+          screen_y = logical.row,
         }
       end
     end
@@ -370,19 +379,16 @@ function M.attach(controller)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
     if mode == "MOVE" and not resolved.selection then
-      return notify_error(util.err(
-        "SELECTION_REQUIRED",
-        "select a room, door, window, outlet, or furniture before entering MOVE mode"
-      ))
+      return notify_error(
+        util.err("SELECTION_REQUIRED", "select a room, door, window, outlet, or furniture before entering MOVE mode")
+      )
     end
     if mode ~= "NAV" and mode ~= "MOVE" and mode ~= "PAN" then
       return notify_error(util.err("MODE_INVALID", "unsupported RoomPlan mode " .. tostring(mode)))
     end
     common.clear_snap_feedback(resolved)
     resolved.move_feedback = nil
-    if mode ~= "MOVE" then
-      resolved.batch_move = nil
-    end
+    if mode ~= "MOVE" then resolved.batch_move = nil end
     resolved.mode = mode
     local workspace_ok, workspace = pcall(require, "roomplan.ui.workspace")
     if workspace_ok and resolved.workspace then
@@ -407,14 +413,8 @@ function M.attach(controller)
     local viewport_module = require("roomplan.render.viewport")
     local current = ensure_viewport(session)
     local world_x, world_y = viewport_module.screen_to_world(current, target_column, target_row)
-    local next_viewport = viewport_module.ensure_visible(
-      current,
-      world_x,
-      world_y,
-      width,
-      height,
-      config.get().canvas.scrolloff
-    )
+    local next_viewport =
+      viewport_module.ensure_visible(current, world_x, world_y, width, height, config.get().canvas.scrolloff)
     local scrolled = next_viewport.world_left_mm ~= current.world_left_mm
       or next_viewport.world_top_mm ~= current.world_top_mm
     if scrolled then
@@ -439,8 +439,10 @@ function M.attach(controller)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
     if resolved.mode == "PAN" then
-      local cells = scale == "coarse" and config.get().canvas.pan_coarse_step_cells or config.get().canvas.pan_step_cells
-      resolved.viewport = require("roomplan.render.viewport").pan_cells(ensure_viewport(resolved), dx * cells, dy * cells)
+      local cells = scale == "coarse" and config.get().canvas.pan_coarse_step_cells
+        or config.get().canvas.pan_step_cells
+      resolved.viewport =
+        require("roomplan.render.viewport").pan_cells(ensure_viewport(resolved), dx * cells, dy * cells)
       controller.refresh(resolved)
       return resolved.viewport
     elseif resolved.mode ~= "MOVE" then
@@ -471,12 +473,8 @@ function M.attach(controller)
       local anchor = resolved.batch_move[1]
       local marked_rooms, marked_furniture = {}, {}
       for _, reference in ipairs(resolved.batch_move) do
-        if reference.kind == "room" then
-          marked_rooms[reference.id] = true
-        end
-        if reference.kind == "furniture" then
-          marked_furniture[reference.id] = true
-        end
+        if reference.kind == "room" then marked_rooms[reference.id] = true end
+        if reference.kind == "furniture" then marked_furniture[reference.id] = true end
       end
       local snap_options = common.snapping_options(resolved)
       local feedback_options = snap_options or { bypass = true }
@@ -488,9 +486,7 @@ function M.attach(controller)
           proposed.origin_mm = { proposed.origin_mm[1] + raw_delta[1], proposed.origin_mm[2] + raw_delta[2] }
           local targets = {}
           for _, candidate in ipairs(plan.rooms or {}) do
-            if not marked_rooms[candidate.id] then
-              targets[#targets + 1] = candidate
-            end
+            if not marked_rooms[candidate.id] then targets[#targets + 1] = candidate end
           end
           batch_snap = snapping.snap_room(proposed, targets, feedback_options)
           raw_delta = {
@@ -509,17 +505,13 @@ function M.attach(controller)
           for _, candidate in ipairs(plan.furniture or {}) do
             if not marked_furniture[candidate.id] then
               local candidate_owner = model.find(plan, "room", candidate.room_id)
-              if candidate_owner then
-                pairs[#pairs + 1] = { furniture = candidate, room = candidate_owner }
-              end
+              if candidate_owner then pairs[#pairs + 1] = { furniture = candidate, room = candidate_owner } end
             end
           end
           local door_geometry = require("roomplan.geometry.door")
           for _, door in ipairs(plan.doors or {}) do
             local door_owner = model.find(plan, "room", door.room_id)
-            if door_owner then
-              apertures[#apertures + 1] = door_geometry.aperture(door_owner, door)
-            end
+            if door_owner then apertures[#apertures + 1] = door_geometry.aperture(door_owner, door) end
           end
           batch_snap = snapping.snap_furniture(owner, proposed, pairs, apertures, feedback_options)
           raw_delta = {
@@ -553,17 +545,17 @@ function M.attach(controller)
       action = { type = "edit_door", id = door.id, patch = { offset_mm = door.offset_mm + delta } }
     elseif selection.kind == "window" or selection.kind == "outlet" then
       local fixture = model.find(resolved:model(), selection.kind, selection.id)
-      if not fixture then
-        return notify_error(util.err("SELECTION_STALE", "selected wall object no longer exists"))
-      end
+      if not fixture then return notify_error(util.err("SELECTION_STALE", "selected wall object no longer exists")) end
       if selection.kind == "outlet" and fixture.placement == "floor" then
         action = {
           type = "edit_outlet",
           id = fixture.id,
-          patch = { position_mm = {
-            fixture.position_mm[1] + dx * step,
-            fixture.position_mm[2] + dy * step,
-          } },
+          patch = {
+            position_mm = {
+              fixture.position_mm[1] + dx * step,
+              fixture.position_mm[2] + dy * step,
+            },
+          },
         }
       else
         local delta = (fixture.side == "north" or fixture.side == "south") and dx * step or dy * step
@@ -586,8 +578,11 @@ function M.attach(controller)
       common.clear_snap_feedback(resolved)
     end
     resolved.move_feedback = string.format(
-      "%s %d mm%s", direction_label, step,
-      resolved.batch_move and string.format(" · %d marked", #resolved.batch_move) or "")
+      "%s %d mm%s",
+      direction_label,
+      step,
+      resolved.batch_move and string.format(" · %d marked", #resolved.batch_move) or ""
+    )
     controller.refresh(resolved)
     return result
   end
@@ -607,7 +602,11 @@ function M.attach(controller)
     common.clear_snap_feedback(resolved)
     resolved.move_feedback = nil
     hits = hits or {}
-    if #hits == 0 then resolved.selection = nil controller.refresh(resolved) return end
+    if #hits == 0 then
+      resolved.selection = nil
+      controller.refresh(resolved)
+      return
+    end
     resolved.selection_cycle = resolved.selection_cycle or {}
     local current = resolved.selection_cycle.key == cycle_key and resolved.selection or nil
     local index = 1
@@ -642,9 +641,13 @@ function M.attach(controller)
     if not resolved then return notify_error(err) end
     common.clear_snap_feedback(resolved)
     resolved.move_feedback = nil
-    local scene = require("roomplan.scene.build").build(resolved:model(), resolved.validation, { selected = resolved.selection })
+    local scene =
+      require("roomplan.scene.build").build(resolved:model(), resolved.validation, { selected = resolved.selection })
     local objects = scene.objects or {}
-    if #objects == 0 then resolved.selection = nil return nil end
+    if #objects == 0 then
+      resolved.selection = nil
+      return nil
+    end
     local current_index = direction < 0 and 1 or 0
     for index, object in ipairs(objects) do
       if resolved.selection and object.id == resolved.selection.id and object.type == resolved.selection.kind then
@@ -698,7 +701,6 @@ function M.attach(controller)
     end
     controller.refresh(resolved)
   end
-
 end
 
 return M

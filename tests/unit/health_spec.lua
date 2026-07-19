@@ -9,9 +9,7 @@ local function capture_health(options)
   local events = {}
   local reporter = {}
   for _, level in ipairs({ "start", "ok", "info", "warn", "error" }) do
-    reporter[level] = function(message)
-      events[#events + 1] = { level = level, message = tostring(message) }
-    end
+    reporter[level] = function(message) events[#events + 1] = { level = level, message = tostring(message) } end
   end
 
   local original_health = compat.health
@@ -49,8 +47,8 @@ describe("health", function()
     assert_true(all:find("minimum 0.10.0", 1, true) ~= nil)
     assert_true(all:find("primary", 1, true) ~= nil)
     assert_true(all:find("requested=ascii, effective=ascii", 1, true) ~= nil)
-    assert_true(warnings:find("override \"empty\" is empty", 1, true) ~= nil)
-    assert_true(warnings:find("both resolve to \"x\"", 1, true) ~= nil)
+    assert_true(warnings:find('override "empty" is empty', 1, true) ~= nil)
+    assert_true(warnings:find('both resolve to "x"', 1, true) ~= nil)
     assert_true(all:find("active sessions: 0", 1, true) ~= nil)
     assert_true(all:find("source writability checks were skipped", 1, true) ~= nil)
     config.reset()

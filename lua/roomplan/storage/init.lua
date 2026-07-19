@@ -21,25 +21,22 @@ function M.detect(context)
     adapter = "norg"
   end
   if not adapter then
-    return nil, util.err("STORAGE_UNSUPPORTED", "source must end in .roomplan.json or .norg (or be a norg buffer)", {
-      path = context.path,
-      filetype = context.filetype,
-    })
+    return nil,
+      util.err("STORAGE_UNSUPPORTED", "source must end in .roomplan.json or .norg (or be a norg buffer)", {
+        path = context.path,
+        filetype = context.filetype,
+      })
   end
   context.adapter = adapter
   return adapters[adapter](), context
 end
 
-function M.adapter(name)
-  return adapters[name] and adapters[name]() or nil
-end
+function M.adapter(name) return adapters[name] and adapters[name]() or nil end
 
 function M.ensure_buffer(path)
   local normalized = compat.normalize_path(path)
   local bufnr = vim.fn.bufnr(normalized)
-  if bufnr == -1 then
-    bufnr = vim.fn.bufadd(normalized)
-  end
+  if bufnr == -1 then bufnr = vim.fn.bufadd(normalized) end
   vim.fn.bufload(bufnr)
   return bufnr
 end

@@ -72,27 +72,22 @@ end
 local function theme()
   local normal = highlight("Normal")
   local foreground = normal.fg or first_color({ "NormalFloat", "StatusLine", "Comment" }, { "fg" })
-  local background = normal.bg or first_color(
-    { "NormalFloat", "Pmenu", "CursorLine", "StatusLine" }, { "bg" }
-  )
-  local sun_start = first_color(
-    { "DiagnosticWarn", "WarningMsg", "Special", "Search" }, { "fg", "bg" }
-  ) or foreground
+  local background = normal.bg or first_color({ "NormalFloat", "Pmenu", "CursorLine", "StatusLine" }, { "bg" })
+  local sun_start = first_color({ "DiagnosticWarn", "WarningMsg", "Special", "Search" }, { "fg", "bg" }) or foreground
   local sun_finish = first_color(
     { "WarningMsg", "DiagnosticError", "ErrorMsg", "Special", "IncSearch" },
-    { "fg", "bg" }, sun_start
+    { "fg", "bg" },
+    sun_start
   ) or sun_start
   return {
     foreground = foreground,
     background = background,
     sun_start = sun_start,
     sun_finish = sun_finish,
-    minimap_room = first_color(
-      { "Function", "DiagnosticInfo", "Type", "Identifier" }, { "fg", "bg" }
-    ) or foreground,
-    minimap_viewport = first_color(
-      { "IncSearch", "Search", "DiagnosticWarn", "WarningMsg" }, { "bg", "fg" }
-    ) or sun_start or foreground,
+    minimap_room = first_color({ "Function", "DiagnosticInfo", "Type", "Identifier" }, { "fg", "bg" }) or foreground,
+    minimap_viewport = first_color({ "IncSearch", "Search", "DiagnosticWarn", "WarningMsg" }, { "bg", "fg" })
+      or sun_start
+      or foreground,
   }
 end
 
@@ -148,12 +143,14 @@ function M.setup()
       define_default("RoomPlanSunlight" .. index, { link = "Visual" })
     end
   end
-  define_default("RoomPlanSunWall", colors.sun_finish
-      and { fg = colors.sun_finish, bold = true }
-    or { link = "DiagnosticWarn" })
-  define_default("RoomPlanSunWindow", colors.sun_start
-      and { fg = colors.sun_start, bold = true }
-    or { link = "DiagnosticWarn" })
+  define_default(
+    "RoomPlanSunWall",
+    colors.sun_finish and { fg = colors.sun_finish, bold = true } or { link = "DiagnosticWarn" }
+  )
+  define_default(
+    "RoomPlanSunWindow",
+    colors.sun_start and { fg = colors.sun_start, bold = true } or { link = "DiagnosticWarn" }
+  )
   local minimap_room = M.tint(colors.minimap_room, 0.12, 0.20)
   define_default("RoomPlanMinimapRoom", minimap_room.bg and minimap_room or { link = "Function" })
   local minimap_viewport = M.tint(colors.minimap_viewport, 0.22, 0.32)
@@ -161,9 +158,10 @@ function M.setup()
     minimap_viewport.fg = colors.minimap_viewport or minimap_viewport.fg
     minimap_viewport.bold = true
   end
-  define_default("RoomPlanMinimapViewport",
-    minimap_viewport.bg and minimap_viewport or { link = "IncSearch" })
-  for name, link in pairs(links) do define_default(name, { link = link }) end
+  define_default("RoomPlanMinimapViewport", minimap_viewport.bg and minimap_viewport or { link = "IncSearch" })
+  for name, link in pairs(links) do
+    define_default(name, { link = link })
+  end
 end
 
 return M

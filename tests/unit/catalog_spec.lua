@@ -23,9 +23,11 @@ describe("furniture catalog imports", function()
     assert_equal(1600, catalog.get("custom:standing-desk").default_size_mm[1])
     assert_equal(2100, catalog.get("builtin:sofa").default_size_mm[1])
 
-    local plan_local = catalog.resolve({ custom_templates = {
-      definition({ name = "Project desk", default_size_mm = { 1000, 500, 700 } }),
-    } }, "custom:standing-desk")
+    local plan_local = catalog.resolve({
+      custom_templates = {
+        definition({ name = "Project desk", default_size_mm = { 1000, 500, 700 } }),
+      },
+    }, "custom:standing-desk")
     assert_equal("Project desk", plan_local.name)
     config.reset()
   end)
@@ -79,9 +81,14 @@ describe("furniture catalog imports", function()
 
     empty_plan.furniture = {
       {
-        id = "furniture-sofa", room_id = "room-a", template_id = "builtin:sofa",
-        name = "Old sofa", category = "seating", center_mm = { 100, 100 },
-        size_mm = { 2100, 900, 850 }, rotation_deg = 0,
+        id = "furniture-sofa",
+        room_id = "room-a",
+        template_id = "builtin:sofa",
+        name = "Old sofa",
+        category = "seating",
+        center_mm = { 100, 100 },
+        size_mm = { 2100, 900, 850 },
+        rotation_deg = 0,
       },
     }
     local edit_spec = require("roomplan.ui.forms.furniture").edit(session, empty_plan.furniture[1])
@@ -89,7 +96,10 @@ describe("furniture catalog imports", function()
     local edit_choices = edit_spec.fields[2].choices(edit_spec.context)
     local found_builtin = false
     for _, choice in ipairs(edit_choices) do
-      if choice.value == "builtin:sofa" then found_builtin = true; break end
+      if choice.value == "builtin:sofa" then
+        found_builtin = true
+        break
+      end
     end
     assert_true(found_builtin)
 
@@ -120,13 +130,17 @@ describe("furniture catalog imports", function()
     config.reset()
     config.setup({ furniture = { definitions = { definition() } } })
 
-    local ok, err = pcall(config.setup, { furniture = { definitions = {
-      definition({
-        id = "builtin:sofa",
-        default_size_mm = { 0, 800, 1200 },
-        typo = true,
-      }),
-    } } })
+    local ok, err = pcall(config.setup, {
+      furniture = {
+        definitions = {
+          definition({
+            id = "builtin:sofa",
+            default_size_mm = { 0, 800, 1200 },
+            typo = true,
+          }),
+        },
+      },
+    })
     assert_true(not ok)
     assert_true(tostring(err):find("cannot replace built%-in templates") ~= nil)
     assert_true(tostring(err):find("unknown field") ~= nil)
@@ -137,9 +151,13 @@ describe("furniture catalog imports", function()
 
   it("enforces the plan text contract for inline and JSON labels", function()
     config.reset()
-    local ok, err = pcall(config.setup, { furniture = { definitions = {
-      definition({ category = "bad\0category", name = string.rep("x", 513) }),
-    } } })
+    local ok, err = pcall(config.setup, {
+      furniture = {
+        definitions = {
+          definition({ category = "bad\0category", name = string.rep("x", 513) }),
+        },
+      },
+    })
     assert_true(not ok)
     assert_true(tostring(err):find("disallowed control character", 1, true) ~= nil)
     assert_true(tostring(err):find("512 byte limit", 1, true) ~= nil)

@@ -12,9 +12,7 @@ end
 function M.read_file(path, opts)
   opts = opts or {}
   local fd, open_err = vim.uv.fs_open(path, "r", 438)
-  if not fd then
-    return uv_error("SOURCE_OPEN_FAILED", tostring(open_err), path)
-  end
+  if not fd then return uv_error("SOURCE_OPEN_FAILED", tostring(open_err), path) end
   local stat, stat_err = vim.uv.fs_fstat(fd)
   if not stat then
     vim.uv.fs_close(fd)
@@ -36,22 +34,16 @@ function M.read_file(path, opts)
       vim.uv.fs_close(fd)
       return uv_error("SOURCE_READ_FAILED", tostring(read_err), path)
     end
-    if #chunk == 0 then
-      break
-    end
+    if #chunk == 0 then break end
     chunks[#chunks + 1] = chunk
     offset = offset + #chunk
   end
   local close_ok, close_err = vim.uv.fs_close(fd)
-  if not close_ok then
-    return uv_error("SOURCE_CLOSE_FAILED", tostring(close_err), path)
-  end
+  if not close_ok then return uv_error("SOURCE_CLOSE_FAILED", tostring(close_err), path) end
   return table.concat(chunks), nil, stat
 end
 
-function M.buffer_text(bufnr)
-  return compat.buf_text(bufnr)
-end
+function M.buffer_text(bufnr) return compat.buf_text(bufnr) end
 
 -- Convert raw file bytes into the logical UTF-8 text Neovim exposes through a
 -- loaded buffer. Keep this separate from disk snapshots: conflict detection
@@ -65,20 +57,14 @@ end
 function M.logical_text(bytes, context)
   if type(bytes) ~= "string" then return bytes end
   local text = bytes
-  if text:sub(1, #UTF8_BOM) == UTF8_BOM then
-    text = text:sub(#UTF8_BOM + 1)
-  end
+  if text:sub(1, #UTF8_BOM) == UTF8_BOM then text = text:sub(#UTF8_BOM + 1) end
 
   local bufnr = context and context.bufnr
-  if not bufnr or not vim.api.nvim_buf_is_loaded(bufnr) then
-    return text
-  end
+  if not bufnr or not vim.api.nvim_buf_is_loaded(bufnr) then return text end
   local fileformat = vim.bo[bufnr].fileformat
   if fileformat == "dos" then
     local remainder = text:gsub("\r\n", "")
-    if not remainder:find("[\r\n]") then
-      text = text:gsub("\r\n", "\n")
-    end
+    if not remainder:find("[\r\n]") then text = text:gsub("\r\n", "\n") end
   elseif fileformat == "mac" and not text:find("\n", 1, true) then
     text = text:gsub("\r", "\n")
   end
@@ -88,15 +74,11 @@ end
 function M.context(opts)
   opts = opts or {}
   local bufnr = opts.bufnr
-  if bufnr == 0 then
-    bufnr = vim.api.nvim_get_current_buf()
-  end
+  if bufnr == 0 then bufnr = vim.api.nvim_get_current_buf() end
   local path = opts.path
   if bufnr and vim.api.nvim_buf_is_valid(bufnr) then
     local name = vim.api.nvim_buf_get_name(bufnr)
-    if name ~= "" then
-      path = name
-    end
+    if name ~= "" then path = name end
   end
   return {
     bufnr = bufnr,
@@ -107,15 +89,13 @@ end
 
 function M.text(context)
   if context.bufnr and vim.api.nvim_buf_is_loaded(context.bufnr) then
-    return M.buffer_text(context.bufnr), nil, { kind = "buffer", changedtick = vim.api.nvim_buf_get_changedtick(context.bufnr) }
+    return M.buffer_text(context.bufnr),
+      nil,
+      { kind = "buffer", changedtick = vim.api.nvim_buf_get_changedtick(context.bufnr) }
   end
-  if not context.path then
-    return nil, util.err("SOURCE_UNNAMED", "source has no buffer or path")
-  end
+  if not context.path then return nil, util.err("SOURCE_UNNAMED", "source has no buffer or path") end
   local bytes, err, stat = M.read_file(context.path)
-  if not bytes then
-    return nil, err
-  end
+  if not bytes then return nil, err end
   return bytes, nil, { kind = "file", stat = stat }
 end
 
@@ -123,7 +103,9 @@ function M.revision(text, context, extra)
   local revision = {
     hash = compat.sha256(text),
     text = text,
-    changedtick = context and context.bufnr and vim.api.nvim_buf_is_valid(context.bufnr)
+    changedtick = context
+        and context.bufnr
+        and vim.api.nvim_buf_is_valid(context.bufnr)
         and vim.api.nvim_buf_get_changedtick(context.bufnr)
       or nil,
     path = context and context.path or nil,
@@ -138,9 +120,7 @@ function M.disk_snapshot(context)
   if not context or not context.path then return nil end
   local stat = vim.uv.fs_lstat(context.path)
   if not stat then return { exists = false } end
-  if stat.type ~= "file" then
-    return { exists = true, type = stat.type }
-  end
+  if stat.type ~= "file" then return { exists = true, type = stat.type } end
   local bytes, err = M.read_file(context.path)
   if bytes == nil then return nil, err end
   return {
@@ -183,14 +163,15 @@ function M.verify_expected_disk(context, revision)
   local equal = expected.exists == actual.exists and expected.type == actual.type
   if equal and expected.exists and expected.type == "file" then equal = expected.text == actual.text end
   if not equal then
-    return nil, util.err("SOURCE_CONFLICT", "source file changed on disk after RoomPlan opened", {
-      kind = "disk",
-      path = context.path,
-      expected_hash = expected.hash,
-      actual_hash = actual.hash,
-      expected_exists = expected.exists,
-      actual_exists = actual.exists,
-    })
+    return nil,
+      util.err("SOURCE_CONFLICT", "source file changed on disk after RoomPlan opened", {
+        kind = "disk",
+        path = context.path,
+        expected_hash = expected.hash,
+        actual_hash = actual.hash,
+        expected_exists = expected.exists,
+        actual_exists = actual.exists,
+      })
   end
   return true
 end
@@ -202,24 +183,16 @@ end
 
 function M.set_buffer_text(bufnr, text)
   local had_final_eol = text:sub(-1) == "\n"
-  if had_final_eol then
-    text = text:sub(1, -2)
-  end
+  if had_final_eol then text = text:sub(1, -2) end
   local lines = vim.split(text, "\n", { plain = true })
-  if #lines == 0 then
-    lines = { "" }
-  end
+  if #lines == 0 then lines = { "" } end
   vim.api.nvim_buf_set_lines(bufnr, 0, -1, false, lines)
   vim.bo[bufnr].endofline = had_final_eol
 end
 
 function M.write_buffer(bufnr)
-  local ok, err = pcall(vim.api.nvim_buf_call, bufnr, function()
-    vim.cmd("write")
-  end)
-  if not ok then
-    return nil, util.err("SOURCE_WRITE_FAILED", tostring(err), { bufnr = bufnr })
-  end
+  local ok, err = pcall(vim.api.nvim_buf_call, bufnr, function() vim.cmd("write") end)
+  if not ok then return nil, util.err("SOURCE_WRITE_FAILED", tostring(err), { bufnr = bufnr }) end
   return true
 end
 

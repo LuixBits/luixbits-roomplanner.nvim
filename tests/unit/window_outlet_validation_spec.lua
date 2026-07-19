@@ -96,11 +96,15 @@ describe("window and outlet validation", function()
   it("validates references and accepts valid wall attachments", function()
     local valid = plan_with_owner()
     add(valid, "rooms", room("room-connected", 4000, 0, 3000, 3000))
-    add(valid, "windows", window({
-      side = "east",
-      offset_mm = 1000,
-      connects_to_room_id = "room-connected",
-    }))
+    add(
+      valid,
+      "windows",
+      window({
+        side = "east",
+        offset_mm = 1000,
+        connects_to_room_id = "room-connected",
+      })
+    )
     add(valid, "outlets", outlet({}))
     local valid_diagnostics = validate.run(valid)
     assert_equal(0, #valid_diagnostics)
@@ -119,12 +123,16 @@ describe("window and outlet validation", function()
     assert_true(codes(validate.run(outside)).WINDOW_OUTSIDE_EDGE)
 
     local compound = assert(model.new())
-    add(compound, "rooms", model.new_room({
-      id = "room-owner",
-      name = "L room",
-      origin_mm = { 0, 0 },
-      footprint = l_footprint(),
-    }))
+    add(
+      compound,
+      "rooms",
+      model.new_room({
+        id = "room-owner",
+        name = "L room",
+        origin_mm = { 0, 0 },
+        footprint = l_footprint(),
+      })
+    )
     add(compound, "windows", window({ side = "north", offset_mm = 500, width_mm = 1000 }))
     assert_true(codes(validate.run(compound)).WINDOW_NOT_EXTERIOR)
 
@@ -150,56 +158,108 @@ describe("window and outlet validation", function()
     assert_true(codes(validate.run(corner)).OUTLET_OUTSIDE_EDGE)
 
     local compound = assert(model.new())
-    add(compound, "rooms", model.new_room({
-      id = "room-owner",
-      name = "L room",
-      origin_mm = { 0, 0 },
-      footprint = l_footprint(),
-    }))
+    add(
+      compound,
+      "rooms",
+      model.new_room({
+        id = "room-owner",
+        name = "L room",
+        origin_mm = { 0, 0 },
+        footprint = l_footprint(),
+      })
+    )
     add(compound, "outlets", outlet({ side = "north", offset_mm = 500 }))
     assert_true(codes(validate.run(compound)).OUTLET_NOT_EXTERIOR)
   end)
 
   it("accepts interior floor outlets and rejects room boundaries and outside points", function()
     local valid = plan_with_owner()
-    add(valid, "outlets", model.new_outlet({
-      id = "outlet-floor", room_id = "room-owner", placement = "floor",
-      position_mm = { 2000, 1500 }, outlet_type = "power", slots = 2,
-    }))
+    add(
+      valid,
+      "outlets",
+      model.new_outlet({
+        id = "outlet-floor",
+        room_id = "room-owner",
+        placement = "floor",
+        position_mm = { 2000, 1500 },
+        outlet_type = "power",
+        slots = 2,
+      })
+    )
     assert_equal(0, #validate.run(valid))
 
     local boundary = plan_with_owner()
-    add(boundary, "outlets", model.new_outlet({
-      id = "outlet-boundary", room_id = "room-owner", placement = "floor",
-      position_mm = { 0, 1500 }, outlet_type = "power", slots = 2,
-    }))
+    add(
+      boundary,
+      "outlets",
+      model.new_outlet({
+        id = "outlet-boundary",
+        room_id = "room-owner",
+        placement = "floor",
+        position_mm = { 0, 1500 },
+        outlet_type = "power",
+        slots = 2,
+      })
+    )
     assert_true(codes(validate.run(boundary)).OUTLET_OUTSIDE_ROOM)
 
     local outside = plan_with_owner()
-    add(outside, "outlets", model.new_outlet({
-      id = "outlet-outside", room_id = "room-owner", placement = "floor",
-      position_mm = { 5000, 1500 }, outlet_type = "power", slots = 2,
-    }))
+    add(
+      outside,
+      "outlets",
+      model.new_outlet({
+        id = "outlet-outside",
+        room_id = "room-owner",
+        placement = "floor",
+        position_mm = { 5000, 1500 },
+        outlet_type = "power",
+        slots = 2,
+      })
+    )
     assert_true(codes(validate.run(outside)).OUTLET_OUTSIDE_ROOM)
   end)
 
   it("keeps door overlap compatibility and detects every window opening overlap", function()
     local doors = plan_with_owner()
-    add(doors, "doors", model.new_door({
-      id = "door-one", room_id = "room-owner", part_id = "part-main",
-      side = "south", offset_mm = 500, width_mm = 1000,
-    }))
-    add(doors, "doors", model.new_door({
-      id = "door-two", room_id = "room-owner", part_id = "part-main",
-      side = "south", offset_mm = 1000, width_mm = 1000,
-    }))
+    add(
+      doors,
+      "doors",
+      model.new_door({
+        id = "door-one",
+        room_id = "room-owner",
+        part_id = "part-main",
+        side = "south",
+        offset_mm = 500,
+        width_mm = 1000,
+      })
+    )
+    add(
+      doors,
+      "doors",
+      model.new_door({
+        id = "door-two",
+        room_id = "room-owner",
+        part_id = "part-main",
+        side = "south",
+        offset_mm = 1000,
+        width_mm = 1000,
+      })
+    )
     assert_true(codes(validate.run(doors)).DOOR_OPENING_OVERLAP)
 
     local mixed = plan_with_owner()
-    add(mixed, "doors", model.new_door({
-      id = "door-main", room_id = "room-owner", part_id = "part-main",
-      side = "south", offset_mm = 500, width_mm = 1000,
-    }))
+    add(
+      mixed,
+      "doors",
+      model.new_door({
+        id = "door-main",
+        room_id = "room-owner",
+        part_id = "part-main",
+        side = "south",
+        offset_mm = 500,
+        width_mm = 1000,
+      })
+    )
     add(mixed, "windows", window({ offset_mm = 750, width_mm = 500 }))
     assert_true(codes(validate.run(mixed)).WALL_OPENING_OVERLAP)
 

@@ -165,7 +165,9 @@ function M.mount(api, session, opts)
   end
   layout.define_highlights()
   render.ensure_buffers(session, workspace)
-  for role, buffer in pairs(workspace.buffers) do interaction.map_common(api, session, buffer, role) end
+  for role, buffer in pairs(workspace.buffers) do
+    interaction.map_common(api, session, buffer, role)
+  end
   install_autocommands(api, session, workspace)
   interaction.apply_canvas_keymaps(api, session, { cycle_tabs = opts.cycle_tabs ~= false })
   vim.api.nvim_set_current_tabpage(workspace.tabpage)
@@ -206,18 +208,21 @@ end
 
 function M.is_visible(_, session)
   local workspace = session and session.workspace
-  return workspace ~= nil and not workspace.closed and not workspace.hidden and util.valid_window(workspace.canvas_winid)
+  return workspace ~= nil
+    and not workspace.closed
+    and not workspace.hidden
+    and util.valid_window(workspace.canvas_winid)
 end
 
 function M.owns_window(_, session, winid)
   local workspace = session and session.workspace
   if not workspace then return false end
-  for _, owned in pairs(workspace.windows) do if owned == winid then return true end end
+  for _, owned in pairs(workspace.windows) do
+    if owned == winid then return true end
+  end
   return false
 end
 
-function M.current_layout(_, session)
-  return session and session.workspace and session.workspace.layout or nil
-end
+function M.current_layout(_, session) return session and session.workspace and session.workspace.layout or nil end
 
 return M

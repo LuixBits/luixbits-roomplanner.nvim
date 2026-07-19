@@ -18,7 +18,9 @@ local function tuple(values, defaults, length)
   values = values or defaults or {}
   local result = json.array()
   local last = length or #values
-  for index = 1, last do result[index] = values[index] end
+  for index = 1, last do
+    result[index] = values[index]
+  end
   return result
 end
 
@@ -43,8 +45,7 @@ function M.room(fields, version)
   result.name = fields.name or "Room"
   result.origin_mm = tuple(fields.origin_mm, { 0, 0 })
   if version >= 2 then
-    result.footprint = fields.footprint and json.deep_copy(fields.footprint)
-      or M.rectangle_footprint(fields.size_mm)
+    result.footprint = fields.footprint and json.deep_copy(fields.footprint) or M.rectangle_footprint(fields.size_mm)
     result.size_mm = nil
   else
     result.size_mm = tuple(fields.size_mm)
@@ -83,8 +84,7 @@ function M.furniture(fields, version)
     local size = fields.size_mm or {}
     result.position_mm = tuple(fields.position_mm, { 0, 0 })
     result.anchor2_mm = tuple(fields.anchor2_mm, { size[1], size[2] })
-    result.footprint = fields.footprint and json.deep_copy(fields.footprint)
-      or M.rectangle_footprint(size)
+    result.footprint = fields.footprint and json.deep_copy(fields.footprint) or M.rectangle_footprint(size)
     result.height_mm = fields.height_mm or size[3]
     result.center_mm = nil
     result.size_mm = nil

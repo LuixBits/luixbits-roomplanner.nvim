@@ -46,46 +46,28 @@ local function spatial_ref(kind, object, order, context)
 end
 
 local function key_for_ref(ref)
-  if type(ref) ~= "table" or type(ref.id) ~= "string" then
-    return nil
-  end
+  if type(ref) ~= "table" or type(ref.id) ~= "string" then return nil end
   return (ref.type or ref.kind or "") .. "\0" .. ref.id
 end
 
 local function role_max(a, b)
-  if not a then
-    return b
-  end
-  if not b then
-    return a
-  end
-  if (ROLE_RANK[b] or 0) > (ROLE_RANK[a] or 0) then
-    return b
-  end
+  if not a then return b end
+  if not b then return a end
+  if (ROLE_RANK[b] or 0) > (ROLE_RANK[a] or 0) then return b end
   return a
 end
 
 local function normalize_severity(value)
   value = type(value) == "string" and value:lower() or ""
-  if value == "error" or value == "fatal" or value == "structural" then
-    return "error"
-  end
-  if value == "warning" or value == "warn" then
-    return "warning"
-  end
+  if value == "error" or value == "fatal" or value == "structural" then return "error" end
+  if value == "warning" or value == "warn" then return "warning" end
   return nil
 end
 
 local function diagnostics_array(validation)
-  if type(validation) ~= "table" then
-    return {}
-  end
-  if type(validation.diagnostics) == "table" then
-    return validation.diagnostics
-  end
-  if type(validation.items) == "table" then
-    return validation.items
-  end
+  if type(validation) ~= "table" then return {} end
+  if type(validation.diagnostics) == "table" then return validation.diagnostics end
+  if type(validation.items) == "table" then return validation.items end
   return validation
 end
 
@@ -107,15 +89,9 @@ local function diagnostic_roles(validation, selected)
     if type(diagnostic) == "table" then
       local role = normalize_severity(diagnostic.severity or diagnostic.level)
       if role then
-        if type(diagnostic.ref) == "table" then
-          add_role(roles, diagnostic.ref, role)
-        end
-        if type(diagnostic.object_ref) == "table" then
-          add_role(roles, diagnostic.object_ref, role)
-        end
-        if type(diagnostic.object) == "table" then
-          add_role(roles, diagnostic.object, role)
-        end
+        if type(diagnostic.ref) == "table" then add_role(roles, diagnostic.ref, role) end
+        if type(diagnostic.object_ref) == "table" then add_role(roles, diagnostic.object_ref, role) end
+        if type(diagnostic.object) == "table" then add_role(roles, diagnostic.object, role) end
         local id = diagnostic.object_id or diagnostic.id
         if type(id) == "string" then
           local ref = { type = diagnostic.object_type or diagnostic.type, id = id }
@@ -169,9 +145,7 @@ local function bbox_new()
 end
 
 local function bbox_point(box, x, y)
-  if not finite(x) or not finite(y) then
-    return
-  end
+  if not finite(x) or not finite(y) then return end
   if box.empty then
     box.left, box.right, box.bottom, box.top = x, x, y, y
     box.empty = false
@@ -243,9 +217,7 @@ end
 
 local function add_measurement(scene, roles, measurement)
   local closest = measurement and measurement.closest
-  if not closest or not closest.from or not closest.to then
-    return
-  end
+  if not closest or not closest.from or not closest.to then return end
   local from, to = closest.from, closest.to
   add_primitive(scene, {
     kind = "snap_guide",
@@ -271,15 +243,8 @@ local function add_measurement(scene, roles, measurement)
 end
 
 local function valid_furniture(item, room)
-  if not (type(item) == "table"
-    and type(item.id) == "string"
-    and room ~= nil)
-  then
-    return false
-  end
-  if item.footprint ~= nil then
-    return footprint.from_furniture(room, item, { rotation_fallback = 0 }) ~= nil
-  end
+  if not (type(item) == "table" and type(item.id) == "string" and room ~= nil) then return false end
+  if item.footprint ~= nil then return footprint.from_furniture(room, item, { rotation_fallback = 0 }) ~= nil end
   return type(item.center_mm) == "table"
     and type(item.size_mm) == "table"
     and finite(item.center_mm[1])
@@ -322,14 +287,14 @@ local function furniture_geometry(item, room)
   -- historical unrotated fallback for a malformed rotation while deriving all
   -- valid geometry through the shared footprint adapter.
   local shape = footprint.from_furniture(room, item, { rotation_fallback = 0 })
-  if shape then
-    return geometry_bounds(shape), shape
-  end
+  if shape then return geometry_bounds(shape), shape end
 
   -- Non-canonical repair drafts historically still rendered when their 2D
   -- values were finite. Keep that fallback outside the exact geometry layer.
   local width, depth = item.size_mm[1], item.size_mm[2]
-  if item.rotation_deg == 90 or item.rotation_deg == 270 then width, depth = depth, width end
+  if item.rotation_deg == 90 or item.rotation_deg == 270 then
+    width, depth = depth, width
+  end
   local center_x = room.origin_mm[1] + item.center_mm[1]
   local center_y = room.origin_mm[2] + item.center_mm[2]
   return {
@@ -339,7 +304,8 @@ local function furniture_geometry(item, room)
     top = center_y + depth / 2,
     center_x = center_x,
     center_y = center_y,
-  }, nil
+  },
+    nil
 end
 
 local function room_geometry(room)
@@ -381,9 +347,7 @@ end
 
 local function door_swing(aperture)
   local door = aperture.door
-  if not aperture.owner_edge_valid or type(door) ~= "table" then
-    return nil
-  end
+  if not aperture.owner_edge_valid or type(door) ~= "table" then return nil end
 
   local hinge_at_start = door.hinge ~= "end"
   local hinge = hinge_at_start and aperture.p0 or aperture.p1
@@ -391,12 +355,8 @@ local function door_swing(aperture)
   local vector_x = other[1] - hinge[1]
   local vector_y = other[2] - hinge[2]
   local target = INWARD[door.side]
-  if not target then
-    return nil
-  end
-  if door.opens_into ~= "owner" then
-    target = { -target[1], -target[2] }
-  end
+  if not target then return nil end
+  if door.opens_into ~= "owner" then target = { -target[1], -target[2] } end
 
   -- The derivative of a positive (CCW) rotation is (-vy, vx).  Choose the
   -- sign whose initial motion has a positive component in the target half-plane.
@@ -423,18 +383,14 @@ end
 
 local function normalize_angle(angle)
   angle = angle % 360
-  if angle < 0 then
-    angle = angle + 360
-  end
+  if angle < 0 then angle = angle + 360 end
   return angle
 end
 
 local function angle_in_sweep(candidate, start_angle, sweep)
   candidate = normalize_angle(candidate)
   start_angle = normalize_angle(start_angle)
-  if sweep >= 0 then
-    return normalize_angle(candidate - start_angle) <= sweep + 1e-9
-  end
+  if sweep >= 0 then return normalize_angle(candidate - start_angle) <= sweep + 1e-9 end
   return normalize_angle(start_angle - candidate) <= -sweep + 1e-9
 end
 
@@ -454,9 +410,7 @@ local function bbox_swing(box, swing)
   end
 end
 
-local function diagnostic_role_for_id(roles, kind, id)
-  return role_for(roles, { type = kind, id = id })
-end
+local function diagnostic_role_for_id(roles, kind, id) return role_for(roles, { type = kind, id = id }) end
 
 local function annotation_character(role)
   if role == "error" then
@@ -485,11 +439,13 @@ function M.build(model, validation, opts)
   local furniture = type(model.furniture) == "table" and model.furniture or {}
   local roles = diagnostic_roles(validation, opts.selected or opts.selected_ref or opts.selected_id)
   local template_edit = opts.shape_edit and opts.shape_edit.kind == "template"
-  local wall_scene = template_edit and walls.build({}, {}, {}, {})
-    or walls.build(rooms, doors, windows, outlets)
+  local wall_scene = template_edit and walls.build({}, {}, {}, {}) or walls.build(rooms, doors, windows, outlets)
   local sunlight
-  if opts.sun_study and opts.sun_study.active
-    and opts.sun_study.overlay == "daily" and opts.sun_study.daily_exposure
+  if
+    opts.sun_study
+    and opts.sun_study.active
+    and opts.sun_study.overlay == "daily"
+    and opts.sun_study.daily_exposure
   then
     local exposure = opts.sun_study.daily_exposure
     local exposed_walls = {}
@@ -508,7 +464,9 @@ function M.build(model, validation, opts)
     }
   elseif opts.sun_study and opts.sun_study.active then
     sunlight = require("roomplan.analysis.sunlight").build(
-      model, wall_scene, opts.sun_study.calculation,
+      model,
+      wall_scene,
+      opts.sun_study.calculation,
       opts.sun_config and opts.sun_config.window_defaults
     )
   else
@@ -550,7 +508,10 @@ function M.build(model, validation, opts)
     end
     local template
     for _, candidate in ipairs(model.custom_templates or {}) do
-      if candidate.id == edit.entity_id then template = candidate; break end
+      if candidate.id == edit.entity_id then
+        template = candidate
+        break
+      end
     end
     template = template or { id = edit.entity_id, name = edit.entity_id }
     local bounds = geometry_bounds(shape)
@@ -804,9 +765,7 @@ function M.build(model, validation, opts)
         connection_valid = aperture.connection_valid,
         connection_requested = aperture.connection_requested,
       }, roles)
-      if high_detail then
-        add_primitive(scene, labels.door_dimension(aperture, ref, i), roles)
-      end
+      if high_detail then add_primitive(scene, labels.door_dimension(aperture, ref, i), roles) end
 
       local swing = door_swing(aperture)
       if swing then
@@ -870,9 +829,7 @@ function M.build(model, validation, opts)
         connection_requested = aperture.connection_requested,
         role = sunlight.windows[aperture.id] and "sun_window" or nil,
       }, roles)
-      if high_detail then
-        add_primitive(scene, labels.opening_dimension(aperture, ref, i), roles)
-      end
+      if high_detail then add_primitive(scene, labels.opening_dimension(aperture, ref, i), roles) end
       bbox_point(scene.bounds, aperture.p0[1], aperture.p0[2])
       bbox_point(scene.bounds, aperture.p1[1], aperture.p1[2])
     else
@@ -901,9 +858,7 @@ function M.build(model, validation, opts)
         side = marker.side,
         ref = ref,
       }, roles)
-      if show_labels then
-        add_primitive(scene, labels.outlet(marker.outlet, marker, ref, i), roles)
-      end
+      if show_labels then add_primitive(scene, labels.outlet(marker.outlet, marker, ref, i), roles) end
       bbox_point(scene.bounds, marker.p[1], marker.p[2])
     else
       scene.warnings[#scene.warnings + 1] = {
@@ -949,14 +904,10 @@ function M.build(model, validation, opts)
     local br = type_rank[b.type] or 99
     if a.order ~= b.order then
       -- Model order is collection-local; type rank keeps cycling predictable.
-      if ar == br then
-        return a.order < b.order
-      end
+      if ar == br then return a.order < b.order end
       return ar < br
     end
-    if ar ~= br then
-      return ar < br
-    end
+    if ar ~= br then return ar < br end
     return a.id < b.id
   end)
 

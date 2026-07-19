@@ -78,8 +78,11 @@ describe("window and outlet presentation", function()
     h.eq(1, #primitives(none, "window_aperture"))
     h.eq(2, #primitives(none, "outlet_marker"))
     for _, primitive in ipairs(none.primitives) do
-      h.falsy(primitive.ref and (primitive.ref.type == "window" or primitive.ref.type == "outlet")
-        and (primitive.kind == "label" or primitive.kind == "dimension"))
+      h.falsy(
+        primitive.ref
+          and (primitive.ref.type == "window" or primitive.ref.type == "outlet")
+          and (primitive.kind == "label" or primitive.kind == "dimension")
+      )
     end
   end)
 

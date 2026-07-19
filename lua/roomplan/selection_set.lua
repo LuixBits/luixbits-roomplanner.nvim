@@ -25,9 +25,7 @@ function M.list(model, marked)
   for _, collection in ipairs(collections) do
     for _, object in ipairs(model and model[collection.key] or {}) do
       local reference = { kind = collection.kind, id = object.id }
-      if marked[M.key(reference)] then
-        result[#result + 1] = reference
-      end
+      if marked[M.key(reference)] then result[#result + 1] = reference end
     end
   end
   return result
@@ -37,9 +35,7 @@ function M.move_refs(model, marked)
   local refs = M.list(model, marked)
   local selected_rooms = {}
   for _, reference in ipairs(refs) do
-    if reference.kind == "room" then
-      selected_rooms[reference.id] = true
-    end
+    if reference.kind == "room" then selected_rooms[reference.id] = true end
   end
   local result, unsupported = {}, {}
   for _, reference in ipairs(refs) do
@@ -47,9 +43,7 @@ function M.move_refs(model, marked)
       result[#result + 1] = reference
     elseif reference.kind == "furniture" then
       local furniture = model_helpers.find(model, "furniture", reference.id)
-      if furniture and not selected_rooms[furniture.room_id] then
-        result[#result + 1] = reference
-      end
+      if furniture and not selected_rooms[furniture.room_id] then result[#result + 1] = reference end
     else
       unsupported[#unsupported + 1] = reference
     end
@@ -61,9 +55,7 @@ function M.delete_refs(model, marked)
   local refs = M.list(model, marked)
   local selected_rooms = {}
   for _, reference in ipairs(refs) do
-    if reference.kind == "room" then
-      selected_rooms[reference.id] = true
-    end
+    if reference.kind == "room" then selected_rooms[reference.id] = true end
   end
   local ordinary, templates = {}, {}
   for _, reference in ipairs(refs) do

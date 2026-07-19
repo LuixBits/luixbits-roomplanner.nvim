@@ -7,9 +7,7 @@ local history = require("roomplan.history")
 local catalog = require("roomplan.catalog")
 
 local function assert_nil(value, message)
-  if value ~= nil then
-    error(message or "expected nil", 2)
-  end
+  if value ~= nil then error(message or "expected nil", 2) end
 end
 
 describe("pure model foundation", function()
@@ -148,15 +146,22 @@ describe("pure model foundation", function()
   it("constructs canonical v2 entities without retaining v1 geometry", function()
     local options = { schema_version = 2 }
     local room = model.new_room({
-      id = "room-a", name = "A", origin_mm = { 10, 20 }, size_mm = { 100, 200 },
+      id = "room-a",
+      name = "A",
+      origin_mm = { 10, 20 },
+      size_mm = { 100, 200 },
     }, options)
     assert_nil(room.size_mm)
     assert_equal({ 100, 200 }, room.footprint.parts[1].size_mm)
     assert_true(json.is_array(room.footprint.parts))
 
     local furniture = model.new_furniture({
-      id = "furniture-a", room_id = room.id, name = "Chair", category = "seating",
-      position_mm = { 50, 60 }, size_mm = { 20, 30, 40 },
+      id = "furniture-a",
+      room_id = room.id,
+      name = "Chair",
+      category = "seating",
+      position_mm = { 50, 60 },
+      size_mm = { 20, 30, 40 },
     }, options)
     assert_nil(furniture.center_mm)
     assert_nil(furniture.size_mm)
@@ -165,12 +170,17 @@ describe("pure model foundation", function()
     assert_equal(40, furniture.height_mm)
 
     local door = model.new_door({
-      id = "door-a", room_id = room.id, side = "south", width_mm = 10,
+      id = "door-a",
+      room_id = room.id,
+      side = "south",
+      width_mm = 10,
     }, options)
     assert_equal("part-main", door.part_id)
 
     local template = model.new_custom_template({
-      id = "custom:chair", name = "Chair", category = "seating",
+      id = "custom:chair",
+      name = "Chair",
+      category = "seating",
       default_size_mm = { 20, 30, 40 },
     }, options)
     assert_nil(template.shape)
@@ -218,7 +228,9 @@ describe("pure model foundation", function()
 
   it("accepts the current schema, migrates v2, and rejects missing, zero, and future versions", function()
     local function document(version_member, wall_collections)
-      return '{"format":"roomplan.nvim"' .. version_member .. ',"units":"mm","rooms":[],"doors":[]'
+      return '{"format":"roomplan.nvim"'
+        .. version_member
+        .. ',"units":"mm","rooms":[],"doors":[]'
         .. (wall_collections and ',"windows":[],"outlets":[]' or "")
         .. ',"furniture":[],"custom_templates":[]}'
     end

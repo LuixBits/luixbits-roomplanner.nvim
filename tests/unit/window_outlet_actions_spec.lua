@@ -33,7 +33,9 @@ end
 
 local function touched_set(values)
   local result = {}
-  for _, value in ipairs(values or {}) do result[value.kind .. ":" .. value.id] = true end
+  for _, value in ipairs(values or {}) do
+    result[value.kind .. ":" .. value.id] = true
+  end
   return result
 end
 
@@ -97,14 +99,19 @@ describe("window and outlet atomic actions", function()
     value = apply(value, {
       type = "add_window",
       window = {
-        id = "window-source", room_id = "room-main", side = "north",
-        offset_mm = 500, width_mm = 1000,
+        id = "window-source",
+        room_id = "room-main",
+        side = "north",
+        offset_mm = 500,
+        width_mm = 1000,
       },
     })
     local before_window_duplicate = value
     local window_result
     value, window_result = apply(value, {
-      type = "duplicate_window", id = "window-source", new_id = "window-copy",
+      type = "duplicate_window",
+      id = "window-source",
+      new_id = "window-copy",
     })
     h.eq(1, #before_window_duplicate.windows)
     h.eq(2, #value.windows)
@@ -115,13 +122,19 @@ describe("window and outlet atomic actions", function()
     value = apply(value, {
       type = "add_outlet",
       outlet = {
-        id = "outlet-source", room_id = "room-main", side = "east",
-        offset_mm = 700, outlet_type = "ethernet", slots = 2,
+        id = "outlet-source",
+        room_id = "room-main",
+        side = "east",
+        offset_mm = 700,
+        outlet_type = "ethernet",
+        slots = 2,
       },
     })
     local outlet_result
     value, outlet_result = apply(value, {
-      type = "duplicate_outlet", id = "outlet-source", new_id = "outlet-copy",
+      type = "duplicate_outlet",
+      id = "outlet-source",
+      new_id = "outlet-copy",
     })
     h.eq(2, #value.outlets)
     h.eq(800, value.outlets[2].offset_mm)
@@ -147,15 +160,21 @@ describe("window and outlet atomic actions", function()
     value = apply(value, {
       type = "add_outlet",
       outlet = {
-        id = "outlet-floor", room_id = "room-main", placement = "floor",
-        position_mm = { 1000, 1200 }, outlet_type = "power", slots = 2,
+        id = "outlet-floor",
+        room_id = "room-main",
+        placement = "floor",
+        position_mm = { 1000, 1200 },
+        outlet_type = "power",
+        slots = 2,
       },
     })
     h.eq(nil, value.outlets[1].side)
     h.eq({ 1000, 1200 }, value.outlets[1].position_mm)
 
     value = apply(value, {
-      type = "edit_outlet", id = "outlet-floor", patch = { position_mm = { 1300, 1500 } },
+      type = "edit_outlet",
+      id = "outlet-floor",
+      patch = { position_mm = { 1300, 1500 } },
     })
     h.eq({ 1300, 1500 }, value.outlets[1].position_mm)
 
@@ -163,8 +182,13 @@ describe("window and outlet atomic actions", function()
     h.eq({ 1400, 1600 }, value.outlets[2].position_mm)
 
     value = apply(value, {
-      type = "edit_outlet", id = "outlet-floor", patch = {
-        placement = "wall", part_id = "part-main", side = "south", offset_mm = 1000,
+      type = "edit_outlet",
+      id = "outlet-floor",
+      patch = {
+        placement = "wall",
+        part_id = "part-main",
+        side = "south",
+        offset_mm = 1000,
       },
     })
     h.eq("wall", value.outlets[1].placement)
@@ -177,22 +201,38 @@ describe("window and outlet atomic actions", function()
     value.rooms[1] = room("room-main", 0, 0, 4000, 3000)
     value.rooms[2] = room("room-annex", 4000, 0, 3000, 3000)
     value.windows[1] = model.new_window({
-      id = "window-main", room_id = "room-main", side = "south",
-      offset_mm = 200, width_mm = 700,
+      id = "window-main",
+      room_id = "room-main",
+      side = "south",
+      offset_mm = 200,
+      width_mm = 700,
     })
     value.windows[2] = model.new_window({
-      id = "window-connected", room_id = "room-annex", connects_to_room_id = "room-main",
-      side = "west", offset_mm = 1000, width_mm = 700,
+      id = "window-connected",
+      room_id = "room-annex",
+      connects_to_room_id = "room-main",
+      side = "west",
+      offset_mm = 1000,
+      width_mm = 700,
     })
     value.windows[3] = model.new_window({
-      id = "window-keep", room_id = "room-annex", side = "east",
-      offset_mm = 1200, width_mm = 700,
+      id = "window-keep",
+      room_id = "room-annex",
+      side = "east",
+      offset_mm = 1200,
+      width_mm = 700,
     })
     value.outlets[1] = model.new_outlet({
-      id = "outlet-main", room_id = "room-main", side = "north", offset_mm = 500,
+      id = "outlet-main",
+      room_id = "room-main",
+      side = "north",
+      offset_mm = 500,
     })
     value.outlets[2] = model.new_outlet({
-      id = "outlet-keep", room_id = "room-annex", side = "south", offset_mm = 500,
+      id = "outlet-keep",
+      room_id = "room-annex",
+      side = "south",
+      offset_mm = 500,
     })
     value = normalized(value)
     local _, before_summary = validate.run(value)
@@ -216,7 +256,10 @@ describe("window and outlet atomic actions", function()
 
     local touched = touched_set(result.touched)
     for _, key in ipairs({
-      "room:room-main", "window:window-main", "window:window-connected", "outlet:outlet-main",
+      "room:room-main",
+      "window:window-main",
+      "window:window-connected",
+      "outlet:outlet-main",
     }) do
       h.truthy(touched[key], "missing touched dependency " .. key)
     end
@@ -227,8 +270,12 @@ describe("window and outlet atomic actions", function()
     local changed, err = actions.apply(value, {
       type = "add_outlet",
       outlet = {
-        id = "outlet-invalid", room_id = "room-main", side = "east",
-        offset_mm = 500, outlet_type = "power", slots = 33,
+        id = "outlet-invalid",
+        room_id = "room-main",
+        side = "east",
+        offset_mm = 500,
+        outlet_type = "power",
+        slots = 33,
       },
     })
     h.eq(nil, changed)
@@ -238,8 +285,11 @@ describe("window and outlet atomic actions", function()
     changed, err = actions.apply(value, {
       type = "add_window",
       window = {
-        id = "window-overrun", room_id = "room-main", side = "north",
-        offset_mm = 5500, width_mm = 1000,
+        id = "window-overrun",
+        room_id = "room-main",
+        side = "north",
+        offset_mm = 5500,
+        width_mm = 1000,
       },
     })
     h.eq(nil, changed)

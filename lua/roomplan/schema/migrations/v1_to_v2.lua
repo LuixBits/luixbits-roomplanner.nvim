@@ -14,12 +14,13 @@ local function failure(path, message, value)
     message = message,
     value = value,
   }
-  return nil, {
-    code = diagnostic.code,
-    path = diagnostic.path,
-    message = diagnostic.message,
-    diagnostics = { diagnostic },
-  }
+  return nil,
+    {
+      code = diagnostic.code,
+      path = diagnostic.path,
+      message = diagnostic.message,
+      diagnostics = { diagnostic },
+    }
 end
 
 local function reject_generated_fields(entity, path, fields)
@@ -114,13 +115,14 @@ function M.migrate(document)
   ok, err = migrate_templates(result)
   if not ok then return nil, err end
   result.schema_version = 2
-  return result, {
+  return result,
     {
-      code = "SCHEMA_MIGRATED_V1_TO_V2",
-      path = "$",
-      message = "converted rectangular v1 geometry to canonical one-part v2 footprints",
-    },
-  }
+      {
+        code = "SCHEMA_MIGRATED_V1_TO_V2",
+        path = "$",
+        message = "converted rectangular v1 geometry to canonical one-part v2 footprints",
+      },
+    }
 end
 
 return M

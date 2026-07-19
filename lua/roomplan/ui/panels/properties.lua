@@ -124,9 +124,7 @@ local function add_controls(document, view, border)
   local controls = view.controls or {}
   if #controls == 0 then return false end
   add_static_header(document, "Canvas controls", true, border)
-  if view.controls_note then
-    add_field(document, { label = "Use", value = view.controls_note }, border)
-  end
+  if view.controls_note then add_field(document, { label = "Use", value = view.controls_note }, border) end
   for _, control in ipairs(controls) do
     add_field(document, {
       label = control.key_label or "-",
@@ -213,8 +211,12 @@ function M.render(view, width, height, opts)
     local collapsed = is_collapsed(section, index, opts)
     add_section_header(document, section, not collapsed, index == 1 and not has_controls, border)
     if not collapsed then
-      for _, field in ipairs(section.fields or {}) do add_field(document, field, border) end
-      for _, diagnostic in ipairs(section.diagnostics or {}) do add_diagnostic(document, diagnostic, border) end
+      for _, field in ipairs(section.fields or {}) do
+        add_field(document, field, border)
+      end
+      for _, diagnostic in ipairs(section.diagnostics or {}) do
+        add_diagnostic(document, diagnostic, border)
+      end
     end
   end
 

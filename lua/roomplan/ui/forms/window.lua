@@ -14,9 +14,7 @@ local function schema_version(context)
   return plan and plan.schema_version or 3
 end
 
-local function connection_value(value)
-  return value == "outside" and json.null or value
-end
+local function connection_value(value) return value == "outside" and json.null or value end
 
 local function initial_connection(value)
   if value == nil or json.is_null(value) then return "outside" end
@@ -25,42 +23,100 @@ end
 
 local function fields(runtime, editing)
   local result = {
-    { key = "room_id", label = "Owner room", type = "object_ref", required = true,
-      choices = function(ctx) return common.rooms(ctx) end },
-    { key = "part_id", label = "Footprint part", type = "object_ref", required = true,
-      choices = wall.part_choices },
+    {
+      key = "room_id",
+      label = "Owner room",
+      type = "object_ref",
+      required = true,
+      choices = function(ctx) return common.rooms(ctx) end,
+    },
+    {
+      key = "part_id",
+      label = "Footprint part",
+      type = "object_ref",
+      required = true,
+      choices = wall.part_choices,
+    },
     { key = "side", label = "Wall", type = "enum", required = true, choices = wall.side_choices },
-    { key = "width_mm", label = "Width", type = "measurement", required = true,
-      max = function(ctx, draft) return wall.edge_length(draft, ctx) or runtime.limits.max_dimension_mm end },
-    { key = "height_mode", label = "Window heights", type = "enum", required = true, choices = {
-      { value = "assumed", label = "Use plan defaults" },
-      { value = "explicit", label = "Set for this window" },
-    } },
-    { key = "assumed_heights", label = "Sun-study heights", type = "readonly",
+    {
+      key = "width_mm",
+      label = "Width",
+      type = "measurement",
+      required = true,
+      max = function(ctx, draft) return wall.edge_length(draft, ctx) or runtime.limits.max_dimension_mm end,
+    },
+    {
+      key = "height_mode",
+      label = "Window heights",
+      type = "enum",
+      required = true,
+      choices = {
+        { value = "assumed", label = "Use plan defaults" },
+        { value = "explicit", label = "Set for this window" },
+      },
+    },
+    {
+      key = "assumed_heights",
+      label = "Sun-study heights",
+      type = "readonly",
       visible = function(_, draft) return draft.height_mode == "assumed" end,
-      value = string.format("sill %d mm · head %d mm",
+      value = string.format(
+        "sill %d mm · head %d mm",
         runtime.sun_study.window_defaults.sill_height_mm,
-        runtime.sun_study.window_defaults.head_height_mm) },
-    { key = "sill_height_mm", label = "Sill height", type = "measurement", allow_zero = true,
-      visible = function(_, draft) return draft.height_mode == "explicit" end },
-    { key = "head_height_mm", label = "Head height", type = "measurement",
-      visible = function(_, draft) return draft.height_mode == "explicit" end },
-    { key = "placement", label = "Placement", type = "enum", required = true, choices = {
-      { value = "centre", label = "Centred on wall" },
-      { value = "cursor", label = "Centred at canvas cursor" },
-      { value = "exact", label = "Exact offset" },
-    } },
-    { key = "offset_mm", label = "Offset", type = "measurement", allow_zero = true,
-      visible = function(_, draft) return draft.placement == "exact" end },
-    { key = "resolved_offset", label = "Resolved offset", type = "readonly",
+        runtime.sun_study.window_defaults.head_height_mm
+      ),
+    },
+    {
+      key = "sill_height_mm",
+      label = "Sill height",
+      type = "measurement",
+      allow_zero = true,
+      visible = function(_, draft) return draft.height_mode == "explicit" end,
+    },
+    {
+      key = "head_height_mm",
+      label = "Head height",
+      type = "measurement",
+      visible = function(_, draft) return draft.height_mode == "explicit" end,
+    },
+    {
+      key = "placement",
+      label = "Placement",
+      type = "enum",
+      required = true,
+      choices = {
+        { value = "centre", label = "Centred on wall" },
+        { value = "cursor", label = "Centred at canvas cursor" },
+        { value = "exact", label = "Exact offset" },
+      },
+    },
+    {
+      key = "offset_mm",
+      label = "Offset",
+      type = "measurement",
+      allow_zero = true,
+      visible = function(_, draft) return draft.placement == "exact" end,
+    },
+    {
+      key = "resolved_offset",
+      label = "Resolved offset",
+      type = "readonly",
       value = function(ctx, draft) return wall.resolve_offset(draft, ctx, draft.width_mm) end,
-      format = function(value) return value and (tostring(value) .. " mm") or "unavailable" end },
-    { key = "connects_to_room_id", label = "Connects to", type = "object_ref", required = true,
-      choices = wall.connection_choices },
+      format = function(value) return value and (tostring(value) .. " mm") or "unavailable" end,
+    },
+    {
+      key = "connects_to_room_id",
+      label = "Connects to",
+      type = "object_ref",
+      required = true,
+      choices = wall.connection_choices,
+    },
   }
   if editing then
     result[#result + 1] = {
-      key = "summary", label = "Result", type = "readonly",
+      key = "summary",
+      label = "Result",
+      type = "readonly",
       value = function(ctx, draft)
         return string.format("%s wall, %d mm wide", directions.label(draft.side, ctx), draft.width_mm)
       end,
@@ -79,7 +135,11 @@ local function validate(draft, context, id)
   end
   local bounds = wall.bounds_error(draft, context, draft.width_mm)
   if bounds then
-    if draft.placement == "exact" then errors.offset_mm = bounds else errors.placement = bounds end
+    if draft.placement == "exact" then
+      errors.offset_mm = bounds
+    else
+      errors.placement = bounds
+    end
   end
   local exterior = wall.exterior_error(draft, context, draft.width_mm)
   if exterior then errors.side = exterior end
@@ -89,7 +149,9 @@ local function validate(draft, context, id)
   if draft.height_mode == "explicit" then
     if type(draft.sill_height_mm) ~= "number" then errors.sill_height_mm = "enter a sill height" end
     if type(draft.head_height_mm) ~= "number" then errors.head_height_mm = "enter a head height" end
-    if type(draft.sill_height_mm) == "number" and type(draft.head_height_mm) == "number"
+    if
+      type(draft.sill_height_mm) == "number"
+      and type(draft.head_height_mm) == "number"
       and draft.head_height_mm <= draft.sill_height_mm
     then
       errors.head_height_mm = "must be higher than the sill"
@@ -105,16 +167,25 @@ local function preview(draft, context)
   if not owner then return nil, { code = "ROOM_REQUIRED", message = "choose an owner room" } end
   local destination = draft.connects_to_room_id == "outside" and "outside"
     or ((common.find(context, "room", draft.connects_to_room_id) or {}).name or draft.connects_to_room_id)
-  return { lines = {
-    string.format("%s wall of %s: offset %d mm, width %d mm", directions.label(draft.side, context), owner.name or owner.id,
-      offset, draft.width_mm),
-    "Connects to " .. tostring(destination),
-    draft.height_mode == "explicit"
-        and string.format("Sun patch uses sill %d mm and head %d mm", draft.sill_height_mm, draft.head_height_mm)
-      or string.format("Sun patch uses configured defaults (%d/%d mm)",
-        config.get().sun_study.window_defaults.sill_height_mm,
-        config.get().sun_study.window_defaults.head_height_mm),
-  } }
+  return {
+    lines = {
+      string.format(
+        "%s wall of %s: offset %d mm, width %d mm",
+        directions.label(draft.side, context),
+        owner.name or owner.id,
+        offset,
+        draft.width_mm
+      ),
+      "Connects to " .. tostring(destination),
+      draft.height_mode == "explicit"
+          and string.format("Sun patch uses sill %d mm and head %d mm", draft.sill_height_mm, draft.head_height_mm)
+        or string.format(
+          "Sun patch uses configured defaults (%d/%d mm)",
+          config.get().sun_study.window_defaults.sill_height_mm,
+          config.get().sun_study.window_defaults.head_height_mm
+        ),
+    },
+  }
 end
 
 local function on_change(key, value, _, _, context)

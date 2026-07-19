@@ -24,27 +24,45 @@ describe("compact panel rendering", function()
   end)
 
   it("renders details as stateful bordered sections without duplicate actions", function()
-    local rendered = properties.render({
-      title = "Living room",
-      subtitle = "room",
-      groups = {
-        { id = "summary", title = "Summary", default_expanded = true, fields = {
-          { label = "Name", value = "Living room" },
-        } },
-        { id = "geometry", title = "Geometry", fields = {
-          { label = "Width", value = "5 m" },
-          { label = "Depth", value = "4 m" },
-        } },
-        { id = "advanced", title = "Advanced", fields = {
-          { label = "Stable ID", value = "room-living" },
-        } },
+    local rendered = properties.render(
+      {
+        title = "Living room",
+        subtitle = "room",
+        groups = {
+          {
+            id = "summary",
+            title = "Summary",
+            default_expanded = true,
+            fields = {
+              { label = "Name", value = "Living room" },
+            },
+          },
+          {
+            id = "geometry",
+            title = "Geometry",
+            fields = {
+              { label = "Width", value = "5 m" },
+              { label = "Depth", value = "4 m" },
+            },
+          },
+          {
+            id = "advanced",
+            title = "Advanced",
+            fields = {
+              { label = "Stable ID", value = "room-living" },
+            },
+          },
+        },
+        diagnostics = {
+          { severity = "warning", message = "Door swing is obstructed" },
+        },
       },
-      diagnostics = {
-        { severity = "warning", message = "Door swing is obstructed" },
-      },
-    }, 32, 4, {
-      collapsed_sections = { geometry = false, advanced = true },
-    })
+      32,
+      4,
+      {
+        collapsed_sections = { geometry = false, advanced = true },
+      }
+    )
 
     local sections = section_rows(rendered)
     assert_equal(true, sections.summary.item.expanded)

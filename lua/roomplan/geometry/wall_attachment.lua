@@ -4,9 +4,7 @@ local interval = require("roomplan.geometry.interval")
 
 local M = {}
 
-local function point(x, y)
-  return { x = x, y = y, [1] = x, [2] = y }
-end
+local function point(x, y) return { x = x, y = y, [1] = x, [2] = y } end
 
 local function has_part(edge, part_id)
   if part_id == nil then return true end
@@ -16,20 +14,17 @@ local function has_part(edge, part_id)
   return false
 end
 
-local function same_wall(a, b)
-  return a.axis == b.axis and a.fixed_mm == b.fixed_mm
-end
+local function same_wall(a, b) return a.axis == b.axis and a.fixed_mm == b.fixed_mm end
 
 local function point_on_edge(edge, scalar)
-  if edge.axis == "x" then
-    return point(scalar, edge.fixed_mm)
-  end
+  if edge.axis == "x" then return point(scalar, edge.fixed_mm) end
   return point(edge.fixed_mm, scalar)
 end
 
 local function is_exterior_point(room, edge, scalar, part_id)
   for _, candidate in ipairs(adjacency.edges(room)) do
-    if candidate.side == edge.side
+    if
+      candidate.side == edge.side
       and candidate.axis == edge.axis
       and candidate.fixed_mm == edge.fixed_mm
       and candidate.start_mm < scalar
@@ -68,14 +63,12 @@ function M.aperture(room, attachment)
     p1 = point_on_edge(edge, finish_mm),
     part_id = attachment.part_id,
     within_edge = within_edge,
-    on_exterior = within_edge
-      and adjacency.is_exterior_interval(room, edge, start_mm, finish_mm, attachment.part_id),
+    on_exterior = within_edge and adjacency.is_exterior_interval(room, edge, start_mm, finish_mm, attachment.part_id),
   }
 end
 
 function M.apertures_overlap(a, b)
-  return same_wall(a, b)
-    and interval.overlaps_positive(a.start_mm, a.finish_mm, b.start_mm, b.finish_mm)
+  return same_wall(a, b) and interval.overlaps_positive(a.start_mm, a.finish_mm, b.start_mm, b.finish_mm)
 end
 
 function M.connection(room, other_room, attachment)
@@ -83,7 +76,9 @@ function M.connection(room, other_room, attachment)
   if not aperture or not aperture.within_edge or not aperture.on_exterior then return nil end
   if room.footprint == nil and other_room.footprint == nil then
     local record = adjacency.between(room, other_room)
-    if not record or record.a_side ~= attachment.side
+    if
+      not record
+      or record.a_side ~= attachment.side
       or not interval.contains_interval(record.start_mm, record.finish_mm, aperture.start_mm, aperture.finish_mm)
     then
       return nil
@@ -91,15 +86,11 @@ function M.connection(room, other_room, attachment)
     return record
   end
   for _, other_edge in ipairs(adjacency.edges(other_room)) do
-    if other_edge.side == adjacency.opposite(attachment.side)
+    if
+      other_edge.side == adjacency.opposite(attachment.side)
       and other_edge.axis == aperture.axis
       and other_edge.fixed_mm == aperture.fixed_mm
-      and interval.contains_interval(
-        other_edge.start_mm,
-        other_edge.finish_mm,
-        aperture.start_mm,
-        aperture.finish_mm
-      )
+      and interval.contains_interval(other_edge.start_mm, other_edge.finish_mm, aperture.start_mm, aperture.finish_mm)
     then
       return {
         a_side = attachment.side,
@@ -148,9 +139,8 @@ function M.floor_marker(room, attachment)
   end
   local shape, shape_err = footprint.local_from_room(room)
   if not shape then return nil, shape_err end
-  local within, hits_or_err = footprint.contains_point2(
-    shape, 2 * position[1], 2 * position[2], { include_boundary = false }
-  )
+  local within, hits_or_err =
+    footprint.contains_point2(shape, 2 * position[1], 2 * position[2], { include_boundary = false })
   if within == nil then return nil, hits_or_err end
   return {
     id = attachment.id,

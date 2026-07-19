@@ -30,21 +30,37 @@ function M.edit(session)
       { key = "fine_step_mm", label = "Fine move", type = "measurement", max = limits.max_dimension_mm },
       { key = "normal_step_mm", label = "Normal move", type = "measurement", max = limits.max_dimension_mm },
       { key = "coarse_step_mm", label = "Coarse move", type = "measurement", max = limits.max_dimension_mm },
-      { key = "default_door_width_mm", label = "Default door width", type = "measurement", max = limits.max_dimension_mm },
       {
-        key = "summary", label = "Contents", type = "readonly",
+        key = "default_door_width_mm",
+        label = "Default door width",
+        type = "measurement",
+        max = limits.max_dimension_mm,
+      },
+      {
+        key = "summary",
+        label = "Contents",
+        type = "readonly",
         value = function(ctx)
           local current = common.model(ctx)
-          return string.format("%d rooms, %d doors, %d furniture items",
-            #(current.rooms or {}), #(current.doors or {}), #(current.furniture or {}))
+          return string.format(
+            "%d rooms, %d doors, %d furniture items",
+            #(current.rooms or {}),
+            #(current.doors or {}),
+            #(current.furniture or {})
+          )
         end,
       },
     },
     preview = function(draft)
       return {
         lines = {
-          string.format("Grid %d mm; movement %d / %d / %d mm",
-            draft.grid_mm, draft.fine_step_mm, draft.normal_step_mm, draft.coarse_step_mm),
+          string.format(
+            "Grid %d mm; movement %d / %d / %d mm",
+            draft.grid_mm,
+            draft.fine_step_mm,
+            draft.normal_step_mm,
+            draft.coarse_step_mm
+          ),
           string.format("Default door width %d mm", draft.default_door_width_mm),
         },
       }

@@ -5,9 +5,7 @@ function M.setup(opts)
   return require("roomplan.config").setup(opts or {})
 end
 
-local function call(method, ...)
-  return require("roomplan.controller")[method](nil, ...)
-end
+local function call(method, ...) return require("roomplan.controller")[method](nil, ...) end
 
 function M.open(opts, callback) return call("open", opts or {}, callback) end
 function M.init(opts, callback) return call("init_source", opts or {}, callback) end

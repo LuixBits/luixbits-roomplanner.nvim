@@ -17,9 +17,7 @@ local function schema_version(context)
 end
 
 local function editable_preset(room, version)
-  if version < 2 then
-    return { shape = "rectangle", width_mm = room.size_mm[1], depth_mm = room.size_mm[2] }
-  end
+  if version < 2 then return { shape = "rectangle", width_mm = room.size_mm[1], depth_mm = room.size_mm[2] } end
   return room_footprints.classify(room.footprint)
 end
 
@@ -37,21 +35,30 @@ end
 
 local function width_field(runtime)
   return {
-    key = "width_mm", label = "Overall width", type = "measurement", required = true,
+    key = "width_mm",
+    label = "Overall width",
+    type = "measurement",
+    required = true,
     max = runtime.limits.max_dimension_mm,
   }
 end
 
 local function depth_field(runtime)
   return {
-    key = "depth_mm", label = "Overall depth", type = "measurement", required = true,
+    key = "depth_mm",
+    label = "Overall depth",
+    type = "measurement",
+    required = true,
     max = runtime.limits.max_dimension_mm,
   }
 end
 
 local function leg_width_field(runtime)
   return {
-    key = "leg_width_mm", label = "Vertical leg width", type = "measurement", required = true,
+    key = "leg_width_mm",
+    label = "Vertical leg width",
+    type = "measurement",
+    required = true,
     max = runtime.limits.max_dimension_mm,
     visible = function(_, draft) return draft.shape == "l_shape" end,
     validate = function(value, _, draft)
@@ -64,7 +71,10 @@ end
 
 local function leg_depth_field(runtime)
   return {
-    key = "leg_depth_mm", label = "Horizontal leg depth", type = "measurement", required = true,
+    key = "leg_depth_mm",
+    label = "Horizontal leg depth",
+    type = "measurement",
+    required = true,
     max = runtime.limits.max_dimension_mm,
     visible = function(_, draft) return draft.shape == "l_shape" end,
     validate = function(value, _, draft)
@@ -77,7 +87,10 @@ end
 
 local function missing_corner_field()
   return {
-    key = "missing_corner", label = "Missing corner", type = "enum", required = true,
+    key = "missing_corner",
+    label = "Missing corner",
+    type = "enum",
+    required = true,
     visible = function(_, draft) return draft.shape == "l_shape" end,
     choices = function(context)
       local result = {}
@@ -119,15 +132,17 @@ local function proposal(draft, context)
     return placement({ origin_mm = { 0, 0 }, description = "World origin" }, room)
   elseif draft.placement == "cursor" then
     local cursor = common.cursor(context)
-    if not cursor then return nil, { code = "CURSOR_UNAVAILABLE", message = "the canvas cursor position is unavailable" } end
+    if not cursor then
+      return nil, { code = "CURSOR_UNAVAILABLE", message = "the canvas cursor position is unavailable" }
+    end
     return placement({ origin_mm = cursor, description = "Canvas cursor" }, room)
   elseif RELATIVE[draft.placement] then
     local reference = common.find(context, "room", draft.reference_room_id)
     if not reference then return nil, { code = "ROOM_REFERENCE", message = "choose a reference room" } end
     local result, err = alignment.propose(room, reference, RELATIVE[draft.placement], { gap_mm = draft.gap_mm or 0 })
     if not result then return nil, err end
-    result.description = string.format("%s of %s",
-      directions.label(draft.placement, context), reference.name or reference.id)
+    result.description =
+      string.format("%s of %s", directions.label(draft.placement, context), reference.name or reference.id)
     return placement(result, room)
   end
   local plan = common.model(context)
@@ -187,11 +202,18 @@ function M.add(session, opts)
     fields = {
       { key = "name", label = "Name", type = "text", required = true, trim = true, max_length = 256 },
       {
-        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        key = "color",
+        label = "Color",
+        type = "enum",
+        required = true,
+        kind = "roomplan_color",
         choices = function(_, draft) return color.choices(draft.color) end,
       },
       {
-        key = "shape", label = "Shape", type = "enum", required = true,
+        key = "shape",
+        label = "Shape",
+        type = "enum",
+        required = true,
         choices = function(ctx)
           local choices = { { value = "rectangle", label = "Rectangle" } }
           if schema_version(ctx) >= 2 then choices[#choices + 1] = { value = "l_shape", label = "L-shaped" } end
@@ -205,17 +227,26 @@ function M.add(session, opts)
       missing_corner_field(),
       { key = "placement", label = "Placement", type = "enum", required = true, choices = placement_choices },
       {
-        key = "reference_room_id", label = "Reference room", type = "object_ref", required = true,
+        key = "reference_room_id",
+        label = "Reference room",
+        type = "object_ref",
+        required = true,
         choices = function(ctx) return common.rooms(ctx) end,
         visible = function(_, draft) return RELATIVE[draft.placement] ~= nil end,
       },
       {
-        key = "gap_mm", label = "Gap", type = "measurement", allow_zero = true, default = 0,
+        key = "gap_mm",
+        label = "Gap",
+        type = "measurement",
+        allow_zero = true,
+        default = 0,
         visible = function(_, draft) return RELATIVE[draft.placement] ~= nil end,
       },
       { key = "force", label = "Allow invalid draft", type = "toggle", default = false },
       {
-        key = "resolved_origin", label = "Resolved origin", type = "readonly",
+        key = "resolved_origin",
+        label = "Resolved origin",
+        type = "readonly",
         value = function(ctx, draft)
           local result = proposal(draft, ctx)
           return result and result.origin_mm or nil
@@ -232,8 +263,13 @@ function M.add(session, opts)
       local result, err = proposal(draft, ctx)
       if not result then return nil, err end
       local geometry = draft.shape == "l_shape"
-          and string.format("L-shaped: %d x %d mm overall; legs %d x %d mm",
-            draft.width_mm, draft.depth_mm, draft.leg_width_mm, draft.leg_depth_mm)
+          and string.format(
+            "L-shaped: %d x %d mm overall; legs %d x %d mm",
+            draft.width_mm,
+            draft.depth_mm,
+            draft.leg_width_mm,
+            draft.leg_depth_mm
+          )
         or string.format("Footprint: %d x %d mm", draft.width_mm, draft.depth_mm)
       return {
         lines = {
@@ -255,8 +291,11 @@ function M.add(session, opts)
       origin_mm = result.origin_mm,
       color = color.resolve(draft.color),
     }
-    if version >= 2 then fields.footprint = result.footprint
-    else fields.size_mm = { draft.width_mm, draft.depth_mm } end
+    if version >= 2 then
+      fields.footprint = result.footprint
+    else
+      fields.size_mm = { draft.width_mm, draft.depth_mm }
+    end
     return {
       type = "add_room",
       room = model_helpers.new_room(fields, { schema_version = version }),
@@ -311,7 +350,11 @@ function M.edit(session, room, opts)
     fields = {
       { key = "name", label = "Name", type = "text", required = true, trim = true, max_length = 256 },
       {
-        key = "color", label = "Color", type = "enum", required = true, kind = "roomplan_color",
+        key = "color",
+        label = "Color",
+        type = "enum",
+        required = true,
+        kind = "roomplan_color",
         choices = function(_, draft) return color.choices(draft.color) end,
       },
       { key = "origin_x_mm", label = "World X", type = "measurement", allow_negative = true, allow_zero = true },
@@ -331,7 +374,10 @@ function M.edit(session, room, opts)
   }
   if can_edit_geometry then
     spec.fields[#spec.fields + 1] = {
-      key = "shape", label = "Shape", type = "readonly", value = function() return shape_label end,
+      key = "shape",
+      label = "Shape",
+      type = "readonly",
+      value = function() return shape_label end,
     }
     spec.fields[#spec.fields + 1] = width_field(runtime)
     spec.fields[#spec.fields + 1] = depth_field(runtime)
@@ -341,7 +387,9 @@ function M.edit(session, room, opts)
       spec.fields[#spec.fields + 1] = missing_corner_field()
     end
   else
-    for _, field in ipairs(room_sections.fields(runtime, room)) do spec.fields[#spec.fields + 1] = field end
+    for _, field in ipairs(room_sections.fields(runtime, room)) do
+      spec.fields[#spec.fields + 1] = field
+    end
     spec.on_change = room_sections.on_change
   end
   spec.fields[#spec.fields + 1] = {
@@ -353,7 +401,9 @@ function M.edit(session, room, opts)
     value = "Edit sections on canvas…",
   }
   spec.fields[#spec.fields + 1] = {
-    key = "attached", label = "Attached", type = "readonly",
+    key = "attached",
+    label = "Attached",
+    type = "readonly",
     value = function(ctx) return dependency_summary(ctx, room.id) end,
   }
   spec.fields[#spec.fields + 1] = { key = "force", label = "Allow invalid draft", type = "toggle", default = false }
@@ -361,9 +411,7 @@ function M.edit(session, room, opts)
   function spec.build(draft, ctx)
     ctx = ctx or context
     local current = common.find(ctx, "room", ctx.room_id)
-    if not current then
-      return nil, { code = "NOT_FOUND", message = "the room no longer exists" }
-    end
+    if not current then return nil, { code = "NOT_FOUND", message = "the room no longer exists" } end
     local patch = {
       name = draft.name,
       origin_mm = { draft.origin_x_mm, draft.origin_y_mm },

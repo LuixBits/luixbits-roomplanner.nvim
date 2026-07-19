@@ -23,7 +23,9 @@ end
 
 local function copy(state)
   local result = {}
-  for key, value in pairs(state) do result[key] = value end
+  for key, value in pairs(state) do
+    result[key] = value
+  end
   result.draft = util.deepcopy(state.draft or {})
   result.initial_draft = util.deepcopy(state.initial_draft or {})
   result.errors = util.deepcopy(state.errors or {})
@@ -55,7 +57,9 @@ local function preview_for(state)
     return util.deepcopy(first)
   elseif type(first) == "table" then
     local lines = {}
-    for index = 1, #first do lines[index] = tostring(first[index]) end
+    for index = 1, #first do
+      lines[index] = tostring(first[index])
+    end
     return { lines = lines }
   end
   return { lines = { tostring(first) } }
@@ -64,9 +68,7 @@ end
 function M.visible_fields(state)
   local result = {}
   for _, field in ipairs(state.spec.fields or {}) do
-    if field_helpers.visible(field, state.context, state.draft, state) then
-      result[#result + 1] = field
-    end
+    if field_helpers.visible(field, state.context, state.draft, state) then result[#result + 1] = field end
   end
   return result
 end
@@ -74,9 +76,7 @@ end
 function M.editable_fields(state)
   local result = {}
   for _, field in ipairs(M.visible_fields(state)) do
-    if field_helpers.enabled(field, state.context, state.draft, state) then
-      result[#result + 1] = field
-    end
+    if field_helpers.enabled(field, state.context, state.draft, state) then result[#result + 1] = field end
   end
   return result
 end
@@ -102,9 +102,7 @@ end
 local function clear_hidden_errors(state)
   for key in pairs(state.errors) do
     local field = M.field(state, key)
-    if field and not field_helpers.visible(field, state.context, state.draft, state) then
-      state.errors[key] = nil
-    end
+    if field and not field_helpers.visible(field, state.context, state.draft, state) then state.errors[key] = nil end
   end
 end
 
@@ -119,7 +117,9 @@ end
 
 local function apply_patch(draft, patch)
   if type(patch) ~= "table" then return end
-  for key, value in pairs(patch) do draft[key] = util.deepcopy(value) end
+  for key, value in pairs(patch) do
+    draft[key] = util.deepcopy(value)
+  end
 end
 
 local function normalize_error(value)
@@ -143,7 +143,11 @@ local function set_value(state, key, raw, parsed)
     return refresh(state)
   end
   local value, err
-  if parsed then value = raw else value, err = field_helpers.parse(field, raw, state.context, state.draft, state) end
+  if parsed then
+    value = raw
+  else
+    value, err = field_helpers.parse(field, raw, state.context, state.draft, state)
+  end
   if err then
     state.raw[key] = raw
     state.errors[key] = normalize_error(err)
@@ -203,9 +207,8 @@ function M.validate_all(state)
     local value = field_helpers.value(field, next_state.context, next_state.draft, next_state)
     local err
     if next_state.raw[field.key] ~= nil then
-      local parsed, parse_err = field_helpers.parse(
-        field, next_state.raw[field.key], next_state.context, next_state.draft, next_state
-      )
+      local parsed, parse_err =
+        field_helpers.parse(field, next_state.raw[field.key], next_state.context, next_state.draft, next_state)
       if parse_err then
         err = normalize_error(parse_err)
       else
@@ -225,7 +228,10 @@ function M.validate_all(state)
   local valid = next(next_state.errors) == nil and next_state.form_error == nil and next_state.preview.error == nil
   if not valid then
     for _, field in ipairs(M.editable_fields(next_state)) do
-      if next_state.errors[field.key] then next_state.active_key = field.key; break end
+      if next_state.errors[field.key] then
+        next_state.active_key = field.key
+        break
+      end
     end
   end
   return next_state, valid
@@ -280,8 +286,11 @@ function M.reduce(state, event)
     return set_value(next_state, event.key, event.value, event.trusted == true)
   elseif kind == "activate" then
     local field = M.field(next_state, event.key)
-    if field and field_helpers.visible(field, next_state.context, next_state.draft, next_state)
-      and field_helpers.enabled(field, next_state.context, next_state.draft, next_state) then
+    if
+      field
+      and field_helpers.visible(field, next_state.context, next_state.draft, next_state)
+      and field_helpers.enabled(field, next_state.context, next_state.draft, next_state)
+    then
       next_state.active_key = event.key
     end
     return refresh(next_state)
@@ -289,7 +298,12 @@ function M.reduce(state, event)
     local editable = M.editable_fields(next_state)
     if #editable > 0 then
       local current = 1
-      for index, field in ipairs(editable) do if field.key == next_state.active_key then current = index; break end end
+      for index, field in ipairs(editable) do
+        if field.key == next_state.active_key then
+          current = index
+          break
+        end
+      end
       local delta = event.delta and event.delta < 0 and -1 or 1
       current = ((current - 1 + delta) % #editable) + 1
       next_state.active_key = editable[current].key
@@ -303,7 +317,8 @@ function M.reduce(state, event)
     return refresh(next_state)
   elseif kind == "stale" then
     next_state.stale = true
-    next_state.form_error = normalize_error(event.error or "the plan changed while this form was open; cancel and reopen it")
+    next_state.form_error =
+      normalize_error(event.error or "the plan changed while this form was open; cancel and reopen it")
     return refresh(next_state)
   elseif kind == "validate_all" then
     return M.validate_all(next_state)

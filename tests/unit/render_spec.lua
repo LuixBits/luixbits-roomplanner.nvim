@@ -7,13 +7,16 @@ local text = require("roomplan.render.text")
 local raster = require("roomplan.render.raster")
 
 local function assert_close(expected, actual, message)
-  assert_true(math.abs(expected - actual) < 1e-8,
-    (message or "values differ") .. string.format(": expected %.12g, got %.12g", expected, actual))
+  assert_true(
+    math.abs(expected - actual) < 1e-8,
+    (message or "values differ") .. string.format(": expected %.12g, got %.12g", expected, actual)
+  )
 end
 
 local function has_segment_at(segments, orientation, fixed, scalar)
   for _, segment in ipairs(segments) do
-    if segment.orientation == orientation
+    if
+      segment.orientation == orientation
       and segment.fixed == fixed
       and segment.start < scalar
       and segment.finish > scalar
@@ -312,13 +315,22 @@ describe("scene extraction and rendering", function()
 
   it("round-trips screen coordinates and maps cardinals through every view rotation", function()
     local east = {
-      [0] = { 1, 0 }, [1] = { 0, 1 }, [2] = { -1, 0 }, [3] = { 0, -1 },
+      [0] = { 1, 0 },
+      [1] = { 0, 1 },
+      [2] = { -1, 0 },
+      [3] = { 0, -1 },
     }
     local north = {
-      [0] = { 0, -1 }, [1] = { 1, 0 }, [2] = { 0, 1 }, [3] = { -1, 0 },
+      [0] = { 0, -1 },
+      [1] = { 1, 0 },
+      [2] = { 0, 1 },
+      [3] = { -1, 0 },
     }
     local world_deltas = {
-      [0] = { 3, 2 }, [1] = { -2, 3 }, [2] = { -3, -2 }, [3] = { 2, -3 },
+      [0] = { 3, 2 },
+      [1] = { -2, 3 },
+      [2] = { -3, -2 },
+      [3] = { 2, -3 },
     }
 
     for rotation = 0, 3 do
@@ -455,15 +467,18 @@ describe("scene extraction and rendering", function()
       glyph_mode = "ascii",
     })
     assert_true(vim.deep_equal(pristine_scene, scene), "rasterization must not mutate its semantic scene")
-    assert_equal(table.concat({
-      "       ",
-      " +---+ ",
-      " |   | ",
-      " | A | ",
-      " |   | ",
-      " +---+ ",
-      "       ",
-    }, "\n"), table.concat(output.lines, "\n"))
+    assert_equal(
+      table.concat({
+        "       ",
+        " +---+ ",
+        " |   | ",
+        " | A | ",
+        " |   | ",
+        " +---+ ",
+        "       ",
+      }, "\n"),
+      table.concat(output.lines, "\n")
+    )
   end)
 
   it("applies object color accents while diagnostics retain priority", function()
@@ -491,13 +506,17 @@ describe("scene extraction and rendering", function()
     end
     assert_true(found_color)
 
-    local diagnosed = raster.rasterize(scene_builder.build(model, {
-      { severity = "error", object = { kind = "room", id = "room-a" } },
-    }), fixed_view(-100, 500, 100, 100), {
-      width = 7,
-      height = 7,
-      glyph_mode = "ascii",
-    })
+    local diagnosed = raster.rasterize(
+      scene_builder.build(model, {
+        { severity = "error", object = { kind = "room", id = "room-a" } },
+      }),
+      fixed_view(-100, 500, 100, 100),
+      {
+        width = 7,
+        height = 7,
+        glyph_mode = "ascii",
+      }
+    )
     local found_error = false
     for _, span in ipairs(diagnosed.highlight_spans) do
       if span.role == "error" then
@@ -513,12 +532,22 @@ describe("scene extraction and rendering", function()
     local names = raster.rasterize({
       primitives = {
         {
-          kind = "label", layer = 70, text = "Alpha", x = 0, y = 0,
-          ref = { type = "room", id = "room-alpha" }, order = 1,
+          kind = "label",
+          layer = 70,
+          text = "Alpha",
+          x = 0,
+          y = 0,
+          ref = { type = "room", id = "room-alpha" },
+          order = 1,
         },
         {
-          kind = "label", layer = 70, text = "Beta", x = 0, y = 0,
-          ref = { type = "furniture", id = "furniture-beta" }, order = 2,
+          kind = "label",
+          layer = 70,
+          text = "Beta",
+          x = 0,
+          y = 0,
+          ref = { type = "furniture", id = "furniture-beta" },
+          order = 2,
         },
       },
       warnings = {},
@@ -530,7 +559,11 @@ describe("scene extraction and rendering", function()
     local abbreviated = raster.rasterize({
       primitives = {
         {
-          kind = "label", layer = 70, text = "Very long sofa label", x = 0, y = 0,
+          kind = "label",
+          layer = 70,
+          text = "Very long sofa label",
+          x = 0,
+          y = 0,
           ref = { type = "furniture", id = "furniture-long" },
         },
       },
@@ -544,7 +577,11 @@ describe("scene extraction and rendering", function()
     local dimension = raster.rasterize({
       primitives = {
         {
-          kind = "dimension", layer = 70, text = "123456mm", x = 0, y = 0,
+          kind = "dimension",
+          layer = 70,
+          text = "123456mm",
+          x = 0,
+          y = 0,
           allow_truncate = false,
           ref = { type = "room", id = "room-alpha" },
         },
@@ -566,12 +603,18 @@ describe("scene extraction and rendering", function()
       scale_policy = "room_name",
       ref = { type = "room", id = "room-living" },
     }
-    local near = raster.rasterize({ primitives = { primitive }, warnings = {} },
-      fixed_view(0, 1000, 50, 100), { width = 24, height = 12, glyph_mode = "ascii" })
+    local near = raster.rasterize(
+      { primitives = { primitive }, warnings = {} },
+      fixed_view(0, 1000, 50, 100),
+      { width = 24, height = 12, glyph_mode = "ascii" }
+    )
     assert_true(table.concat(near.lines, "\n"):find("Living room", 1, true) ~= nil)
 
-    local far = raster.rasterize({ primitives = { primitive }, warnings = {} },
-      fixed_view(0, 1000, 500, 500), { width = 6, height = 4, glyph_mode = "ascii" })
+    local far = raster.rasterize(
+      { primitives = { primitive }, warnings = {} },
+      fixed_view(0, 1000, 500, 500),
+      { width = 6, height = 4, glyph_mode = "ascii" }
+    )
     assert_true(table.concat(far.lines, "\n"):find("Living", 1, true) == nil)
     assert_equal(0, #far.warnings)
 
@@ -585,8 +628,11 @@ describe("scene extraction and rendering", function()
       scale_policy = "dimension",
       allow_truncate = false,
     }
-    local crowded = raster.rasterize({ primitives = { dimension_primitive }, warnings = {} },
-      fixed_view(0, 500, 250, 500), { width = 6, height = 3, glyph_mode = "ascii" })
+    local crowded = raster.rasterize(
+      { primitives = { dimension_primitive }, warnings = {} },
+      fixed_view(0, 500, 250, 500),
+      { width = 6, height = 3, glyph_mode = "ascii" }
+    )
     assert_true(table.concat(crowded.lines, ""):find("1m", 1, true) == nil)
   end)
 
@@ -620,9 +666,34 @@ describe("scene extraction and rendering", function()
   it("keeps ordered hit candidates beneath visual overlap", function()
     local scene = {
       primitives = {
-        { kind = "room_interior", layer = 20, left = 0, bottom = 0, right = 400, top = 400, ref = { type = "room", id = "room-a", order = 1 } },
-        { kind = "furniture_interior", layer = 30, left = 100, bottom = 100, right = 300, top = 300, ref = { type = "furniture", id = "furniture-a", order = 1 } },
-        { kind = "wall", layer = 50, orientation = "horizontal", x1 = 0, y1 = 200, x2 = 400, y2 = 200, refs = { { type = "room", id = "room-a", order = 1 } } },
+        {
+          kind = "room_interior",
+          layer = 20,
+          left = 0,
+          bottom = 0,
+          right = 400,
+          top = 400,
+          ref = { type = "room", id = "room-a", order = 1 },
+        },
+        {
+          kind = "furniture_interior",
+          layer = 30,
+          left = 100,
+          bottom = 100,
+          right = 300,
+          top = 300,
+          ref = { type = "furniture", id = "furniture-a", order = 1 },
+        },
+        {
+          kind = "wall",
+          layer = 50,
+          orientation = "horizontal",
+          x1 = 0,
+          y1 = 200,
+          x2 = 400,
+          y2 = 200,
+          refs = { { type = "room", id = "room-a", order = 1 } },
+        },
         { kind = "door_hinge", layer = 61, x = 200, y = 200, ref = { type = "door", id = "door-a", order = 1 } },
       },
       warnings = {},
@@ -646,35 +717,51 @@ describe("scene extraction and rendering", function()
       primitives = {
         { kind = "grid", layer = 10, spacing_mm = 200 },
         {
-          kind = "wall", layer = 50, orientation = "horizontal",
-          x1 = 100, y1 = 200, x2 = 300, y2 = 200, refs = { room_ref },
+          kind = "wall",
+          layer = 50,
+          orientation = "horizontal",
+          x1 = 100,
+          y1 = 200,
+          x2 = 300,
+          y2 = 200,
+          refs = { room_ref },
         },
         {
-          kind = "door_hinge", layer = 61, x = 200, y = 200,
+          kind = "door_hinge",
+          layer = 61,
+          x = 200,
+          y = 200,
           ref = { type = "door", id = "door-a", order = 1 },
         },
       },
       warnings = {},
     }
-    local output = raster.rasterize(scene, viewport.new({
-      world_left_mm = 0,
-      world_top_mm = 0,
-      mm_per_column = 100,
-      mm_per_row = 100,
-      rotation_quarters = 1,
-    }), {
-      width = 5,
-      height = 5,
-      glyph_mode = "ascii",
-    })
+    local output = raster.rasterize(
+      scene,
+      viewport.new({
+        world_left_mm = 0,
+        world_top_mm = 0,
+        mm_per_column = 100,
+        mm_per_row = 100,
+        rotation_quarters = 1,
+      }),
+      {
+        width = 5,
+        height = 5,
+        glyph_mode = "ascii",
+      }
+    )
 
-    assert_equal(table.concat({
-      ". . .",
-      "  |  ",
-      ". o .",
-      "  |  ",
-      ". . .",
-    }, "\n"), table.concat(output.lines, "\n"))
+    assert_equal(
+      table.concat({
+        ". . .",
+        "  |  ",
+        ". o .",
+        "  |  ",
+        ". . .",
+      }, "\n"),
+      table.concat(output.lines, "\n")
+    )
     assert_equal("room-a", output.hit_map[2][3][1].id)
     assert_equal("wall", output.hit_map[2][3][1].context)
     assert_equal("door", output.hit_map[3][3][1].type)
@@ -723,8 +810,15 @@ describe("scene extraction and rendering", function()
       primitives = {
         { kind = "wall", layer = 50, orientation = "horizontal", x1 = -1000, y1 = 200, x2 = -500, y2 = 200, refs = {} },
         { kind = "wall", layer = 50, orientation = "vertical", x1 = 700, y1 = 0, x2 = 700, y2 = 400, refs = {} },
-        { kind = "door_aperture", layer = 60, x1 = -1000, y1 = 100, x2 = -950, y2 = 100,
-          ref = { type = "door", id = "door-offscreen", order = 1 } },
+        {
+          kind = "door_aperture",
+          layer = 60,
+          x1 = -1000,
+          y1 = 100,
+          x2 = -950,
+          y2 = 100,
+          ref = { type = "door", id = "door-offscreen", order = 1 },
+        },
       },
       warnings = {},
     }
@@ -799,26 +893,33 @@ describe("scene extraction and rendering", function()
     }, { selected = { kind = "room", id = "room-a" } })
     local interior
     for _, primitive in ipairs(scene.primitives) do
-      if primitive.kind == "room_interior" then interior = primitive; break end
+      if primitive.kind == "room_interior" then
+        interior = primitive
+        break
+      end
     end
     assert_equal("error", assert(interior).role)
   end)
 
   it("draws transient snap guides and emphasizes their overlapping edge", function()
-    local output = raster.rasterize({
-      primitives = {
-        { kind = "wall", layer = 50, x1 = 100, y1 = 0, x2 = 100, y2 = 400 },
-        { kind = "snap_guide", layer = 85, role = "snap", x1 = 100, y1 = 0, x2 = 100, y2 = 400 },
-        { kind = "snap_overlap", layer = 88, role = "snap_overlap", x1 = 100, y1 = 100, x2 = 100, y2 = 300 },
-        { kind = "snap_guide", layer = 85, role = "snap", x1 = 0, y1 = 200, x2 = 200, y2 = 200 },
-        { kind = "snap_overlap", layer = 88, role = "snap_overlap", x1 = 0, y1 = 200, x2 = 100, y2 = 200 },
+    local output = raster.rasterize(
+      {
+        primitives = {
+          { kind = "wall", layer = 50, x1 = 100, y1 = 0, x2 = 100, y2 = 400 },
+          { kind = "snap_guide", layer = 85, role = "snap", x1 = 100, y1 = 0, x2 = 100, y2 = 400 },
+          { kind = "snap_overlap", layer = 88, role = "snap_overlap", x1 = 100, y1 = 100, x2 = 100, y2 = 300 },
+          { kind = "snap_guide", layer = 85, role = "snap", x1 = 0, y1 = 200, x2 = 200, y2 = 200 },
+          { kind = "snap_overlap", layer = 88, role = "snap_overlap", x1 = 0, y1 = 200, x2 = 100, y2 = 200 },
+        },
+        warnings = {},
       },
-      warnings = {},
-    }, fixed_view(0, 400, 100, 100), {
-      width = 3,
-      height = 5,
-      glyph_mode = "ascii",
-    })
+      fixed_view(0, 400, 100, 100),
+      {
+        width = 3,
+        height = 5,
+        glyph_mode = "ascii",
+      }
+    )
     assert_true(table.concat(output.lines, "\n"):find(":", 1, true) ~= nil)
     assert_equal("snap", output.roles[1][2])
     assert_equal("snap_overlap", output.roles[2][2])
@@ -860,12 +961,8 @@ describe("scene extraction and rendering", function()
     })
     local lines, overlaps = 0, 0
     for _, primitive in ipairs(scene.primitives) do
-      if primitive.kind == "snap_guide" then
-        lines = lines + 1
-      end
-      if primitive.kind == "snap_overlap" then
-        overlaps = overlaps + 1
-      end
+      if primitive.kind == "snap_guide" then lines = lines + 1 end
+      if primitive.kind == "snap_overlap" then overlaps = overlaps + 1 end
     end
     assert_equal(1, lines)
     assert_equal(2, overlaps)
@@ -876,7 +973,10 @@ describe("scene extraction and rendering", function()
       rooms = {
         { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 } },
       },
-      doors = {}, windows = {}, outlets = {}, furniture = {},
+      doors = {},
+      windows = {},
+      outlets = {},
+      furniture = {},
     }, {}, {
       snap_guides = {
         {
@@ -914,9 +1014,7 @@ describe("scene extraction and rendering", function()
       scene = scene,
       header_lines = 2,
       glyph_mode = "unicode",
-      on_close = function()
-        closed = true
-      end,
+      on_close = function() closed = true end,
     })
     assert_true(vim.api.nvim_buf_is_valid(handle.buf))
     assert_equal("nofile", vim.bo[handle.buf].buftype)
@@ -935,13 +1033,9 @@ describe("scene extraction and rendering", function()
     local canvas = require("roomplan.render.canvas")
     local scene = { primitives = {}, warnings = {}, bounds = { empty = true } }
     local function compass_text(handle)
-      for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(
-        handle.buf, handle.namespace, 0, 1, { details = true }
-      )) do
+      for _, mark in ipairs(vim.api.nvim_buf_get_extmarks(handle.buf, handle.namespace, 0, 1, { details = true })) do
         local details = mark[4]
-        if details.virt_text and details.virt_text[1] then
-          return details.virt_text[1][1]
-        end
+        if details.virt_text and details.virt_text[1] then return details.virt_text[1][1] end
       end
     end
 
@@ -963,13 +1057,17 @@ describe("scene extraction and rendering", function()
     assert_equal("P→", compass_text(handle))
 
     handle.opts.glyph_mode = "ascii"
-    assert(canvas.redraw(handle, scene, viewport.new({
-      world_left_mm = 0,
-      world_top_mm = 0,
-      mm_per_column = 100,
-      mm_per_row = 200,
-      rotation_quarters = 3,
-    })))
+    assert(canvas.redraw(
+      handle,
+      scene,
+      viewport.new({
+        world_left_mm = 0,
+        world_top_mm = 0,
+        mm_per_column = 100,
+        mm_per_row = 200,
+        rotation_quarters = 3,
+      })
+    ))
     assert_equal("P<", compass_text(handle))
     assert_true(canvas.close(handle))
   end)
@@ -982,7 +1080,11 @@ describe("scene extraction and rendering", function()
     local session = {
       id = "session-empty-canvas",
       source = { path = "/tmp/empty-canvas.roomplan.json", bufnr = vim.api.nvim_get_current_buf() },
-      canvas = {}, validation = {}, selection = nil, mode = "NAV", snap_enabled = true,
+      canvas = {},
+      validation = {},
+      selection = nil,
+      mode = "NAV",
+      snap_enabled = true,
       workflow = { generation = 0, kind = nil },
     }
     function session:model() return plan end
@@ -1001,9 +1103,7 @@ describe("scene extraction and rendering", function()
     end
     assert_true(has_fit_mapping)
     local function mapping(lhs)
-      return vim.api.nvim_buf_call(handle.buf, function()
-        return vim.fn.maparg(lhs, "n", false, true)
-      end)
+      return vim.api.nvim_buf_call(handle.buf, function() return vim.fn.maparg(lhs, "n", false, true) end)
     end
     assert_equal("Rotate RoomPlan view clockwise", mapping("<A-l>").desc)
     assert_equal("Rotate RoomPlan view counter-clockwise", mapping("<A-h>").desc)
@@ -1026,13 +1126,19 @@ describe("scene extraction and rendering", function()
       rooms = {
         { id = "room-far", name = "Far room", origin_mm = { 0, 0 }, size_mm = { 5000, 4000 } },
       },
-      doors = {}, furniture = {}, settings = { grid_mm = 100 },
+      doors = {},
+      furniture = {},
+      settings = { grid_mm = 100 },
     }
     local session = {
       id = "session-offscreen-canvas",
       source = { path = "/tmp/offscreen-canvas.roomplan.json", bufnr = vim.api.nvim_get_current_buf() },
-      canvas = {}, validation = {}, selection = { kind = "room", id = "room-far" },
-      mode = "NAV", snap_enabled = true, workflow = { generation = 0, kind = nil },
+      canvas = {},
+      validation = {},
+      selection = { kind = "room", id = "room-far" },
+      mode = "NAV",
+      snap_enabled = true,
+      workflow = { generation = 0, kind = nil },
       viewport = fixed_view(100000, 100000, 100, 200),
     }
     function session:model() return plan end

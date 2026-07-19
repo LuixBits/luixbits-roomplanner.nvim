@@ -3,24 +3,43 @@ local h = require("tests.harness")
 local highlights = require("roomplan.highlights")
 
 local source_groups = {
-  "Normal", "NormalFloat", "Pmenu", "CursorLine", "StatusLine", "Comment",
-  "DiagnosticWarn", "WarningMsg", "DiagnosticError", "ErrorMsg", "Special", "Search",
-  "Function", "DiagnosticInfo", "Type", "Identifier", "IncSearch",
+  "Normal",
+  "NormalFloat",
+  "Pmenu",
+  "CursorLine",
+  "StatusLine",
+  "Comment",
+  "DiagnosticWarn",
+  "WarningMsg",
+  "DiagnosticError",
+  "ErrorMsg",
+  "Special",
+  "Search",
+  "Function",
+  "DiagnosticInfo",
+  "Type",
+  "Identifier",
+  "IncSearch",
 }
 
 local generated_groups = {
-  "RoomPlanSunWall", "RoomPlanSunWindow",
-  "RoomPlanSunlight1", "RoomPlanSunlight2", "RoomPlanSunlight3",
-  "RoomPlanSunlight4", "RoomPlanSunlight5",
-  "RoomPlanMinimapRoom", "RoomPlanMinimapViewport",
+  "RoomPlanSunWall",
+  "RoomPlanSunWindow",
+  "RoomPlanSunlight1",
+  "RoomPlanSunlight2",
+  "RoomPlanSunlight3",
+  "RoomPlanSunlight4",
+  "RoomPlanSunlight5",
+  "RoomPlanMinimapRoom",
+  "RoomPlanMinimapViewport",
 }
 
-local function definition(name, resolve)
-  return vim.api.nvim_get_hl(0, { name = name, link = resolve ~= true })
-end
+local function definition(name, resolve) return vim.api.nvim_get_hl(0, { name = name, link = resolve ~= true }) end
 
 local function clear_groups(groups)
-  for _, name in ipairs(groups) do vim.api.nvim_set_hl(0, name, {}) end
+  for _, name in ipairs(groups) do
+    vim.api.nvim_set_hl(0, name, {})
+  end
 end
 
 describe("colorscheme-linked highlights", function()
@@ -48,7 +67,9 @@ describe("colorscheme-linked highlights", function()
         bands[definition("RoomPlanSunlight" .. index, true).bg] = true
       end
       local band_count = 0
-      for _ in pairs(bands) do band_count = band_count + 1 end
+      for _ in pairs(bands) do
+        band_count = band_count + 1
+      end
       h.eq(5, band_count)
 
       local dark_band = definition("RoomPlanSunlight1", true).bg
@@ -76,7 +97,9 @@ describe("colorscheme-linked highlights", function()
       h.eq(0xABCDEF, definition("RoomPlanMinimapViewport", true).fg)
     end, debug.traceback)
     vim.o.background = background
-    for name, value in pairs(saved) do vim.api.nvim_set_hl(0, name, value) end
+    for name, value in pairs(saved) do
+      vim.api.nvim_set_hl(0, name, value)
+    end
     if not ok then error(err, 0) end
   end)
 end)

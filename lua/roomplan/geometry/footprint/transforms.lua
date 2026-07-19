@@ -77,10 +77,15 @@ function M.rotate_quarter(value, rotation_deg, pivot_x2, pivot_y2)
   if not normalized then return nil, err end
   rotation_deg = rotation_deg or 0
   pivot_x2, pivot_y2 = pivot_x2 or 0, pivot_y2 or 0
-  if not internal.rotations[rotation_deg]
-    or not internal.finite_integer(pivot_x2) or not internal.finite_integer(pivot_y2)
+  if
+    not internal.rotations[rotation_deg]
+    or not internal.finite_integer(pivot_x2)
+    or not internal.finite_integer(pivot_y2)
   then
-    return internal.failure("FOOTPRINT_ROTATION", "rotation must be 0, 90, 180, or 270 around an exact doubled-mm pivot")
+    return internal.failure(
+      "FOOTPRINT_ROTATION",
+      "rotation must be 0, 90, 180, or 270 around an exact doubled-mm pivot"
+    )
   end
   local _, pivot_x_error = internal.coordinate2(pivot_x2, "rotation pivot X")
   if pivot_x_error then return nil, pivot_x_error end
@@ -97,13 +102,8 @@ function M.rotate_quarter(value, rotation_deg, pivot_x2, pivot_y2)
     }
     local corners = {}
     for corner = 1, #source_corners do
-      local x2, y2, corner_error = rotate_point2(
-        source_corners[corner][1],
-        source_corners[corner][2],
-        rotation_deg,
-        pivot_x2,
-        pivot_y2
-      )
+      local x2, y2, corner_error =
+        rotate_point2(source_corners[corner][1], source_corners[corner][2], rotation_deg, pivot_x2, pivot_y2)
       if x2 == nil then return nil, corner_error end
       corners[corner] = { x2, y2 }
     end

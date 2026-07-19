@@ -13,9 +13,7 @@ local function schema_version(context)
   return plan and plan.schema_version or 1
 end
 
-local function owner(draft, context)
-  return common.find(context, "room", draft.room_id)
-end
+local function owner(draft, context) return common.find(context, "room", draft.room_id) end
 
 local function selected_part(room, part_id)
   if not room or not room.footprint then return nil end
@@ -80,7 +78,10 @@ local function connections(context, draft)
       local shares_side = false
       for _, other_rectangle in ipairs(rectangles(other)) do
         local shared = adjacency.between(edge_owner, other_rectangle)
-        if shared and shared.a_side == draft.side then shares_side = true; break end
+        if shared and shared.a_side == draft.side then
+          shares_side = true
+          break
+        end
       end
       if shares_side then
         result[#result + 1] = {
@@ -102,11 +103,12 @@ local function offset(draft, context)
   if draft.placement == "cursor" then
     local room = owner(draft, context)
     local cursor = common.cursor(context)
-    if not cursor then return nil, { code = "CURSOR_UNAVAILABLE", message = "the canvas cursor position is unavailable" } end
+    if not cursor then
+      return nil, { code = "CURSOR_UNAVAILABLE", message = "the canvas cursor position is unavailable" }
+    end
     local edge_owner = part_room(room, draft.part_id)
     if not edge_owner then return nil, { code = "DOOR_PART", message = "choose an owner footprint part" } end
-    local coordinate = (draft.side == "north" or draft.side == "south")
-        and (cursor[1] - edge_owner.origin_mm[1])
+    local coordinate = (draft.side == "north" or draft.side == "south") and (cursor[1] - edge_owner.origin_mm[1])
       or (cursor[2] - edge_owner.origin_mm[2])
     return util.round(coordinate - draft.width_mm / 2)
   end
@@ -154,17 +156,32 @@ function M.add(session, opts)
       open_angle_deg = opts.open_angle_deg or 90,
     },
     fields = {
-      { key = "room_id", label = "Owner room", type = "object_ref", required = true, choices = function(ctx) return common.rooms(ctx) end },
       {
-        key = "side", label = "Wall", type = "enum", required = true,
+        key = "room_id",
+        label = "Owner room",
+        type = "object_ref",
+        required = true,
+        choices = function(ctx) return common.rooms(ctx) end,
+      },
+      {
+        key = "side",
+        label = "Wall",
+        type = "enum",
+        required = true,
         choices = function(ctx) return directions.choices(ctx) end,
       },
       {
-        key = "width_mm", label = "Width", type = "measurement", required = true,
+        key = "width_mm",
+        label = "Width",
+        type = "measurement",
+        required = true,
         max = function(ctx, draft) return edge_length(draft, ctx) or runtime.limits.max_dimension_mm end,
       },
       {
-        key = "placement", label = "Placement", type = "enum", required = true,
+        key = "placement",
+        label = "Placement",
+        type = "enum",
+        required = true,
         choices = {
           { value = "centre", label = "Centred on wall" },
           { value = "cursor", label = "Centred at canvas cursor" },
@@ -172,24 +189,38 @@ function M.add(session, opts)
         },
       },
       {
-        key = "offset_mm", label = "Offset", type = "measurement", allow_zero = true,
+        key = "offset_mm",
+        label = "Offset",
+        type = "measurement",
+        allow_zero = true,
         visible = function(_, draft) return draft.placement == "exact" end,
       },
       {
-        key = "resolved_offset", label = "Resolved offset", type = "readonly",
+        key = "resolved_offset",
+        label = "Resolved offset",
+        type = "readonly",
         value = function(ctx, draft) return offset(draft, ctx) end,
         format = function(value) return value and (tostring(value) .. " mm") or "unavailable" end,
       },
       {
-        key = "hinge", label = "Hinge", type = "enum", required = true,
+        key = "hinge",
+        label = "Hinge",
+        type = "enum",
+        required = true,
         choices = { { value = "start", label = "Canonical start" }, { value = "end", label = "Canonical end" } },
       },
       {
-        key = "connects_to_room_id", label = "Connects to", type = "object_ref", required = true,
+        key = "connects_to_room_id",
+        label = "Connects to",
+        type = "object_ref",
+        required = true,
         choices = connections,
       },
       {
-        key = "opens_into", label = "Opens", type = "enum", required = true,
+        key = "opens_into",
+        label = "Opens",
+        type = "enum",
+        required = true,
         choices = opening_choices,
       },
       { key = "open_angle_deg", label = "Open angle", type = "integer", required = true, min = 1, max = 180 },
@@ -211,17 +242,30 @@ function M.add(session, opts)
         or draft.connects_to_room_id
       return {
         lines = {
-          string.format("%s wall of %s: offset %d mm, width %d mm",
-            directions.label(draft.side, ctx), room.name or room.id, resolved, draft.width_mm),
-          string.format("Hinge at %s; opens %s; destination %s; angle %d degrees",
-            draft.hinge, draft.opens_into, destination, draft.open_angle_deg),
+          string.format(
+            "%s wall of %s: offset %d mm, width %d mm",
+            directions.label(draft.side, ctx),
+            room.name or room.id,
+            resolved,
+            draft.width_mm
+          ),
+          string.format(
+            "Hinge at %s; opens %s; destination %s; angle %d degrees",
+            draft.hinge,
+            draft.opens_into,
+            destination,
+            draft.open_angle_deg
+          ),
         },
       }
     end,
   }
   if version >= 2 then
     table.insert(spec.fields, 2, {
-      key = "part_id", label = "Footprint part", type = "object_ref", required = true,
+      key = "part_id",
+      label = "Footprint part",
+      type = "object_ref",
+      required = true,
       choices = part_choices,
     })
   end
@@ -240,7 +284,10 @@ function M.add(session, opts)
     end
     local available = false
     for _, choice in ipairs(connections(ctx, draft)) do
-      if choice.value == draft.connects_to_room_id then available = true; break end
+      if choice.value == draft.connects_to_room_id then
+        available = true
+        break
+      end
     end
     if not available then errors.connects_to_room_id = "connected room does not share that wall" end
     return errors
@@ -303,31 +350,54 @@ function M.edit(session, door, opts)
       open_angle_deg = door.open_angle_deg,
     },
     fields = {
-      { key = "room_id", label = "Owner room", type = "object_ref", required = true, choices = function(ctx) return common.rooms(ctx) end },
       {
-        key = "side", label = "Wall", type = "enum", required = true,
+        key = "room_id",
+        label = "Owner room",
+        type = "object_ref",
+        required = true,
+        choices = function(ctx) return common.rooms(ctx) end,
+      },
+      {
+        key = "side",
+        label = "Wall",
+        type = "enum",
+        required = true,
         choices = function(ctx) return directions.choices(ctx) end,
       },
       {
-        key = "width_mm", label = "Width", type = "measurement",
+        key = "width_mm",
+        label = "Width",
+        type = "measurement",
         max = function(ctx, draft) return edge_length(draft, ctx) end,
       },
       { key = "offset_mm", label = "Offset", type = "measurement", allow_zero = true },
       {
-        key = "hinge", label = "Hinge", type = "enum", required = true,
+        key = "hinge",
+        label = "Hinge",
+        type = "enum",
+        required = true,
         choices = { { value = "start", label = "Canonical start" }, { value = "end", label = "Canonical end" } },
       },
       {
-        key = "connects_to_room_id", label = "Connects to", type = "object_ref", required = true,
+        key = "connects_to_room_id",
+        label = "Connects to",
+        type = "object_ref",
+        required = true,
         choices = connections,
       },
       { key = "opens_into", label = "Opens", type = "enum", required = true, choices = opening_choices },
       { key = "open_angle_deg", label = "Open angle", type = "integer", min = 1, max = 180 },
       {
-        key = "summary", label = "Result", type = "readonly",
+        key = "summary",
+        label = "Result",
+        type = "readonly",
         value = function(ctx, draft)
-          return string.format("%s wall, offset %d mm, width %d mm",
-            directions.label(draft.side, ctx), draft.offset_mm, draft.width_mm)
+          return string.format(
+            "%s wall, offset %d mm, width %d mm",
+            directions.label(draft.side, ctx),
+            draft.offset_mm,
+            draft.width_mm
+          )
         end,
       },
     },
@@ -353,7 +423,10 @@ function M.edit(session, door, opts)
       end
       local available = false
       for _, choice in ipairs(connections(ctx, draft)) do
-        if choice.value == draft.connects_to_room_id then available = true; break end
+        if choice.value == draft.connects_to_room_id then
+          available = true
+          break
+        end
       end
       if not available then errors.connects_to_room_id = "connected room does not share that wall" end
       return errors
@@ -363,8 +436,13 @@ function M.edit(session, door, opts)
       if not room then return nil, { code = "ROOM_REQUIRED", message = "choose an owner room" } end
       return {
         lines = {
-          string.format("%s wall of %s: offset %d mm, width %d mm",
-            directions.label(draft.side, ctx), room.name or room.id, draft.offset_mm, draft.width_mm),
+          string.format(
+            "%s wall of %s: offset %d mm, width %d mm",
+            directions.label(draft.side, ctx),
+            room.name or room.id,
+            draft.offset_mm,
+            draft.width_mm
+          ),
           string.format("Hinge %s; opens %s; angle %d degrees", draft.hinge, draft.opens_into, draft.open_angle_deg),
         },
       }
@@ -372,7 +450,10 @@ function M.edit(session, door, opts)
   }
   if version >= 2 then
     table.insert(spec.fields, 2, {
-      key = "part_id", label = "Footprint part", type = "object_ref", required = true,
+      key = "part_id",
+      label = "Footprint part",
+      type = "object_ref",
+      required = true,
       choices = part_choices,
     })
   end
@@ -424,7 +505,9 @@ function M.duplicate(session, door, opts)
     },
     fields = {
       {
-        key = "source", label = "Source", type = "readonly",
+        key = "source",
+        label = "Source",
+        type = "readonly",
         value = function(ctx)
           local current = common.find(ctx, "door", ctx.door_id)
           if not current then return "unavailable" end
@@ -434,7 +517,10 @@ function M.duplicate(session, door, opts)
       { key = "offset_mm", label = "Copy offset", type = "measurement", required = true, allow_zero = true },
       { key = "width_mm", label = "Copy width", type = "measurement", required = true },
       {
-        key = "hinge", label = "Copy hinge", type = "enum", required = true,
+        key = "hinge",
+        label = "Copy hinge",
+        type = "enum",
+        required = true,
         choices = { { value = "start", label = "Canonical start" }, { value = "end", label = "Canonical end" } },
       },
     },

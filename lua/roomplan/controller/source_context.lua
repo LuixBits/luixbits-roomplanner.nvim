@@ -31,8 +31,11 @@ function M.context_for(opts, purpose)
     if existing ~= -1 and vim.api.nvim_buf_is_valid(existing) then
       bufnr = existing
       vim.fn.bufload(bufnr)
-    elseif purpose == "open" or path:lower():sub(-5) == ".norg"
-      or (purpose == "init" and vim.uv.fs_lstat(path) ~= nil) then
+    elseif
+      purpose == "open"
+      or path:lower():sub(-5) == ".norg"
+      or (purpose == "init" and vim.uv.fs_lstat(path) ~= nil)
+    then
       bufnr = storage.ensure_buffer(path)
     else
       bufnr = nil
@@ -50,18 +53,20 @@ function M.find_existing(context)
 end
 
 function M.reusable_existing(context, existing)
-  if not existing or not context.bufnr or not existing.source.bufnr
-    or context.bufnr == existing.source.bufnr then return existing end
+  if not existing or not context.bufnr or not existing.source.bufnr or context.bufnr == existing.source.bufnr then
+    return existing
+  end
   if not vim.api.nvim_buf_is_loaded(context.bufnr) or not vim.api.nvim_buf_is_loaded(existing.source.bufnr) then
     return existing
   end
   local alias_text = source_io.buffer_text(context.bufnr)
   local authoritative_text = source_io.buffer_text(existing.source.bufnr)
   if vim.bo[context.bufnr].modified or alias_text ~= authoritative_text then
-    return nil, util.err("DUPLICATE_BUFFER_CONFLICT", "another loaded buffer for this RoomPlan path is modified or divergent", {
-      authoritative_bufnr = existing.source.bufnr,
-      alias_bufnr = context.bufnr,
-    })
+    return nil,
+      util.err("DUPLICATE_BUFFER_CONFLICT", "another loaded buffer for this RoomPlan path is modified or divergent", {
+        authoritative_bufnr = existing.source.bufnr,
+        alias_bufnr = context.bufnr,
+      })
   end
   return existing
 end

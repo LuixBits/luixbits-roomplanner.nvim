@@ -14,31 +14,31 @@ local function collision(path, field, value)
     message = "schema v2 extension data collides with the generated schema-v3 field '" .. field .. "'",
     value = value,
   }
-  return nil, {
-    code = diagnostic.code,
-    path = diagnostic.path,
-    message = diagnostic.message,
-    diagnostics = { diagnostic },
-  }
+  return nil,
+    {
+      code = diagnostic.code,
+      path = diagnostic.path,
+      message = diagnostic.message,
+      diagnostics = { diagnostic },
+    }
 end
 
 function M.migrate(document)
   local result = json.deep_copy(document)
   for _, field in ipairs({ "windows", "outlets" }) do
-    if rawget(result, field) ~= nil then
-      return collision("$", field, result[field])
-    end
+    if rawget(result, field) ~= nil then return collision("$", field, result[field]) end
   end
   result.windows = json.array()
   result.outlets = json.array()
   result.schema_version = 3
-  return result, {
+  return result,
     {
-      code = "SCHEMA_MIGRATED_V2_TO_V3",
-      path = "$",
-      message = "initialized canonical window and outlet collections",
-    },
-  }
+      {
+        code = "SCHEMA_MIGRATED_V2_TO_V3",
+        path = "$",
+        message = "initialized canonical window and outlet collections",
+      },
+    }
 end
 
 return M

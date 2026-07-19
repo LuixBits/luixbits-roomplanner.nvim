@@ -48,22 +48,26 @@ function M.attach(controller)
       workspace.focus(resolved, "issues")
     end
     local workspace_ok, workspace = pcall(require, "roomplan.ui.workspace")
-    if workspace_ok and resolved.workspace then workspace.refresh(resolved, { "issues", "properties", "action_bar" }) end
+    if workspace_ok and resolved.workspace then
+      workspace.refresh(resolved, { "issues", "properties", "action_bar" })
+    end
     return resolved.validation, resolved.validation_summary
   end
 
   local function save_allowed(session, opts, callback, retry_fn)
     local diagnostics, summary = controller.validate(session)
     if summary.structural_errors > 0 then
-      return nil, util.err("MODEL_STRUCTURAL_INVALID", "structural model errors must be repaired before saving", {
-        diagnostics = diagnostics,
-      })
+      return nil,
+        util.err("MODEL_STRUCTURAL_INVALID", "structural model errors must be repaired before saving", {
+          diagnostics = diagnostics,
+        })
     end
     if summary.errors > 0 and not opts.allow_invalid then
       if opts.noninteractive then
-        return nil, util.err("MODEL_LAYOUT_INVALID", "layout errors block noninteractive save; use :RoomPlanSave! deliberately", {
-          diagnostics = diagnostics,
-        })
+        return nil,
+          util.err("MODEL_LAYOUT_INVALID", "layout errors block noninteractive save; use :RoomPlanSave! deliberately", {
+            diagnostics = diagnostics,
+          })
       end
       local prompt_err
       local flow
@@ -134,9 +138,13 @@ function M.attach(controller)
     if not resolved then return finish(callback, notify_error(err)) end
     if not opts.autosave then resolved.autosave_generation = (resolved.autosave_generation or 0) + 1 end
     if resolved.source_rebind_pending then
-      err = util.err("SOURCE_REBIND_PENDING", "source buffer was renamed; use RoomPlanSaveAs to adopt a supported destination or restore its original name", {
-        pending_path = resolved.source_rebind_pending,
-      })
+      err = util.err(
+        "SOURCE_REBIND_PENDING",
+        "source buffer was renamed; use RoomPlanSaveAs to adopt a supported destination or restore its original name",
+        {
+          pending_path = resolved.source_rebind_pending,
+        }
+      )
       if not opts.noninteractive then notify_error(err) end
       return finish(callback, nil, err)
     end
@@ -164,10 +172,8 @@ function M.attach(controller)
     local adapter = storage.adapter(resolved.source.adapter)
     local patch, prepare_err = adapter.prepare_save(resolved, resolved:model(), opts)
     if not patch then return finish(callback, notify_error(prepare_err)) end
-    local revision, actual_or_err, locator_or_staged = commit_guarded(
-      resolved, adapter,
-      resolved.source, patch, resolved.source.revision, { write = true }
-    )
+    local revision, actual_or_err, locator_or_staged =
+      commit_guarded(resolved, adapter, resolved.source, patch, resolved.source.revision, { write = true })
     if not revision then
       err = actual_or_err
       if err and err.code == "SOURCE_CONFLICT" then
@@ -218,7 +224,8 @@ function M.attach(controller)
       resolved.source.revision = revision
       if resolved.source.adapter == "norg" then resolved.source.locator = locator_or_staged end
       resolved:update_guard()
-      err = util.err("SOURCE_POST_WRITE_MODIFIED", "source remained modified after write hooks; savepoint was not advanced")
+      err =
+        util.err("SOURCE_POST_WRITE_MODIFIED", "source remained modified after write hooks; savepoint was not advanced")
       if not opts.noninteractive then notify_error(err) end
       return finish(callback, nil, err)
     end
@@ -270,9 +277,14 @@ function M.attach(controller)
   end
 
   local function verify_destination_snapshot(snapshot, context, key)
-    if type(snapshot) ~= "table" or snapshot.tag ~= destination_confirmation_tag
-      or snapshot.key ~= key or snapshot.adapter ~= context.adapter
-      or snapshot.path ~= context.path or snapshot.bufnr ~= context.bufnr then
+    if
+      type(snapshot) ~= "table"
+      or snapshot.tag ~= destination_confirmation_tag
+      or snapshot.key ~= key
+      or snapshot.adapter ~= context.adapter
+      or snapshot.path ~= context.path
+      or snapshot.bufnr ~= context.bufnr
+    then
       return false
     end
     local bufnr = context.bufnr
@@ -290,24 +302,31 @@ function M.attach(controller)
       local unchanged, verify_err = verify_destination_snapshot(opts.destination_confirmation, context, key)
       if unchanged then return true end
       if verify_err then return nil, verify_err end
-      return nil, util.err(
-        "SAVE_AS_DESTINATION_CHANGED",
-        "Save As destination changed after confirmation; review it and run Save As again",
-        { path = context.path }
-      )
+      return nil,
+        util.err(
+          "SAVE_AS_DESTINATION_CHANGED",
+          "Save As destination changed after confirmation; review it and run Save As again",
+          { path = context.path }
+        )
     end
-    if opts.noninteractive then
-      return nil, util.err("SAVE_AS_CONFIRM_REQUIRED", prompt)
-    end
+    if opts.noninteractive then return nil, util.err("SAVE_AS_CONFIRM_REQUIRED", prompt) end
     local snapshot, snapshot_err = destination_snapshot(context, key)
     if not snapshot then return nil, snapshot_err end
     local flow, flow_err = require("roomplan.ui.prompts").confirm(
-      session, "save-as-destination", prompt, { "Continue", "Cancel" }, function(choice)
+      session,
+      "save-as-destination",
+      prompt,
+      { "Continue", "Cancel" },
+      function(choice)
         if choice == "Continue" then
-          controller.save_as(session, vim.tbl_extend("force", opts, {
-            destination_confirmation = snapshot,
-            destination_confirmed = nil,
-          }), callback)
+          controller.save_as(
+            session,
+            vim.tbl_extend("force", opts, {
+              destination_confirmation = snapshot,
+              destination_confirmed = nil,
+            }),
+            callback
+          )
         else
           finish(callback, nil, util.err("SAVE_AS_CANCELLED", "Save As cancelled"))
         end
@@ -337,9 +356,14 @@ function M.attach(controller)
 
     local requested_stat = requested_path and vim.uv.fs_lstat(requested_path) or nil
     if requested_stat and requested_stat.type ~= "file" then
-      err = util.err("SAVE_AS_UNSAFE_TARGET", "Save As destination must be an ordinary regular file, not a link or special file", {
-        path = requested_path, type = requested_stat.type,
-      })
+      err = util.err(
+        "SAVE_AS_UNSAFE_TARGET",
+        "Save As destination must be an ordinary regular file, not a link or special file",
+        {
+          path = requested_path,
+          type = requested_stat.type,
+        }
+      )
       return finish(callback, notify_error(err))
     end
 
@@ -355,7 +379,8 @@ function M.attach(controller)
     local target_stat = vim.uv.fs_lstat(path)
     if target_stat and target_stat.type ~= "file" then
       err = util.err("SAVE_AS_UNSAFE_TARGET", "Save As destination must be an ordinary regular file", {
-        path = path, type = target_stat.type,
+        path = path,
+        type = target_stat.type,
       })
       return finish(callback, notify_error(err))
     end
@@ -381,8 +406,12 @@ function M.attach(controller)
         end
         if (exists or not destination_text:match("^%s*$")) and not opts.bang then
           local confirmed, confirm_err = confirm_destination(
-            resolved, opts, context, "json-replace",
-            "Replace the existing valid/empty RoomPlan JSON destination?", callback
+            resolved,
+            opts,
+            context,
+            "json-replace",
+            "Replace the existing valid/empty RoomPlan JSON destination?",
+            callback
           )
           if confirmed == false then return nil end
           if not confirmed then return finish(callback, nil, confirm_err) end
@@ -411,16 +440,19 @@ function M.attach(controller)
       local destination_model, destination_revision = adapter.load(context)
       if destination_model then
         local confirmed, confirm_err = confirm_destination(
-          resolved, opts, context, "norg-replace",
-          "Replace the existing RoomPlan payload in this Norg note?", callback
+          resolved,
+          opts,
+          context,
+          "norg-replace",
+          "Replace the existing RoomPlan payload in this Norg note?",
+          callback
         )
         if confirmed == false then return nil end
         if not confirmed then return finish(callback, nil, confirm_err) end
         local patch, prepare_err = adapter.prepare_save(resolved, resolved:model(), opts)
         if not patch then return finish(callback, notify_error(prepare_err)) end
-        revision, actual, locator = commit_guarded(
-          resolved, adapter, context, patch, destination_revision, { write = true }
-        )
+        revision, actual, locator =
+          commit_guarded(resolved, adapter, context, patch, destination_revision, { write = true })
       elseif type(destination_revision) ~= "table" or destination_revision.code ~= "NORG_PLAN_MISSING" then
         if not opts.noninteractive then notify_error(destination_revision) end
         return finish(callback, nil, destination_revision)
@@ -428,8 +460,12 @@ function M.attach(controller)
         local destination_text = source_io.buffer_text(context.bufnr)
         if exists or not destination_text:match("^%s*$") then
           local confirmed, confirm_err = confirm_destination(
-            resolved, opts, context, "norg-initialize",
-            "Insert a RoomPlan block into this existing Norg note?", callback
+            resolved,
+            opts,
+            context,
+            "norg-initialize",
+            "Insert a RoomPlan block into this existing Norg note?",
+            callback
           )
           if confirmed == false then return nil end
           if not confirmed then return finish(callback, nil, confirm_err) end
@@ -439,16 +475,29 @@ function M.attach(controller)
         if not headings then return finish(callback, nil, heading_err) end
         if opts.destination_heading_line then
           local present = false
-          for _, line in ipairs(headings) do if line == opts.destination_heading_line then present = true; break end end
+          for _, line in ipairs(headings) do
+            if line == opts.destination_heading_line then
+              present = true
+              break
+            end
+          end
           if not present then
-            return finish(callback, nil, util.err("NORG_HEADING_CHANGED", "selected destination heading changed before Save As"))
+            return finish(
+              callback,
+              nil,
+              util.err("NORG_HEADING_CHANGED", "selected destination heading changed before Save As")
+            )
           end
           initialize_opts = vim.tbl_extend("force", opts, { heading_line = opts.destination_heading_line })
         elseif #headings == 1 then
           initialize_opts = vim.tbl_extend("force", opts, { heading_line = headings[1] })
         elseif #headings > 1 then
           if opts.noninteractive then
-            return finish(callback, nil, util.err("NORG_MULTIPLE_HEADINGS", "multiple destination Floor plan headings require a choice"))
+            return finish(
+              callback,
+              nil,
+              util.err("NORG_MULTIPLE_HEADINGS", "multiple destination Floor plan headings require a choice")
+            )
           end
           vim.ui.select(headings, {
             prompt = "Insert at which destination Floor plan heading?",
@@ -465,14 +514,19 @@ function M.attach(controller)
         end
         local initialized_revision, initialized_locator = adapter.initialize(context, resolved:model(), initialize_opts)
         if not initialized_revision then return finish(callback, notify_error(initialized_locator)) end
-        local patch, prepare_err = adapter.prepare_save({ source = { locator = initialized_locator } }, resolved:model(), opts)
+        local patch, prepare_err =
+          adapter.prepare_save({ source = { locator = initialized_locator } }, resolved:model(), opts)
         if not patch then return finish(callback, notify_error(prepare_err)) end
-        revision, actual, locator = commit_guarded(resolved, adapter, context, patch, initialized_revision, { write = true })
+        revision, actual, locator =
+          commit_guarded(resolved, adapter, context, patch, initialized_revision, { write = true })
       end
     end
     if not revision then return finish(callback, notify_error(actual)) end
     if actual and not model.deep_equal(actual, resolved:model()) then
-      return finish(callback, notify_error(util.err("SAVE_AS_MODEL_MISMATCH", "Save As destination changed model semantics")))
+      return finish(
+        callback,
+        notify_error(util.err("SAVE_AS_MODEL_MISMATCH", "Save As destination changed model semantics"))
+      )
     end
     local new_source = session_source(context, adapter, revision, locator)
     local updated, update_err = state.update_source(resolved, new_source)
@@ -505,8 +559,11 @@ function M.attach(controller)
     end
     local adapter = storage.adapter(resolved.source.adapter)
     local overwrite_allowed = false
-    if resolved.source.bufnr and vim.api.nvim_buf_is_loaded(resolved.source.bufnr)
-      and not resolved.source_rebind_pending then
+    if
+      resolved.source.bufnr
+      and vim.api.nvim_buf_is_loaded(resolved.source.bufnr)
+      and not resolved.source_rebind_pending
+    then
       local disk_ok = source_io.verify_expected_disk(resolved.source, resolved.source.revision)
       local external = disk_ok and adapter.load(resolved.source) or nil
       overwrite_allowed = external ~= nil
@@ -546,14 +603,16 @@ function M.attach(controller)
           { "Overwrite payload", "Cancel" },
           function(confirmation)
             if confirmation ~= "Overwrite payload" then return end
-            local unchanged, changed_err = verify_destination_snapshot(
-              overwrite_snapshot, resolved.source, "conflict-overwrite"
-            )
+            local unchanged, changed_err =
+              verify_destination_snapshot(overwrite_snapshot, resolved.source, "conflict-overwrite")
             if not unchanged then
-              notify_error(changed_err or util.err(
-                "SOURCE_CHANGED_DURING_CONFIRMATION",
-                "source changed while overwrite confirmation was open; review it and try again"
-              ))
+              notify_error(
+                changed_err
+                  or util.err(
+                    "SOURCE_CHANGED_DURING_CONFIRMATION",
+                    "source changed while overwrite confirmation was open; review it and try again"
+                  )
+              )
               return
             end
             local disk_ok, disk_err = source_io.verify_expected_disk(resolved.source, resolved.source.revision)
@@ -577,9 +636,7 @@ function M.attach(controller)
 
   function controller.maybe_autosave(session)
     local options = config.get().autosave
-    if not options.enabled or session.closed or session.source_conflicted
-      or session:schema_rewrite_pending()
-    then
+    if not options.enabled or session.closed or session.source_conflicted or session:schema_rewrite_pending() then
       return false
     end
     if session.source.adapter == "norg" then
@@ -589,8 +646,11 @@ function M.attach(controller)
     local generation = session.autosave_generation
     local revision_id = session:revision_id()
     vim.defer_fn(function()
-      if session.closed or generation ~= session.autosave_generation
-        or revision_id ~= session:revision_id() or session.source_conflicted
+      if
+        session.closed
+        or generation ~= session.autosave_generation
+        or revision_id ~= session:revision_id()
+        or session.source_conflicted
         or session:schema_rewrite_pending()
       then
         return
@@ -602,7 +662,6 @@ function M.attach(controller)
     end, options.debounce_ms)
     return true
   end
-
 end
 
 return M
