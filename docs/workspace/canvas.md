@@ -21,7 +21,7 @@ truth.
 
 Starting whole-day playback dismisses the study form so it cannot cover the
 plan. While the study is on the canvas, `h`/`l` step through time and `j`/`k`
-move forward/backward by four months at that same time. `Space` plays from
+move forward/backward by three months at that same time. `Space` plays from
 sunrise or pauses/resumes, `L` reopens settings, and `Esc` closes the transient
 overlay. A completed day shows the fixed-band exposure map. Press `3` to show
 the same controls, timeline, legend, and play state in Details, or `?` to find

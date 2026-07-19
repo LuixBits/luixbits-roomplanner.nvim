@@ -21,15 +21,15 @@ the view changes those screen labels and the compass, never the saved site.
 The study popup keeps a date preset, exact date, fixed UTC-offset reminder,
 local time, minute step, and milliseconds per step together. The presets cover
 today, both equinoxes, and both solstices without saving another plan field.
-`h` and `l` move one time step; `j` and `k` move forward and backward by four
-months while retaining the local time. `Space` starts whole-day playback,
+`j` and `k` retain normal form navigation, while `h` and `l` are the only keys
+that change the sunlight time directly. `Space` starts whole-day playback,
 closes the popup, and focuses the unobstructed canvas; `Ctrl-s` does the same
 without starting the timer. **View current time on canvas**, **Play whole day
 on canvas**, and **View daily exposure** expose all three choices explicitly.
 **Edit location and plan north** returns to the persisted site popup.
 
 While viewing the canvas, `h` and `l` step backward and forward in the chosen
-day; `j` advances four months and `k` goes back four months at the same local
+day; `j` advances three months and `k` goes back three months at the same local
 time. `Space` plays from sunrise, pauses or resumes an active run, and restarts
 from sunrise after completion. `L` pauses and reopens the same settings, and
 `Esc` closes the study. Playback advances only across the calculated daylight

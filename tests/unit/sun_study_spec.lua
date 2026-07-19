@@ -21,9 +21,9 @@ describe("offline sunlight study", function()
   end)
 
   it("moves between seasonal dates without spilling invalid month days", function()
-    assert_equal("2025-02-28", assert(solar.shift_months("2024-10-31", 4)))
-    assert_equal("2024-02-29", assert(solar.shift_months("2023-10-31", 4)))
-    assert_equal("2023-11-30", assert(solar.shift_months("2024-03-31", -4)))
+    assert_equal("2025-02-28", assert(solar.shift_months("2024-11-30", 3)))
+    assert_equal("2024-02-29", assert(solar.shift_months("2023-11-30", 3)))
+    assert_equal("2023-12-31", assert(solar.shift_months("2024-03-31", -3)))
   end)
 
   it("translates stable plan sides into the rotated top/right/bottom/left UI", function()

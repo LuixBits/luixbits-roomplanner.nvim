@@ -58,7 +58,7 @@ ordinary `e`, `m`, `y`, and `d` edit/move/duplicate/delete mappings.
 | `f`, `.`, `,` | `fit`, `zoom_in`, `zoom_out` | Fit/zoom |
 | `t` | `cycle_detail_level` | Cycle `high`, `middle`, and `none` canvas detail |
 | `L` | `sun_study` | Open the sunlight study in NAV; remains coarse-right in MOVE/PAN/RESIZE |
-| Sun mode: `h`/`l`, `j`/`k` | contextual | Earlier/later time; next/previous four-month season |
+| Sun mode: `h`/`l`, `j`/`k` | contextual | Earlier/later time; next/previous three-month season on canvas |
 | `Alt-h`, `Alt-l`, `g0` | `rotate_view_counterclockwise`, `rotate_view_clockwise`, `reset_view` | Rotate projection |
 | `gs`, `g!` | `toggle_snap`, `bypass_snap` | Snapping controls |
 | `s`, `S` | `save`, `save_as` | Save / Save As |

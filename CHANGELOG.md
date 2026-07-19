@@ -5,7 +5,8 @@ All notable changes to `roomplan.nvim` will be documented here.
 ## [Unreleased]
 
 - Expanded the offline sun study without adding saved-plan keys. `h`/`l` now
-  inspect time while `j`/`k` compare the same clock time four months apart;
+  inspect time while canvas `j`/`k` compare the same clock time three months
+  apart. In the `L` popup, `j`/`k` retain ordinary field navigation;
   popup presets cover today, equinoxes, and solstices. Whole-day playback
   reliably rewinds to sunrise, handles fractional sunset boundaries, and ends
   on a transient five-band daily-exposure map. Details adds a timeline,

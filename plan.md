@@ -54,7 +54,7 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   top/right/bottom/left screen labels, optional per-window sill/head pairs,
   configurable assumed heights, clear-sky solar angles, exposed-wall/window
   emphasis, elevation-aware floor gradients, reliable whole-day playback,
-  four-month comparison controls, and fixed-band daily exposure. Study
+  three-month comparison controls, and fixed-band daily exposure. Study
   date/time/playback/analysis remains transient and closes with its timer.
 
 Schema v1, v2, and v3 stay readable compatibility formats; schema v4 is the only

@@ -300,7 +300,7 @@ Canvas and editing:
   gs / g!        toggle snapping / bypass the next snap
 
 While a sun study is visible on the canvas, h/l step through time and j/k move
-forward/backward by four months at the same clock time. Space plays the whole
+forward/backward by three months at the same clock time. Space plays the whole
 day from sunrise or pauses/resumes, L reopens settings, and Esc closes the
 study. At sunset the animation becomes a fixed-band daily-exposure map.
 
@@ -505,7 +505,7 @@ room, door, window, outlet, and furniture coordinates never rotate.
 
 Space in the sun-study popup starts at sunrise and dismisses the popup so the
 plan remains visible. On the canvas, `h`/`l` step through time, `j`/`k` compare
-dates four months apart, Space plays or pauses, L reopens settings, and Esc
+dates three months apart, Space plays or pauses, L reopens settings, and Esc
 closes the study. It calculates offline and stops at sunset, then shows daily
 exposure in fixed <=1h, <=2h, <=4h, <=6h, and >6h bands. Its yellow/orange
 floor patches remain approximate 2D clear-sky exposure, not illuminance or
