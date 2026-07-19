@@ -4,6 +4,14 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Expanded the offline sun study without adding saved-plan keys. `h`/`l` now
+  inspect time while `j`/`k` compare the same clock time four months apart;
+  popup presets cover today, equinoxes, and solstices. Whole-day playback
+  reliably rewinds to sunrise, handles fractional sunset boundaries, and ends
+  on a transient five-band daily-exposure map. Details adds a timeline,
+  progress, fixed UTC-offset reminder, legend, and selected room/window span;
+  instant patches now warm with low solar elevation and the header shows the
+  incoming-light direction.
 - Details now opens with a dynamic NAV/MOVE/PAN/RESIZE/SUN STUDY heading and
   one registry-backed Canvas controls section. The same configured commands
   feed Details, the footer, and `?`; every active mode names its finish or

@@ -69,12 +69,20 @@ local definitions = {
     handler = "sun_study", priority = 58,
   },
   sun_previous = {
-    key = "h", literal = true, label = "Previous step",
+    key = "h", literal = true, label = "Earlier time",
     handler = "sun_step", args = { -1 }, priority = 92,
   },
   sun_next = {
-    key = "l", literal = true, label = "Next step",
+    key = "l", literal = true, label = "Later time",
     handler = "sun_step", args = { 1 }, priority = 90,
+  },
+  sun_previous_season = {
+    key = "k", literal = true, label = "Previous season (4 months)",
+    handler = "sun_season", args = { -1 }, priority = 88,
+  },
+  sun_next_season = {
+    key = "j", literal = true, label = "Next season (4 months)",
+    handler = "sun_season", args = { 1 }, priority = 86,
   },
   sun_toggle_playback = {
     key = "<Space>", literal = true, label = "Play",
@@ -186,7 +194,8 @@ local group_members = {
   form = { "previous_field", "next_field", "edit_field", "apply", "reset", "cancel" },
   mode = {
     "shape_apply", "shape_previous", "shape_next", "leave_mode",
-    "sun_previous", "sun_next", "sun_toggle_playback", "sun_close",
+    "sun_previous", "sun_next", "sun_previous_season", "sun_next_season",
+    "sun_toggle_playback", "sun_close",
   },
   pane = {
     "activate_focused",
@@ -325,7 +334,10 @@ local function availability(id, ctx)
     return false, "View is already plan-up"
   elseif id == "sun_study" and ctx.mode ~= nil and ctx.mode ~= "NAV" and ctx.mode ~= "SUN STUDY" then
     return false, "Finish the current interaction first"
-  elseif id == "sun_previous" or id == "sun_next" or id == "sun_toggle_playback" or id == "sun_close" then
+  elseif id == "sun_previous" or id == "sun_next"
+    or id == "sun_previous_season" or id == "sun_next_season"
+    or id == "sun_toggle_playback" or id == "sun_close"
+  then
     if ctx.mode ~= "SUN STUDY" then return false, "Start the sunlight study first" end
   elseif id == "activate_focused" then
     local row = ctx.focused_row
@@ -375,7 +387,9 @@ function M.get(id, ctx)
   elseif id == "toggle_mark" then
     result.label = ctx.focused_row and ctx.focused_row.marked and "Unmark" or "Mark"
   elseif id == "sun_toggle_playback" then
-    result.label = ctx.sun_study and ctx.sun_study.playing and "Pause" or "Play"
+    result.label = ctx.sun_study and ctx.sun_study.playing and "Pause"
+      or ctx.sun_study and ctx.sun_study.playback_state == "paused" and "Resume"
+      or "Play day"
   elseif id == "sun_study" and ctx.mode == "SUN STUDY" then
     result.label = "Settings"
   elseif id == "leave_mode" then
@@ -399,7 +413,10 @@ local function ids_for(ctx)
     return { "previous_field", "next_field", "edit_field", "apply", "reset", "cancel" }
   end
   if ctx.mode == "SUN STUDY" then
-    return { "sun_previous", "sun_next", "sun_toggle_playback", "sun_study", "sun_close", "help" }
+    return {
+      "sun_previous", "sun_next", "sun_previous_season", "sun_next_season",
+      "sun_toggle_playback", "sun_study", "sun_close", "help",
+    }
   end
   if ctx.mode == "MOVE" then return { "leave_mode", "undo", "redo", "save", "help" } end
   if ctx.mode == "PAN" then return { "leave_mode", "fit", "help" } end
@@ -474,7 +491,10 @@ local function primary_ids_for(ctx)
     return { "edit_field", "apply", "cancel", "help" }
   end
   if ctx.mode == "SUN STUDY" then
-    return { "sun_toggle_playback", "sun_close", "sun_previous", "sun_next", "sun_study", "help" }
+    return {
+      "sun_toggle_playback", "sun_close", "sun_previous", "sun_next",
+      "sun_previous_season", "sun_next_season", "sun_study", "help",
+    }
   end
   if ctx.mode == "MOVE" then return { "leave_mode", "undo", "redo", "help" } end
   if ctx.mode == "PAN" then return { "leave_mode", "fit", "help" } end
@@ -604,7 +624,10 @@ function M.context_controls(ctx)
   local coarse = { "H", "J", "K", { "L", "coarse_right" } }
   local fine = { "<C-h>", "<C-j>", "<C-k>", "<C-l>" }
   if mode == "SUN STUDY" then
-    for _, id in ipairs({ "sun_previous", "sun_next", "sun_toggle_playback", "sun_study", "sun_close" }) do
+    for _, id in ipairs({
+      "sun_previous", "sun_next", "sun_previous_season", "sun_next_season",
+      "sun_toggle_playback", "sun_study", "sun_close",
+    }) do
       append(result, M.get(id, ctx))
     end
     return result
@@ -653,8 +676,10 @@ function M.context_title(ctx)
   local mode = tostring(ctx.mode or "NAV"):gsub("_", " ")
   if mode == "SUN STUDY" then
     local study = ctx.sun_study or {}
+    local date = study.date and (" · " .. study.date) or ""
     local time = study.time and (" · " .. study.time) or ""
-    return "SUN STUDY" .. time .. (study.playing and " · PLAYING" or " · PAUSED")
+    local state = study.playing and "PLAYING" or study.overlay == "daily" and "DAY EXPOSURE" or "PAUSED"
+    return "SUN STUDY" .. date .. time .. " · " .. state
   elseif mode == "RESIZE" then
     return string.format("RESIZE · SECTION %d/%d · %s EDGE",
       ctx.shape_section_index or 0, ctx.shape_section_count or 0,

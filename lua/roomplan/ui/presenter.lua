@@ -446,6 +446,61 @@ local function metric(label, value)
   return field(label, M.compact_mm(value), value)
 end
 
+local function duration_text(minutes)
+  if type(minutes) ~= "number" then return "-" end
+  minutes = math.max(0, math.floor(minutes + 0.5))
+  local hours = math.floor(minutes / 60)
+  local remainder = minutes % 60
+  if hours == 0 then return string.format("%d min", remainder) end
+  if remainder == 0 then return string.format("%d h", hours) end
+  return string.format("%d h %02d min", hours, remainder)
+end
+
+local function sunlight_group(value, model, selection, object)
+  local study = type(value) == "table" and value.sun_study or nil
+  if not study or not study.viewing or not study.calculation then return nil end
+  local solar = require("roomplan.solar")
+  local calculation = study.calculation
+  local fields = { field("Date", study.date), field("Local time", study.time) }
+  if calculation.daylight_state == "normal" then
+    local sunrise = solar.format_time(calculation.sunrise_minutes)
+    local sunset = solar.format_time(calculation.sunset_minutes)
+    local span = math.max(1, calculation.sunset_minutes - calculation.sunrise_minutes)
+    local progress = math.max(0, math.min(1, (calculation.minutes - calculation.sunrise_minutes) / span))
+    fields[#fields + 1] = field("Timeline", string.format("%s → %s → %s", sunrise, study.time, sunset))
+    fields[#fields + 1] = field("Progress", string.format("%d%%", math.floor(progress * 100 + 0.5)))
+  elseif calculation.daylight_state == "polar_day" then
+    fields[#fields + 1] = field("Daylight", "Sun remains above horizon")
+  else
+    fields[#fields + 1] = field("Daylight", "No sunrise on this date")
+  end
+  fields[#fields + 1] = field("Sun", string.format("az %.1f° · el %.1f°",
+    calculation.azimuth_deg, calculation.elevation_deg))
+  fields[#fields + 1] = field("Display", study.overlay == "daily" and "Daily direct-sun exposure" or "Current-time patches")
+
+  local exposure = study.daily_exposure
+  if study.overlay == "daily" and exposure then
+    fields[#fields + 1] = field("Legend", "≤1h · ≤2h · ≤4h · ≤6h · >6h")
+    local minutes
+    local label
+    if selection and selection.kind == "window" then
+      minutes = exposure.window_minutes and exposure.window_minutes[selection.id]
+      label = "This window"
+    else
+      local room_id = selection and selection.kind == "room" and selection.id or object and object.room_id
+      minutes = room_id and exposure.room_minutes and exposure.room_minutes[room_id]
+      label = room_id and "Potential sun" or nil
+    end
+    if label then fields[#fields + 1] = field(label, duration_text(minutes or 0)) end
+    fields[#fields + 1] = field("Sampling", string.format("Every %d min · approximate", study.step_minutes or 60))
+  end
+  local offset = model.site and solar.number(model.site.utc_offset_minutes)
+  if offset ~= nil then
+    fields[#fields + 1] = field("UTC offset", solar.format_utc_offset(offset) .. " · fixed for date")
+  end
+  return { id = "sun_study", title = "Sun study", default_expanded = true, fields = fields }
+end
+
 local function object_diagnostics(diagnostics, selection)
   local result = {}
   if not selection then return result end
@@ -484,6 +539,8 @@ function M.properties(value, opts)
         field("State", status ~= "" and status or "unknown"),
       } },
     }
+    local sun = sunlight_group(value, model, selection, object)
+    if sun then table.insert(groups, 1, sun) end
     return {
       title = model.metadata and model.metadata.name or "Untitled plan",
       subtitle = "plan",
@@ -587,6 +644,9 @@ function M.properties(value, opts)
   end
   groups[#groups + 1] = { id = "advanced", title = "Advanced", fields = { field("Stable ID", object.id) } }
 
+  local sun = sunlight_group(value, model, selection, object)
+  if sun then table.insert(groups, 1, sun) end
+
   return {
     title = object.name
       or (selection.kind == "window" and "Window")
@@ -643,6 +703,8 @@ function M.context(value, ui_state)
   }
   local study = type(value) == "table" and value.sun_study or nil
   if study then
+    local calculation = study.calculation or {}
+    local exposure = study.daily_exposure or {}
     context.sun_study = {
       date = study.date,
       time = study.time,
@@ -650,6 +712,18 @@ function M.context(value, ui_state)
       frame_duration_ms = study.frame_duration_ms,
       playing = study.playing == true,
       viewing = study.viewing == true,
+      playback_state = study.playback_state,
+      overlay = study.overlay or "instant",
+      sunrise_minutes = calculation.sunrise_minutes,
+      sunset_minutes = calculation.sunset_minutes,
+      solar_noon_minutes = calculation.solar_noon_minutes,
+      minutes = calculation.minutes,
+      daylight_state = calculation.daylight_state,
+      azimuth_deg = calculation.azimuth_deg,
+      elevation_deg = calculation.elevation_deg,
+      room_minutes = exposure.room_minutes,
+      window_minutes = exposure.window_minutes,
+      exposure_total_minutes = exposure.total_minutes,
     }
   end
   for key, item in pairs(shape_context(value)) do context[key] = item end

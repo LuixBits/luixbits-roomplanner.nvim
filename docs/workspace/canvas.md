@@ -19,10 +19,12 @@ truth.
 | `g0` | Restore the plan view/up projection |
 | `L` | Open the offline sunlight study |
 
-Starting playback dismisses the study form so it cannot cover the plan. While
-the study is on the canvas, `h`/`l` step, `Space` plays or pauses, `L` reopens
-settings, and `Esc` closes the transient overlay. Press `3` to show the same
-controls with the current time and play/pause state in Details, or `?` to find
+Starting whole-day playback dismisses the study form so it cannot cover the
+plan. While the study is on the canvas, `h`/`l` step through time and `j`/`k`
+move forward/backward by four months at that same time. `Space` plays from
+sunrise or pauses/resumes, `L` reopens settings, and `Esc` closes the transient
+overlay. A completed day shows the fixed-band exposure map. Press `3` to show
+the same controls, timeline, legend, and play state in Details, or `?` to find
 them in the **Current mode** group.
 
 Zoom is limited by `canvas.min_mm_per_column` and

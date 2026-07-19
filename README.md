@@ -30,9 +30,9 @@ rounding can never corrupt the saved plan.
   template updates explicit and never bulk-rewrites other placed items.
 - View-only 90-degree rotation and runtime terminal-cell aspect calibration;
   neither operation changes saved geometry.
-- Offline sunlight studies with exact plan-north/site setup, date/time controls,
-  sunrise-to-sunset playback, configurable assumed window heights, and clipped
-  yellow-to-orange floor patches beneath the main plan display.
+- Offline sunlight studies with exact plan-north/site setup, seasonal date/time
+  controls, reliable whole-day playback, configurable assumed window heights,
+  clipped warm floor patches, and comparable daily-exposure bands.
 - Strict, deterministic JSON with preserved extension fields, plus marked Neorg
   embedding and conflict-safe writes.
 - Named undo history with confirmed revision restore; Navigator marking for
@@ -103,9 +103,10 @@ with `W` or an outlet with `O`; the outlet form chooses wall or floor placement.
 From the Add menu use `a` followed by lowercase `w` or `o`.
 Press `L` for the sunlight study. Its first use asks for plan north, location,
 and UTC offset in one popup; later uses open the date/time playback directly.
-`Space` starts playback and dismisses the popup so the whole canvas remains
-visible. On the canvas use `h`/`l` to step, `Space` to pause or resume, `L` to
-reopen settings, and `Esc` to close the study.
+`Space` starts at sunrise and dismisses the popup so the whole canvas remains
+visible. On the canvas use `h`/`l` for time and `j`/`k` for forward/backward
+four-month comparisons. `Space` pauses or resumes and the completed day becomes
+a direct-sun exposure map; `L` reopens settings and `Esc` closes the study.
 
 Open the plan again with:
 

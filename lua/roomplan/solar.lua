@@ -47,6 +47,22 @@ function M.format_time(minutes)
   return string.format("%02d:%02d", math.floor(minutes / 60), minutes % 60)
 end
 
+---Move a calendar date by an exact number of months while retaining its day
+---where possible. End-of-month dates clamp instead of spilling into another
+---month, so seasonal comparison remains predictable.
+function M.shift_months(value, delta)
+  local date, reason = M.parse_date(value)
+  if not date then return nil, reason end
+  delta = tonumber(delta)
+  if not delta or delta ~= math.floor(delta) then return nil, "month step must be a whole number" end
+  local absolute = (date.year - 1) * 12 + date.month - 1 + delta
+  if absolute < 0 or absolute >= 9999 * 12 then return nil, "date is outside the supported year range" end
+  local year = math.floor(absolute / 12) + 1
+  local month = absolute % 12 + 1
+  local maximum = MONTH_DAYS[month] + (month == 2 and leap(year) and 1 or 0)
+  return string.format("%04d-%02d-%02d", year, month, math.min(date.day, maximum))
+end
+
 function M.parse_utc_offset(value)
   if type(value) == "number" and value == math.floor(value) and math.abs(value) <= 14 * 60 then return value end
   local sign, hours, minutes = tostring(value or ""):match("^([+-])(%d%d?):(%d%d)$")

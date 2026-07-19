@@ -18,20 +18,27 @@ the view changes those screen labels and the compass, never the saved site.
 
 ## Popup controls
 
-The study popup keeps date, local time, minute step, and milliseconds per step
-together. `h` and `l` move one step. `Space` starts playback, closes the popup,
-and focuses the unobstructed canvas; `Ctrl-s` does the same without starting
-the timer. **View current time on canvas** and **Play on canvas** expose both
-choices explicitly. **Edit location and plan north** returns to the persisted
-site popup.
+The study popup keeps a date preset, exact date, fixed UTC-offset reminder,
+local time, minute step, and milliseconds per step together. The presets cover
+today, both equinoxes, and both solstices without saving another plan field.
+`h` and `l` move one time step; `j` and `k` move forward and backward by four
+months while retaining the local time. `Space` starts whole-day playback,
+closes the popup, and focuses the unobstructed canvas; `Ctrl-s` does the same
+without starting the timer. **View current time on canvas**, **Play whole day
+on canvas**, and **View daily exposure** expose all three choices explicitly.
+**Edit location and plan north** returns to the persisted site popup.
 
-While viewing the canvas, `h` and `l` step backward and forward, `Space` pauses
-or resumes, `L` pauses and reopens the same settings, and `Esc` closes the
-study. Playback advances only across the calculated daylight interval and
-stops at sunset. These contextual controls do not add more setup keys.
+While viewing the canvas, `h` and `l` step backward and forward in the chosen
+day; `j` advances four months and `k` goes back four months at the same local
+time. `Space` plays from sunrise, pauses or resumes an active run, and restarts
+from sunrise after completion. `L` pauses and reopens the same settings, and
+`Esc` closes the study. Playback advances only across the calculated daylight
+interval. At sunset it stops and replaces the final instant with the daily
+exposure overlay. These contextual controls do not add more setup keys.
 Press `3` to keep them visible in the dynamic Details pane, or `?` to see the
-same commands under **Current mode**. Details also shows the current local time
-and whether playback is running or paused.
+same commands under **Current mode**. Details also shows date, sunrise/current/
+sunset progress, exact azimuth/elevation, display type, legend, selected-room
+or selected-window exposure span, and how to leave the mode.
 
 The default step is 60 minutes and each frame remains visible for 700 ms. Both
 are editable for the current popup and configurable for later studies:
@@ -51,9 +58,9 @@ require("roomplan").setup({
 })
 ```
 
-Date, time, and playback position are transient. Cancelling the popup or
-closing the canvas study stops its timer and removes the overlay; it does not
-add history or dirty the plan.
+Date, time, playback position, presets, and accumulated exposure are transient.
+Cancelling the popup or closing the canvas study stops its timer and removes
+the overlay; it does not add history, dirty the plan, or add schema keys.
 
 ## Window heights and display
 
@@ -69,12 +76,20 @@ remain readable above it. Shared interior windows do not cast an outdoor
 patch. Details says whether a selected window uses explicit or assumed
 heights.
 
+Near sunrise and sunset, instantaneous patches shift toward warmer orange;
+the main header includes a view-aware arrow showing the incoming light
+direction. The daily exposure display samples the complete daylight interval
+using the popup step size and accumulates direct-sun minutes for every visible
+floor cell. Its fixed bands are `≤1h`, `≤2h`, `≤4h`, `≤6h`, and `>6h`, so dates
+remain visually comparable instead of stretching every day to its own maximum.
+
 ## Accuracy
 
 The solar position is a deterministic NOAA-style approximation calculated in
 pure Lua. RoomPlan does not contact a geocoder, timezone service, weather
 provider, or daylight-saving database. Enter the offset that applies to the
-chosen date.
+chosen date. The study popup and Details deliberately repeat that fixed offset
+to make seasonal comparisons with a daylight-saving change explicit.
 
 The overlay is clear-sky 2D exposure, not illuminance, glare, reflection,
 thermal gain, or a construction simulation. It does not yet model wall

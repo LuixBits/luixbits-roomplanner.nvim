@@ -89,4 +89,17 @@ function M.compass(north_deg, value, ascii)
   return "N" .. arrows[index]
 end
 
+---Render a world-space vector as a compact view-aware arrow. This is used by
+---transient analyses without inventing another directional naming system.
+function M.arrow(dx, dy, value, ascii)
+  dx, dy = tonumber(dx), tonumber(dy)
+  if not dx or not dy or (math.abs(dx) < 1e-12 and math.abs(dy) < 1e-12) then return "·" end
+  local visible_x, visible_y = viewport.world_delta_to_view(active_viewport(value), dx, dy)
+  local angle = (math.deg(math.atan2(visible_x, visible_y)) % 360 + 360) % 360
+  local index = math.floor((angle + 22.5) / 45) % 8 + 1
+  local arrows = ascii and { "^", "/", ">", "\\", "v", "/", "<", "\\" }
+    or { "↑", "↗", "→", "↘", "↓", "↙", "←", "↖" }
+  return arrows[index]
+end
+
 return M
