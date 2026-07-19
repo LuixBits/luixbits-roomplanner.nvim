@@ -41,7 +41,7 @@ end
 local function content(handle)
   local preview = handle.state.preview or {}
   local lines = { handle.spec.preview_title or "Preview", string.rep("-", 30) }
-  local meta = { graphic_rows = {}, error_rows = {} }
+  local meta = { graphic_rows = {}, graphic_spans = {}, error_rows = {} }
   if preview.error then
     lines[#lines + 1] = "! " .. tostring(preview.error)
     meta.error_rows[#lines] = true
@@ -51,6 +51,16 @@ local function content(handle)
       lines[#lines + 1] = tostring(line)
       if index >= (graphic.first_line or math.huge) and index <= (graphic.last_line or -math.huge) then
         meta.graphic_rows[#lines] = true
+        local graphic_row = index - graphic.first_line + 1
+        for _, span in ipairs(graphic.highlight_spans or {}) do
+          if span.row == graphic_row then
+            meta.graphic_spans[#meta.graphic_spans + 1] = {
+              row = #lines,
+              start_col = span.start_col,
+              end_col = span.end_col,
+            }
+          end
+        end
       end
     end
   end
@@ -99,6 +109,15 @@ local function highlight_rows(handle, lines, meta)
       strict = false,
     })
   end
+  local function mark_range(span, group)
+    if span.end_col <= span.start_col then return end
+    vim.api.nvim_buf_set_extmark(handle.preview_bufnr, handle.preview_namespace, span.row - 1, span.start_col, {
+      end_col = span.end_col,
+      hl_group = group,
+      hl_mode = "combine",
+      strict = false,
+    })
+  end
   mark(1, "RoomPlanFormTitle")
   if next(meta.graphic_rows) ~= nil then
     local accent = handle.state.preview and handle.state.preview.accent
@@ -108,7 +127,11 @@ local function highlight_rows(handle, lines, meta)
     else
       vim.api.nvim_set_hl(0, graphic_group, { link = "RoomPlanPreview" })
     end
-    for row in pairs(meta.graphic_rows) do mark(row, graphic_group) end
+    if #meta.graphic_spans > 0 then
+      for _, span in ipairs(meta.graphic_spans) do mark_range(span, graphic_group) end
+    else
+      for row in pairs(meta.graphic_rows) do mark(row, graphic_group) end
+    end
   end
   for row in pairs(meta.error_rows) do mark(row, "RoomPlanFormError") end
 end

@@ -87,6 +87,20 @@ local function highlight_line(handle, row, group)
   })
 end
 
+local function highlight_range(handle, row, start_col, end_col, group)
+  if type(row) ~= "number" or type(start_col) ~= "number" or type(end_col) ~= "number"
+    or end_col <= start_col
+  then
+    return
+  end
+  vim.api.nvim_buf_set_extmark(handle.bufnr, handle.namespace, row - 1, start_col, {
+    end_col = end_col,
+    hl_group = group,
+    hl_mode = "combine",
+    strict = false,
+  })
+end
+
 local function apply_highlights(handle, output)
   if not valid_buffer(handle.bufnr) then return end
   vim.api.nvim_buf_clear_namespace(handle.bufnr, handle.namespace, 0, -1)
@@ -102,7 +116,13 @@ local function apply_highlights(handle, output)
     else
       vim.api.nvim_set_hl(0, graphic_group, { link = "RoomPlanPreview" })
     end
-    for row in pairs(output.meta.preview_graphic_rows) do highlight_line(handle, row, graphic_group) end
+    if #(output.meta.preview_graphic_spans or {}) > 0 then
+      for _, span in ipairs(output.meta.preview_graphic_spans) do
+        highlight_range(handle, span.row, span.start_col, span.end_col, graphic_group)
+      end
+    else
+      for row in pairs(output.meta.preview_graphic_rows) do highlight_line(handle, row, graphic_group) end
+    end
   end
   for row in pairs(output.meta.footer_rows) do highlight_line(handle, row, "RoomPlanFormFooter") end
 end

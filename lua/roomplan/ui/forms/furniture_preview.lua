@@ -1,37 +1,67 @@
--- Compact, presentation-only furniture silhouette for structured forms.
--- It uses the same exact footprint adapter as the main canvas, then samples
--- that geometry into a bounded one-cell grid suitable for a side float.
+-- Compact, presentation-only furniture canvas for structured forms. It uses
+-- the same footprint adapter, viewport fitter, rasterizer, glyph set, cell
+-- aspect, and object color as the main canvas without creating a model draft.
 
+local config = require("roomplan.config")
 local footprint = require("roomplan.geometry.footprint")
+local raster = require("roomplan.render.raster")
+local text = require("roomplan.render.text")
+local viewport = require("roomplan.render.viewport")
 
 local M = {}
 
-local function rounded(value)
-  return math.max(1, math.floor(value + 0.5))
+local function display_width(value)
+  if vim and vim.fn and vim.fn.strdisplaywidth then return vim.fn.strdisplaywidth(value) end
+  return text.default_width(value)
 end
 
-local function grid(shape, bounds, opts)
-  opts = opts or {}
-  local max_columns = math.max(8, math.floor(opts.columns or 26))
-  local max_rows = math.max(3, math.floor(opts.rows or 9))
-  -- Terminal cells are normally about twice as tall as they are wide. Account
-  -- for that so a square footprint reads as square instead of as a flat bar.
-  local scale = math.min(max_columns / bounds.width2, (max_rows * 2) / bounds.depth2)
-  local columns = math.min(max_columns, math.max(2, rounded(bounds.width2 * scale)))
-  local rows = math.min(max_rows, math.max(2, rounded(bounds.depth2 * scale / 2)))
-  local lines = { "+" .. string.rep("-", columns) .. "+" }
-  for row = 1, rows do
-    local cells = {}
-    local y2 = bounds.top2 - (row - 0.5) * bounds.depth2 / rows
-    for column = 1, columns do
-      local x2 = bounds.left2 + (column - 0.5) * bounds.width2 / columns
-      local hits = footprint.hit_test2(shape, x2, y2, { include_boundary = false }) or {}
-      cells[column] = hits[1] and "#" or " "
-    end
-    lines[#lines + 1] = "|" .. table.concat(cells) .. "|"
+local function scene(shape, bounds, color)
+  local rectangles, err = footprint.rectangles(shape)
+  if not rectangles then return nil, err end
+  local primitives = {}
+  for index, rectangle in ipairs(rectangles) do
+    primitives[#primitives + 1] = {
+      kind = "furniture_outline",
+      layer = 2,
+      left = rectangle.left,
+      bottom = rectangle.bottom,
+      right = rectangle.right,
+      top = rectangle.top,
+      role = "furniture",
+      color = color,
+      order = index,
+    }
   end
-  lines[#lines + 1] = "+" .. string.rep("-", columns) .. "+"
-  return lines
+  return {
+    bounds = {
+      left = bounds.left,
+      bottom = bounds.bottom,
+      right = bounds.right,
+      top = bounds.top,
+    },
+    primitives = primitives,
+    warnings = {},
+  }
+end
+
+local function canvas(shape, bounds, color, opts)
+  opts = opts or {}
+  local columns = math.max(8, math.floor(opts.columns or 28))
+  local rows = math.max(3, math.floor(opts.rows or 9))
+  local runtime = config.get()
+  local preview_scene, scene_err = scene(shape, bounds, color)
+  if not preview_scene then return nil, scene_err end
+  local fitted = viewport.fit(preview_scene.bounds, columns, rows, {
+    cell_aspect = runtime.canvas.cell_aspect,
+    fit_margin_cells = 1,
+  })
+  return raster.rasterize(preview_scene, fitted, {
+    width = columns,
+    height = rows,
+    glyph_mode = runtime.canvas.unicode,
+    glyphs = runtime.glyphs,
+    width_fn = display_width,
+  })
 end
 
 function M.render(furniture, opts)
@@ -39,15 +69,18 @@ function M.render(furniture, opts)
     rotation_fallback = 0,
   })
   if not shape then return nil, err end
-  local bounds = footprint.bounds2(shape)
-  if not bounds or bounds.width2 <= 0 or bounds.depth2 <= 0 then
+  local bounds = footprint.bounds(shape)
+  if not bounds or bounds.width <= 0 or bounds.depth <= 0 then
     return nil, { code = "FURNITURE_PREVIEW", message = "the furniture footprint is unavailable" }
   end
-  local lines = grid(shape, bounds, opts)
+  local output, render_err = canvas(shape, bounds, furniture.color, opts)
+  if not output then return nil, render_err end
   return {
-    lines = lines,
-    width_mm = bounds.width2 / 2,
-    depth_mm = bounds.depth2 / 2,
+    lines = output.lines,
+    highlight_spans = output.highlight_spans,
+    glyph_mode = output.glyph_mode,
+    width_mm = bounds.width,
+    depth_mm = bounds.depth,
   }
 end
 

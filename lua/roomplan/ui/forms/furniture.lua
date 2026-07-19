@@ -19,7 +19,12 @@ local function preview_content(entity, summary)
   for _, line in ipairs(graphic.lines) do lines[#lines + 1] = line end
   return {
     lines = lines,
-    graphic = { first_line = first_line, last_line = #lines },
+    graphic = {
+      first_line = first_line,
+      last_line = #lines,
+      highlight_spans = graphic.highlight_spans,
+      glyph_mode = graphic.glyph_mode,
+    },
     accent = entity.color,
   }
 end
