@@ -124,37 +124,12 @@ function M.render(session, canvas_output, opts)
   return output
 end
 
-local function rgb(value)
-  if type(value) ~= "number" then
-    return nil
-  end
-  return math.floor(value / 65536) % 256, math.floor(value / 256) % 256, value % 256
-end
-
-local function blend(background, target, amount)
-  local br, bg, bb = rgb(background)
-  local tr, tg, tb = rgb(target)
-  if not br or not tr then
-    return string.format("#%06x", target or 0)
-  end
-  local function channel(base, top)
-    return math.floor(base + (top - base) * amount + 0.5)
-  end
-  return string.format("#%02x%02x%02x", channel(br, tr), channel(bg, tg), channel(bb, tb))
-end
-
 local function color_group(value)
   if type(value) ~= "string" or not value:match("^#%x%x%x%x%x%x$") then
     return nil
   end
   local name = "RoomPlanMinimapRoom" .. value:sub(2):upper()
-  local normal = vim.api.nvim_get_hl(0, { name = "Normal", link = false })
-  local background = normal.bg or (vim.o.background == "light" and 0xffffff or 0x101010)
-  local target = tonumber(value:sub(2), 16)
-  vim.api.nvim_set_hl(0, name, {
-    bg = blend(background, target, vim.o.background == "light" and 0.18 or 0.28),
-    fg = normal.fg,
-  })
+  vim.api.nvim_set_hl(0, name, require("roomplan.highlights").tint(value, 0.18, 0.28))
   return name
 end
 

@@ -409,8 +409,12 @@ errors; options are not silently ignored. The important defaults are: >lua
 Resource ceilings live under limits. See docs/configuration/settings.md for
 the complete list and docs/configuration/keymaps.md for semantic mapping names.
 
-Highlight groups start with RoomPlan and use default links, so colorschemes or
-user configuration can override them normally. See docs/display/appearance.md.
+Highlight groups start with RoomPlan and use default definitions, so
+colorschemes or user configuration can override them normally. Sunlight bands
+derive from warning/error colors; minimap defaults derive from Function,
+DiagnosticInfo, IncSearch, and Search. RoomPlan setup and redraw preserve
+explicit RoomPlanSunlight*, RoomPlanSun*, and RoomPlanMinimap* overrides. See
+docs/display/appearance.md.
 
 ==============================================================================
 8. WINDOWS AND OUTLETS                              *roomplan-wall-features*
@@ -517,9 +521,9 @@ Space in the sun-study popup starts at sunrise and dismisses the popup so the
 plan remains visible. On the canvas, `h`/`l` step through time, `j`/`k` compare
 dates three months apart, Space plays or pauses, S reopens settings, and Esc
 closes the study. It calculates offline and stops at sunset, then shows daily
-exposure in fixed <=1h, <=2h, <=4h, <=6h, and >6h bands. Its yellow/orange
-floor patches remain approximate 2D clear-sky exposure, not illuminance or
-thermal simulation.
+exposure in fixed <=1h, <=2h, <=4h, <=6h, and >6h bands. Its floor patches use
+the colorscheme's warning/error spectrum and remain approximate 2D clear-sky
+exposure, not illuminance or thermal simulation.
 
 canvas.detail_level defaults to "middle". high shows labels plus all exterior
 wall-run, furniture width/depth, and door/window width dimensions. middle shows
