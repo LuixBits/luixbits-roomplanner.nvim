@@ -10,9 +10,7 @@ function M.is_finite(value)
   return type(value) == "number" and value == value and value ~= math.huge and value ~= -math.huge
 end
 
-function M.is_integer(value)
-  return M.is_finite(value) and value == math.floor(value)
-end
+function M.is_integer(value) return M.is_finite(value) and value == math.floor(value) end
 
 function M.sign(value)
   if value < 0 then
@@ -34,9 +32,7 @@ end
 
 -- Round to the nearest integer, resolving exact halves away from zero.
 function M.round_half_away(value)
-  if value < 0 then
-    return -math.floor(-value + 0.5)
-  end
+  if value < 0 then return -math.floor(-value + 0.5) end
   return math.floor(value + 0.5)
 end
 
@@ -49,9 +45,7 @@ end
 
 -- Deterministic grid rounding, including negative values and negative halves.
 function M.round_to_grid(value, grid)
-  if not M.is_integer(grid) or grid <= 0 then
-    return nil, "grid must be a positive integer"
-  end
+  if not M.is_integer(grid) or grid <= 0 then return nil, "grid must be a positive integer" end
   return M.round_half_away(value / grid) * grid
 end
 
@@ -61,9 +55,7 @@ function M.local_epsilon(...)
   local i
   for i = 1, #values do
     local value = values[i]
-    if M.is_finite(value) and math.abs(value) > scale then
-      scale = math.abs(value)
-    end
+    if M.is_finite(value) and math.abs(value) > scale then scale = math.abs(value) end
   end
   local machine_scaled = 128 * 2 ^ -52 * scale
   return math.max(1e-7, machine_scaled)

@@ -13,7 +13,10 @@ describe("offline sunlight study", function()
     assert_true(json.is_decimal(exact))
     assert_equal("47.3769001\n", json.encode(exact))
     local value = assert(solar.position({
-      north_deg = 0, latitude_deg = 0, longitude_deg = 0, utc_offset_minutes = 0,
+      north_deg = 0,
+      latitude_deg = 0,
+      longitude_deg = 0,
+      utc_offset_minutes = 0,
     }, "2024-03-20", "12:00"))
     assert_true(value.elevation_deg > 87)
     assert_true(value.sunrise_minutes > 300 and value.sunrise_minutes < 420)
@@ -40,12 +43,21 @@ describe("offline sunlight study", function()
   it("casts only exterior sun-facing windows and preserves assumed heights", function()
     local room = { id = "room-a", origin_mm = { 0, 0 }, size_mm = { 4000, 3000 } }
     local window = {
-      id = "window-a", room_id = "room-a", connects_to_room_id = json.null,
-      part_id = "part-main", side = "north", offset_mm = 1000, width_mm = 1200,
+      id = "window-a",
+      room_id = "room-a",
+      connects_to_room_id = json.null,
+      part_id = "part-main",
+      side = "north",
+      offset_mm = 1000,
+      width_mm = 1200,
     }
     local wall_scene = walls.build({ room }, {}, { window }, {})
     local result = sunlight.build({ rooms = { room }, windows = { window } }, wall_scene, {
-      elevation_deg = 45, sun_dx = 0, sun_dy = 1, incoming_dx = 0, incoming_dy = -1,
+      elevation_deg = 45,
+      sun_dx = 0,
+      sun_dy = 1,
+      incoming_dx = 0,
+      incoming_dy = -1,
     }, { sill_height_mm = 900, head_height_mm = 2100 })
     assert_equal(1, #result.patches)
     assert_equal(1, result.assumed_count)
@@ -59,31 +71,60 @@ describe("offline sunlight study", function()
     local room_b = { id = "room-b", origin_mm = { 0, 3000 }, size_mm = { 4000, 3000 } }
     local connected_scene = walls.build({ room, room_b }, {}, { connected }, {})
     assert_equal(0, #sunlight.build({}, connected_scene, {
-      elevation_deg = 45, sun_dx = 0, sun_dy = 1, incoming_dx = 0, incoming_dy = -1,
+      elevation_deg = 45,
+      sun_dx = 0,
+      sun_dy = 1,
+      incoming_dx = 0,
+      incoming_dy = -1,
     }, { sill_height_mm = 900, head_height_mm = 2100 }).patches)
   end)
 
   it("rasterizes the clipped yellow-to-orange patch beneath walls and furniture", function()
     local model = {
       rooms = { { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 4000, 3000 } } },
-      doors = {}, outlets = {}, furniture = {}, settings = { grid_mm = 100 },
-      windows = { {
-        id = "window-a", room_id = "room-a", connects_to_room_id = json.null,
-        part_id = "part-main", side = "north", offset_mm = 1000, width_mm = 1200,
-        sill_height_mm = 500, head_height_mm = 2500,
-      } },
+      doors = {},
+      outlets = {},
+      furniture = {},
+      settings = { grid_mm = 100 },
+      windows = {
+        {
+          id = "window-a",
+          room_id = "room-a",
+          connects_to_room_id = json.null,
+          part_id = "part-main",
+          side = "north",
+          offset_mm = 1000,
+          width_mm = 1200,
+          sill_height_mm = 500,
+          head_height_mm = 2500,
+        },
+      },
     }
     local scene = scene_builder.build(model, {}, {
       detail_level = "none",
-      sun_study = { active = true, calculation = {
-        elevation_deg = 45, sun_dx = 0, sun_dy = 1, incoming_dx = 0, incoming_dy = -1,
-      } },
+      sun_study = {
+        active = true,
+        calculation = {
+          elevation_deg = 45,
+          sun_dx = 0,
+          sun_dy = 1,
+          incoming_dx = 0,
+          incoming_dy = -1,
+        },
+      },
       sun_config = { window_defaults = { sill_height_mm = 900, head_height_mm = 2100 } },
     })
     assert_equal(1, #scene.sunlight.patches)
-    local output = raster.rasterize(scene, viewport.new({
-      world_left_mm = 0, world_top_mm = 3000, mm_per_column = 250, mm_per_row = 250,
-    }), { width = 17, height = 13, glyph_mode = "ascii" })
+    local output = raster.rasterize(
+      scene,
+      viewport.new({
+        world_left_mm = 0,
+        world_top_mm = 3000,
+        mm_per_column = 250,
+        mm_per_row = 250,
+      }),
+      { width = 17, height = 13, glyph_mode = "ascii" }
+    )
     local levels = {}
     for row = 1, output.height do
       for column = 1, output.width do
@@ -98,17 +139,29 @@ describe("offline sunlight study", function()
   it("accumulates one day into fixed comparable exposure bands", function()
     local model = {
       rooms = { { id = "room-a", name = "A", origin_mm = { 0, 0 }, size_mm = { 4000, 3000 } } },
-      doors = {}, outlets = {}, furniture = {}, settings = { grid_mm = 100 },
+      doors = {},
+      outlets = {},
+      furniture = {},
+      settings = { grid_mm = 100 },
       site = { north_deg = 0, latitude_deg = 47, longitude_deg = 8, utc_offset_minutes = 60 },
-      windows = { {
-        id = "window-a", room_id = "room-a", connects_to_room_id = json.null,
-        part_id = "part-main", side = "south", offset_mm = 1000, width_mm = 1200,
-        sill_height_mm = 500, head_height_mm = 2500,
-      } },
+      windows = {
+        {
+          id = "window-a",
+          room_id = "room-a",
+          connects_to_room_id = json.null,
+          part_id = "part-main",
+          side = "south",
+          offset_mm = 1000,
+          width_mm = 1200,
+          sill_height_mm = 500,
+          head_height_mm = 2500,
+        },
+      },
     }
     local wall_scene = walls.build(model.rooms, model.doors, model.windows, model.outlets)
     local exposure = assert(sunlight.build_day(model, wall_scene, model.site, "2026-03-20", 60, {
-      sill_height_mm = 900, head_height_mm = 2100,
+      sill_height_mm = 900,
+      head_height_mm = 2100,
     }))
     assert_true(#exposure.samples > 8)
     assert_true(exposure.total_minutes > 600)
@@ -123,9 +176,16 @@ describe("offline sunlight study", function()
       sun_study = { active = true, overlay = "daily", daily_exposure = exposure },
       sun_config = { window_defaults = { sill_height_mm = 900, head_height_mm = 2100 } },
     })
-    local output = raster.rasterize(scene, viewport.new({
-      world_left_mm = 0, world_top_mm = 3000, mm_per_column = 250, mm_per_row = 250,
-    }), { width = 17, height = 13, glyph_mode = "ascii" })
+    local output = raster.rasterize(
+      scene,
+      viewport.new({
+        world_left_mm = 0,
+        world_top_mm = 3000,
+        mm_per_column = 250,
+        mm_per_row = 250,
+      }),
+      { width = 17, height = 13, glyph_mode = "ascii" }
+    )
     local exposed = false
     for row = 1, output.height do
       for column = 1, output.width do

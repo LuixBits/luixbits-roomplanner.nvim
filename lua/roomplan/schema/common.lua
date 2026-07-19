@@ -31,13 +31,9 @@ M.limits = {
   notes_bytes = 1024 * 1024,
 }
 
-function M.diagnostic(code, path, message, value)
-  return { code = code, path = path, message = message, value = value }
-end
+function M.diagnostic(code, path, message, value) return { code = code, path = path, message = message, value = value } end
 
-function M.new_context()
-  return { errors = {}, normalized = false, added_fields = {}, migration_notes = {} }
-end
+function M.new_context() return { errors = {}, normalized = false, added_fields = {}, migration_notes = {} } end
 
 function M.add_error(context, code, path, message, value)
   context.errors[#context.errors + 1] = M.diagnostic(code, path, message, value)
@@ -60,39 +56,25 @@ end
 
 function M.decimal_to_integer(value, maximum_abs)
   if M.is_safe_lua_integer(value) then
-    if math.abs(value) > maximum_abs then
-      return nil, "outside the allowed integer range"
-    end
+    if math.abs(value) > maximum_abs then return nil, "outside the allowed integer range" end
     return value
   end
-  if not json.is_decimal(value) then
-    return nil, "expected an integer"
-  end
+  if not json.is_decimal(value) then return nil, "expected an integer" end
   local sign, coefficient, exponent = json.decimal_parts(value)
-  if coefficient == "0" then
-    return 0
-  end
-  if exponent < 0 then
-    return nil, "expected a whole integer, not a fractional value"
-  end
-  if #coefficient + exponent > 32 then
-    return nil, "outside the allowed integer range"
-  end
+  if coefficient == "0" then return 0 end
+  if exponent < 0 then return nil, "expected a whole integer, not a fractional value" end
+  if #coefficient + exponent > 32 then return nil, "outside the allowed integer range" end
   local result = 0
   local cursor = 1
   while cursor <= #coefficient do
     local digit = coefficient:byte(cursor) - 48
-    if result > math.floor((maximum_abs - digit) / 10) then
-      return nil, "outside the allowed integer range"
-    end
+    if result > math.floor((maximum_abs - digit) / 10) then return nil, "outside the allowed integer range" end
     result = result * 10 + digit
     cursor = cursor + 1
   end
   cursor = 1
   while cursor <= exponent do
-    if result > math.floor(maximum_abs / 10) then
-      return nil, "outside the allowed integer range"
-    end
+    if result > math.floor(maximum_abs / 10) then return nil, "outside the allowed integer range" end
     result = result * 10
     cursor = cursor + 1
   end
@@ -102,9 +84,7 @@ end
 function M.integer(context, value, path, minimum, maximum, maximum_abs)
   maximum_abs = maximum_abs or M.limits.coordinate_abs_exclusive - 1
   local converted, reason = M.decimal_to_integer(value, maximum_abs)
-  if converted == nil then
-    return M.add_error(context, "SCHEMA_INTEGER", path, reason, value)
-  end
+  if converted == nil then return M.add_error(context, "SCHEMA_INTEGER", path, reason, value) end
   if minimum ~= nil and converted < minimum then
     return M.add_error(context, "SCHEMA_INTEGER_MIN", path, "must be at least " .. minimum, converted)
   end
@@ -117,9 +97,7 @@ end
 ---Normalize a bounded finite JSON number while preserving decimal text.
 function M.number(context, value, path, minimum, maximum)
   local converted = json.number_value(value)
-  if converted == nil then
-    return M.add_error(context, "SCHEMA_NUMBER", path, "must be a finite number", value)
-  end
+  if converted == nil then return M.add_error(context, "SCHEMA_NUMBER", path, "must be a finite number", value) end
   if minimum ~= nil and converted < minimum then
     return M.add_error(context, "SCHEMA_NUMBER_MIN", path, "must be at least " .. minimum, value)
   end
@@ -139,13 +117,9 @@ local function has_disallowed_control(value, allow_lines)
   local cursor = 1
   while cursor <= #value do
     local byte = value:byte(cursor)
-    if byte == 0 then
-      return true
-    end
+    if byte == 0 then return true end
     if byte < 32 then
-      if not allow_lines or (byte ~= 9 and byte ~= 10 and byte ~= 13) then
-        return true
-      end
+      if not allow_lines or (byte ~= 9 and byte ~= 10 and byte ~= 13) then return true end
     end
     cursor = cursor + 1
   end
@@ -154,18 +128,10 @@ end
 
 function M.text(context, value, path, options)
   options = options or {}
-  if type(value) ~= "string" then
-    return M.add_error(context, "SCHEMA_STRING", path, "must be a string", value)
-  end
+  if type(value) ~= "string" then return M.add_error(context, "SCHEMA_STRING", path, "must be a string", value) end
   local valid_utf8, invalid_position, invalid_message = json.valid_utf8(value)
   if not valid_utf8 then
-    return M.add_error(
-      context,
-      "SCHEMA_STRING_UTF8",
-      path,
-      invalid_message .. " at byte " .. invalid_position,
-      value
-    )
+    return M.add_error(context, "SCHEMA_STRING_UTF8", path, invalid_message .. " at byte " .. invalid_position, value)
   end
   if options.nonempty and value == "" then
     return M.add_error(context, "SCHEMA_STRING_EMPTY", path, "must not be empty", value)
@@ -182,9 +148,7 @@ end
 
 function M.persisted_color(context, value, path)
   local normalized, reason = color.normalize(value)
-  if not normalized then
-    return M.add_error(context, "SCHEMA_COLOR", path, reason, value)
-  end
+  if not normalized then return M.add_error(context, "SCHEMA_COLOR", path, reason, value) end
   if normalized ~= value then context.normalized = true end
   return normalized
 end
@@ -220,9 +184,7 @@ function M.array(context, value, path)
       return nil
     end
     count = count + 1
-    if key > maximum then
-      maximum = key
-    end
+    if key > maximum then maximum = key end
   end
   if count ~= maximum then
     M.add_error(context, "SCHEMA_ARRAY_SPARSE", path, "must not be sparse", value)
@@ -248,9 +210,7 @@ end
 
 function M.tuple(context, value, path, length, item_normalizer)
   local source = M.array(context, value, path)
-  if not source then
-    return nil
-  end
+  if not source then return nil end
   if #source ~= length then
     M.add_error(context, "SCHEMA_TUPLE_LENGTH", path, "must contain exactly " .. length .. " items", value)
     return nil
@@ -266,9 +226,7 @@ end
 
 function M.normalize_metadata(context, value, path)
   local result = M.object(context, value, path)
-  if not result then
-    return nil
-  end
+  if not result then return nil end
   if result.name == nil then
     result.name = M.defaults.metadata.name
     M.mark_default(context, path .. ".name")
@@ -297,9 +255,7 @@ local SETTING_FIELDS = {
 
 function M.normalize_settings(context, value, path)
   local result = M.object(context, value, path)
-  if not result then
-    return nil
-  end
+  if not result then return nil end
   local position = 1
   while position <= #SETTING_FIELDS do
     local key = SETTING_FIELDS[position]
@@ -307,14 +263,7 @@ function M.normalize_settings(context, value, path)
       result[key] = M.defaults.settings[key]
       M.mark_default(context, path .. "." .. key)
     else
-      result[key] = M.integer(
-        context,
-        result[key],
-        path .. "." .. key,
-        1,
-        M.limits.local_mm_max,
-        M.limits.local_mm_max
-      )
+      result[key] = M.integer(context, result[key], path .. "." .. key, 1, M.limits.local_mm_max, M.limits.local_mm_max)
     end
     position = position + 1
   end
@@ -323,9 +272,7 @@ end
 
 function M.normalize_id(context, value, path, kind)
   local id = M.text(context, value, path, { nonempty = true, max_bytes = 128 })
-  if id == nil then
-    return nil
-  end
+  if id == nil then return nil end
   local valid, err = ids.validate(id, kind)
   if not valid then
     M.add_error(context, err.code, path, err.message, id)
@@ -351,9 +298,7 @@ end
 
 function M.normalize_collection(context, source, path, normalizer)
   local values = M.array(context, source, path)
-  if not values then
-    return nil
-  end
+  if not values then return nil end
   if #values > M.limits.entity_count then
     M.add_error(
       context,
@@ -375,9 +320,7 @@ end
 
 function M.validate_json_tree(context, value, path, active)
   local value_type = type(value)
-  if value == json.null or value_type == "boolean" or json.is_decimal(value) then
-    return
-  end
+  if value == json.null or value_type == "boolean" or json.is_decimal(value) then return end
   if value_type == "string" then
     local valid_utf8, invalid_position, invalid_message = json.valid_utf8(value)
     if not valid_utf8 then
@@ -411,7 +354,13 @@ function M.validate_json_tree(context, value, path, active)
     elseif json.is_object(value) then
       local valid_utf8, invalid_position, invalid_message = json.valid_utf8(key)
       if not valid_utf8 then
-        M.add_error(context, "SCHEMA_JSON_UTF8", child_path, invalid_message .. " at key byte " .. invalid_position, key)
+        M.add_error(
+          context,
+          "SCHEMA_JSON_UTF8",
+          child_path,
+          invalid_message .. " at key byte " .. invalid_position,
+          key
+        )
       end
     elseif json.is_array(value) and (type(key) ~= "number" or key < 1 or key ~= math.floor(key)) then
       M.add_error(context, "SCHEMA_JSON_ARRAY_KEY", child_path, "array key must be a positive integer", key)
@@ -424,18 +373,20 @@ end
 function M.result_or_error(context, result)
   if #context.errors > 0 then
     local first = context.errors[1]
-    return nil, {
-      code = first.code,
-      path = first.path,
-      message = first.message,
-      diagnostics = context.errors,
-    }
+    return nil,
+      {
+        code = first.code,
+        path = first.path,
+        message = first.message,
+        diagnostics = context.errors,
+      }
   end
-  return result, {
-    normalized = context.normalized,
-    added_fields = context.added_fields,
-    migration_notes = context.migration_notes or {},
-  }
+  return result,
+    {
+      normalized = context.normalized,
+      added_fields = context.added_fields,
+      migration_notes = context.migration_notes or {},
+    }
 end
 
 function M.document_version(document, current_version)
@@ -443,39 +394,32 @@ function M.document_version(document, current_version)
     return nil, M.diagnostic("SCHEMA_ROOT", "$", "root JSON value must be an object")
   end
   if document.format ~= M.FORMAT then
-    return nil, M.diagnostic(
-      "SCHEMA_FORMAT",
-      "$.format",
-      "must be exactly '" .. M.FORMAT .. "'",
-      document.format
-    )
+    return nil, M.diagnostic("SCHEMA_FORMAT", "$.format", "must be exactly '" .. M.FORMAT .. "'", document.format)
   end
   if document.schema_version == nil then
-    return nil, M.diagnostic(
-      "SCHEMA_VERSION_MISSING",
-      "$.schema_version",
-      "schema_version is required; unversioned documents are not guessed as v1"
-    )
+    return nil,
+      M.diagnostic(
+        "SCHEMA_VERSION_MISSING",
+        "$.schema_version",
+        "schema_version is required; unversioned documents are not guessed as v1"
+      )
   end
   local version, reason = M.decimal_to_integer(document.schema_version, 1000000)
   if version == nil then
     return nil, M.diagnostic("SCHEMA_VERSION", "$.schema_version", reason, document.schema_version)
   end
   if version < 1 then
-    return nil, M.diagnostic(
-      "SCHEMA_VERSION",
-      "$.schema_version",
-      "schema version 0/missing has no implicit migration",
-      version
-    )
+    return nil,
+      M.diagnostic("SCHEMA_VERSION", "$.schema_version", "schema version 0/missing has no implicit migration", version)
   end
   if version > current_version then
-    return nil, M.diagnostic(
-      "SCHEMA_FUTURE_VERSION",
-      "$.schema_version",
-      "schema version " .. version .. " is newer than supported version " .. current_version,
-      version
-    )
+    return nil,
+      M.diagnostic(
+        "SCHEMA_FUTURE_VERSION",
+        "$.schema_version",
+        "schema version " .. version .. " is newer than supported version " .. current_version,
+        version
+      )
   end
   return version
 end

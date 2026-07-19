@@ -17,8 +17,11 @@ function M.attach(controller)
 
   local function spatial_object_count(plan)
     if type(plan) ~= "table" then return 0 end
-    return #(plan.rooms or {}) + #(plan.doors or {}) + #(plan.windows or {})
-      + #(plan.outlets or {}) + #(plan.furniture or {})
+    return #(plan.rooms or {})
+      + #(plan.doors or {})
+      + #(plan.windows or {})
+      + #(plan.outlets or {})
+      + #(plan.furniture or {})
   end
 
   function controller.dispatch(session, action)
@@ -81,32 +84,24 @@ function M.attach(controller)
 
   function controller.restore_revision(session, revision_id)
     local resolved, err = resolve(session)
-    if not resolved then
-      return notify_error(err)
-    end
+    if not resolved then return notify_error(err) end
     common.clear_snap_feedback(resolved)
     local snapshot, node = resolved:restore_revision(revision_id)
-    if not snapshot then
-      return notify_error(node)
-    end
+    if not snapshot then return notify_error(node) end
     controller.validate(resolved)
     return snapshot, node
   end
 
   function controller.history(session)
     local resolved, err = resolve(session)
-    if not resolved then
-      return notify_error(err)
-    end
+    if not resolved then return notify_error(err) end
     local entries = resolved.history:entries()
     local items = {}
     for _, entry in ipairs(entries) do
       local selected = entry
       local markers = selected.current and "●" or selected.saved and "◆" or "○"
       local state_label = selected.current and "current" or selected.direction == "older" and "undo path" or "redo path"
-      if selected.saved then
-        state_label = state_label .. " · saved"
-      end
+      if selected.saved then state_label = state_label .. " · saved" end
       items[#items + 1] = {
         label = string.format("%s r%d · %s", markers, selected.revision_id, selected.label),
         description = string.format("%s · %d touched object(s)", state_label, #(selected.touched or {})),
@@ -123,9 +118,7 @@ function M.attach(controller)
                 description = selected.direction == "older"
                     and "New edits from here will replace the current redo path"
                   or "Move forward to this retained revision",
-                callback = function()
-                  controller.restore_revision(resolved, selected.revision_id)
-                end,
+                callback = function() controller.restore_revision(resolved, selected.revision_id) end,
               },
               { key = "q", label = "Cancel" },
             },
@@ -164,8 +157,11 @@ function M.attach(controller)
         -- canvas header cannot keep a stale "ROOM CREATE/EDIT" label.
         controller.refresh(session)
         local workspace_ok, workspace = pcall(require, "roomplan.ui.workspace")
-        if workspace_ok and workspace.is_visible(session) then workspace.focus(session, "canvas")
-        else controller.focus_canvas(session) end
+        if workspace_ok and workspace.is_visible(session) then
+          workspace.focus(session, "canvas")
+        else
+          controller.focus_canvas(session)
+        end
       end
     end)
   end
@@ -279,24 +275,18 @@ function M.attach(controller)
 
   function controller.place_furniture(session)
     local resolved, err = resolve(session)
-    if not resolved then
-      return notify_error(err)
-    end
+    if not resolved then return notify_error(err) end
     if not resolved.selection or resolved.selection.kind ~= "furniture" then
       return notify_error(util.err("FURNITURE_REQUIRED", "select furniture to place against a wall"))
     end
     local furniture = find_entity(resolved, resolved.selection)
-    if not furniture then
-      return notify_error(util.err("SELECTION_STALE", "selected furniture no longer exists"))
-    end
+    if not furniture then return notify_error(util.err("SELECTION_STALE", "selected furniture no longer exists")) end
     return open_structured_form(resolved, require("roomplan.ui.forms").placement.new(resolved, furniture))
   end
 
   function controller.measure(session)
     local resolved, err = resolve(session)
-    if not resolved then
-      return notify_error(err)
-    end
+    if not resolved then return notify_error(err) end
     local plan = resolved:model()
     if #(plan.rooms or {}) + #(plan.furniture or {}) < 2 then
       return notify_error(util.err("MEASUREMENT_OBJECTS_REQUIRED", "add at least two rooms or furniture items"))
@@ -321,16 +311,10 @@ function M.attach(controller)
       end,
       on_cancel = clear,
       on_change = publish,
-      on_reset = function(active)
-        publish(active.state.draft)
-      end,
-      on_open = function(active)
-        publish(active.state.draft)
-      end,
+      on_reset = function(active) publish(active.state.draft) end,
+      on_open = function(active) publish(active.state.draft) end,
     })
-    if not handle then
-      return notify_error(form_err)
-    end
+    if not handle then return notify_error(form_err) end
     return handle
   end
 
@@ -340,7 +324,8 @@ function M.attach(controller)
     if not resolved.selection or resolved.selection.kind ~= "furniture" then
       return notify_error(util.err("FURNITURE_REQUIRED", "select furniture to rotate"))
     end
-    local result, action_err = controller.dispatch(resolved, { type = "rotate_furniture", id = resolved.selection.id, delta_deg = 90 })
+    local result, action_err =
+      controller.dispatch(resolved, { type = "rotate_furniture", id = resolved.selection.id, delta_deg = 90 })
     if not result then return notify_error(action_err) end
     return result
   end
@@ -354,14 +339,19 @@ function M.attach(controller)
     if not entity then return notify_error(util.err("SELECTION_STALE", "selected object no longer exists")) end
     local forms = require("roomplan.ui.forms")
     local spec
-    if resolved.selection.kind == "room" then spec = forms.room.edit(resolved, entity)
-    elseif resolved.selection.kind == "furniture" then spec = forms.furniture.edit(resolved, entity)
-    elseif resolved.selection.kind == "door" then spec = forms.door.edit(resolved, entity)
+    if resolved.selection.kind == "room" then
+      spec = forms.room.edit(resolved, entity)
+    elseif resolved.selection.kind == "furniture" then
+      spec = forms.furniture.edit(resolved, entity)
+    elseif resolved.selection.kind == "door" then
+      spec = forms.door.edit(resolved, entity)
     elseif resolved.selection.kind == "window" then
       spec = forms.window.edit(resolved, entity, { cursor_mm = cursor_world(resolved) })
     elseif resolved.selection.kind == "outlet" then
       spec = forms.outlet.edit(resolved, entity, { cursor_mm = cursor_world(resolved) })
-    elseif resolved.selection.kind == "template" then spec = forms.template.edit(resolved, entity) end
+    elseif resolved.selection.kind == "template" then
+      spec = forms.template.edit(resolved, entity)
+    end
     if not spec then return notify_error(util.err("EDIT_UNSUPPORTED", "selected object cannot be edited here")) end
     return open_structured_form(resolved, spec)
   end
@@ -420,9 +410,7 @@ function M.attach(controller)
 
   function controller.clear_marks(session)
     local resolved, err = resolve(session)
-    if not resolved then
-      return notify_error(err)
-    end
+    if not resolved then return notify_error(err) end
     resolved.marked_objects = {}
     resolved.batch_move = nil
     controller.refresh(resolved)
@@ -431,13 +419,9 @@ function M.attach(controller)
 
   function controller.duplicate_marked(session)
     local resolved, err = resolve(session)
-    if not resolved then
-      return notify_error(err)
-    end
+    if not resolved then return notify_error(err) end
     local references = marked_references(resolved)
-    if #references == 0 then
-      return notify_error(util.err("MARKS_REQUIRED", "mark objects in Navigator first"))
-    end
+    if #references == 0 then return notify_error(util.err("MARKS_REQUIRED", "mark objects in Navigator first")) end
     local actions, room_clones = {}, {}
     for _, reference in ipairs(references) do
       local entity = model.find(resolved:model(), reference.kind, reference.id)
@@ -485,9 +469,7 @@ function M.attach(controller)
       else
         return notify_error(util.err("BATCH_DUPLICATE_UNSUPPORTED", "doors require their placement popup"))
       end
-      if not id then
-        return notify_error(id_err)
-      end
+      if not id then return notify_error(id_err) end
       actions[#actions + 1] = action
     end
     local result, action_err = controller.dispatch(resolved, {
@@ -495,9 +477,7 @@ function M.attach(controller)
       actions = actions,
       label = string.format("Duplicate %d marked objects", #actions),
     })
-    if not result then
-      return notify_error(action_err)
-    end
+    if not result then return notify_error(action_err) end
     resolved.marked_objects = {}
     for _, reference in ipairs(result.result.touched or {}) do
       resolved.marked_objects[require("roomplan.selection_set").key(reference)] = reference
@@ -517,19 +497,13 @@ function M.attach(controller)
 
   function controller.delete_marked(session)
     local resolved, err = resolve(session)
-    if not resolved then
-      return notify_error(err)
-    end
+    if not resolved then return notify_error(err) end
     local references = require("roomplan.selection_set").delete_refs(resolved:model(), resolved.marked_objects)
-    if #references == 0 then
-      return notify_error(util.err("MARKS_REQUIRED", "mark objects in Navigator first"))
-    end
+    if #references == 0 then return notify_error(util.err("MARKS_REQUIRED", "mark objects in Navigator first")) end
     local actions = {}
     for _, reference in ipairs(references) do
       local action = deletion_action(reference)
-      if action then
-        actions[#actions + 1] = action
-      end
+      if action then actions[#actions + 1] = action end
     end
     local function remove()
       local result, action_err = controller.dispatch(resolved, {
@@ -537,18 +511,14 @@ function M.attach(controller)
         actions = actions,
         label = string.format("Delete %d marked objects", #references),
       })
-      if not result then
-        return notify_error(action_err)
-      end
+      if not result then return notify_error(action_err) end
       resolved.marked_objects = {}
       resolved.batch_move = nil
       resolved.selection = nil
       controller.refresh(resolved)
       return result
     end
-    if not config.get().ui.confirm_delete then
-      return remove()
-    end
+    if not config.get().ui.confirm_delete then return remove() end
     return require("roomplan.ui.palette").open({
       session = resolved,
       title = string.format("Delete %d marked objects?", #references),
@@ -566,17 +536,13 @@ function M.attach(controller)
 
   function controller.move_marked(session)
     local resolved, err = resolve(session)
-    if not resolved then
-      return notify_error(err)
-    end
+    if not resolved then return notify_error(err) end
     local references, unsupported =
       require("roomplan.selection_set").move_refs(resolved:model(), resolved.marked_objects)
     if #unsupported > 0 then
       return notify_error(util.err("BATCH_MOVE_UNSUPPORTED", "group movement supports rooms and furniture"))
     end
-    if #references == 0 then
-      return notify_error(util.err("MARKS_REQUIRED", "mark rooms or furniture first"))
-    end
+    if #references == 0 then return notify_error(util.err("MARKS_REQUIRED", "mark rooms or furniture first")) end
     resolved.batch_move = references
     resolved.selection = references[1]
     return controller.set_mode(resolved, "MOVE")
@@ -588,7 +554,9 @@ function M.attach(controller)
     local selection = resolved.selection
     local entity = find_entity(resolved, selection)
     local action = selection and deletion_action(selection)
-    if not entity or not action then return notify_error(util.err("SELECTION_REQUIRED", "select a deletable object")) end
+    if not entity or not action then
+      return notify_error(util.err("SELECTION_REQUIRED", "select a deletable object"))
+    end
     local function remove()
       local result, action_err = controller.dispatch(resolved, action)
       if not result then return notify_error(action_err) end
@@ -603,8 +571,13 @@ function M.attach(controller)
       summary = string.format("%s and %d dependent object(s)", summary, #dependencies.all)
     end
     local flow, flow_err = require("roomplan.ui.prompts").confirm(
-      resolved, "delete", "Delete " .. summary .. "?", { "Delete", "Cancel" },
-      function(choice) if choice == "Delete" then remove() end end
+      resolved,
+      "delete",
+      "Delete " .. summary .. "?",
+      { "Delete", "Cancel" },
+      function(choice)
+        if choice == "Delete" then remove() end
+      end
     )
     if not flow then return notify_error(flow_err) end
     return flow
@@ -613,18 +586,41 @@ function M.attach(controller)
   function controller.add_menu(session)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
-    if #(resolved:model().rooms or {}) == 0 then
-      return controller.add_room(resolved)
-    end
+    if #(resolved:model().rooms or {}) == 0 then return controller.add_room(resolved) end
     return require("roomplan.ui.palette").open({
       session = resolved,
       title = "Add to plan",
       items = {
-        { key = "r", label = "Room", description = "Create and place a rectangular or L-shaped room", callback = function() controller.add_room(resolved) end },
-        { key = "d", label = "Door", description = "Place a hinged door on a room wall", callback = function() controller.add_door(resolved) end },
-        { key = "w", label = "Window", description = "Place a window opening on a room wall", callback = function() controller.add_window(resolved) end },
-        { key = "o", label = "Outlet", description = "Place a typed outlet on a room wall", callback = function() controller.add_outlet(resolved) end },
-        { key = "f", label = "Furniture", description = "Place a catalogue or custom furniture footprint", callback = function() controller.add_furniture(resolved) end },
+        {
+          key = "r",
+          label = "Room",
+          description = "Create and place a rectangular or L-shaped room",
+          callback = function() controller.add_room(resolved) end,
+        },
+        {
+          key = "d",
+          label = "Door",
+          description = "Place a hinged door on a room wall",
+          callback = function() controller.add_door(resolved) end,
+        },
+        {
+          key = "w",
+          label = "Window",
+          description = "Place a window opening on a room wall",
+          callback = function() controller.add_window(resolved) end,
+        },
+        {
+          key = "o",
+          label = "Outlet",
+          description = "Place a typed outlet on a room wall",
+          callback = function() controller.add_outlet(resolved) end,
+        },
+        {
+          key = "f",
+          label = "Furniture",
+          description = "Place a catalogue or custom furniture footprint",
+          callback = function() controller.add_furniture(resolved) end,
+        },
       },
     })
   end
@@ -691,11 +687,15 @@ function M.attach(controller)
       title = "Start RoomPlan",
       items = {
         {
-          key = "o", label = "Open current source", description = "Load an existing .roomplan.json or Norg plan block",
+          key = "o",
+          label = "Open current source",
+          description = "Load an existing .roomplan.json or Norg plan block",
           callback = function() controller.open(nil, { bufnr = 0, interactive = true }) end,
         },
         {
-          key = "i", label = "Initialize current source", description = "Create an empty plan without overwriting other content",
+          key = "i",
+          label = "Initialize current source",
+          description = "Create an empty plan without overwriting other content",
           callback = function() controller.init_source(nil, { bufnr = 0, interactive = true }) end,
         },
       },

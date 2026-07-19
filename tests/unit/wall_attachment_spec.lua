@@ -12,7 +12,8 @@ end
 
 local function covers(segments, orientation, fixed, scalar)
   for _, segment in ipairs(segments) do
-    if segment.orientation == orientation
+    if
+      segment.orientation == orientation
       and segment.fixed == fixed
       and segment.start < scalar
       and segment.finish > scalar
@@ -119,10 +120,7 @@ describe("wall attachments", function()
     assert_equal(true, result.outlet_markers[1].owner_edge_valid)
     assert_equal({ 500, 0 }, result.outlet_markers[1].p)
     assert_equal(false, result.outlet_markers[2].owner_edge_valid)
-    assert_equal(
-      "outlet position is ambiguous at an edge endpoint",
-      result.outlet_markers[2].reason
-    )
+    assert_equal("outlet position is ambiguous at an edge endpoint", result.outlet_markers[2].reason)
     assert_equal(true, covers(result.segments, "horizontal", 0, 500))
   end)
 end)

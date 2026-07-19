@@ -2,19 +2,13 @@ local number = require("roomplan.geometry.number")
 
 local M = {}
 
-local function point(x, y)
-  return { x = x, y = y, [1] = x, [2] = y }
-end
+local function point(x, y) return { x = x, y = y, [1] = x, [2] = y } end
 
 M.point = point
 
-local function xy(value)
-  return value.x or value[1], value.y or value[2]
-end
+local function xy(value) return value.x or value[1], value.y or value[2] end
 
-function M.cross(ax, ay, bx, by)
-  return ax * by - ay * bx
-end
+function M.cross(ax, ay, bx, by) return ax * by - ay * bx end
 
 function M.orientation(a, b, c)
   local ax, ay = xy(a)
@@ -28,11 +22,11 @@ function M.point_on_segment(p, a, b, epsilon)
   local ax, ay = xy(a)
   local bx, by = xy(b)
   epsilon = epsilon or number.local_epsilon(bx - ax, by - ay)
-  if math.abs(M.cross(bx - ax, by - ay, px - ax, py - ay)) > epsilon then
-    return false
-  end
-  return px >= math.min(ax, bx) - epsilon and px <= math.max(ax, bx) + epsilon
-    and py >= math.min(ay, by) - epsilon and py <= math.max(ay, by) + epsilon
+  if math.abs(M.cross(bx - ax, by - ay, px - ax, py - ay)) > epsilon then return false end
+  return px >= math.min(ax, bx) - epsilon
+    and px <= math.max(ax, bx) + epsilon
+    and py >= math.min(ay, by) - epsilon
+    and py <= math.max(ay, by) + epsilon
 end
 
 -- Returns whether closed segments intersect, plus a classification and point
@@ -50,19 +44,17 @@ function M.intersection(a, b, c, d, epsilon)
   local qpr = M.cross(qpx, qpy, rx, ry)
 
   if math.abs(denominator) <= epsilon then
-    if math.abs(qpr) > epsilon then
-      return false, "parallel"
-    end
+    if math.abs(qpr) > epsilon then return false, "parallel" end
     local rr = rx * rx + ry * ry
     if rr <= epsilon * epsilon then
-      if M.point_on_segment(a, c, d, epsilon) then
-        return true, "point", point(ax, ay)
-      end
+      if M.point_on_segment(a, c, d, epsilon) then return true, "point", point(ax, ay) end
       return false, "degenerate"
     end
     local t0 = (qpx * rx + qpy * ry) / rr
     local t1 = t0 + (sx * rx + sy * ry) / rr
-    if t0 > t1 then t0, t1 = t1, t0 end
+    if t0 > t1 then
+      t0, t1 = t1, t0
+    end
     local lo = math.max(0, t0)
     local hi = math.min(1, t1)
     if lo > hi + epsilon then
@@ -103,7 +95,8 @@ function M.intersects_rect(a, b, rect, epsilon)
   local ax, ay = xy(a)
   local bx, by = xy(b)
   epsilon = epsilon or number.local_epsilon(bx - ax, by - ay, right - left, top - bottom)
-  if (ax >= left - epsilon and ax <= right + epsilon and ay >= bottom - epsilon and ay <= top + epsilon)
+  if
+    (ax >= left - epsilon and ax <= right + epsilon and ay >= bottom - epsilon and ay <= top + epsilon)
     or (bx >= left - epsilon and bx <= right + epsilon and by >= bottom - epsilon and by <= top + epsilon)
   then
     return true

@@ -9,13 +9,9 @@ local directions = require("roomplan.directions")
 
 local M = {}
 
-function M.side_choices(context)
-  return directions.choices(context)
-end
+function M.side_choices(context) return directions.choices(context) end
 
-function M.owner(draft, context)
-  return common.find(context, "room", draft.room_id)
-end
+function M.owner(draft, context) return common.find(context, "room", draft.room_id) end
 
 function M.selected_part(room, part_id)
   for _, part in ipairs(room and room.footprint and room.footprint.parts or {}) do
@@ -88,8 +84,7 @@ function M.resolve_offset(draft, context, width_mm)
       return nil, { code = "CURSOR_UNAVAILABLE", message = "the canvas cursor position is unavailable" }
     end
     if not room then return nil, { code = "WALL_REQUIRED", message = "choose an owner wall" } end
-    local coordinate = (draft.side == "north" or draft.side == "south")
-        and (cursor[1] - room.origin_mm[1])
+    local coordinate = (draft.side == "north" or draft.side == "south") and (cursor[1] - room.origin_mm[1])
       or (cursor[2] - room.origin_mm[2])
     return util.round(coordinate - width_mm / 2)
   end
@@ -102,9 +97,7 @@ function M.bounds_error(draft, context, width_mm, point_attachment)
   if offset == nil or length == nil then return nil end
   local outside = point_attachment and (offset <= 0 or offset >= length)
     or not point_attachment and (offset < 0 or offset + width_mm > length)
-  if outside then
-    return string.format("placement must fit within the %d mm wall", length)
-  end
+  if outside then return string.format("placement must fit within the %d mm wall", length) end
 end
 
 function M.exterior_error(draft, context, width_mm)

@@ -20,7 +20,9 @@ local defaults = {
 
 local function copy(value)
   local result = {}
-  for key, item in pairs(value) do result[key] = item end
+  for key, item in pairs(value) do
+    result[key] = item
+  end
   return result
 end
 

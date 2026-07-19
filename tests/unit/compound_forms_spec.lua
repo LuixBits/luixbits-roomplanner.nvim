@@ -4,13 +4,9 @@ local form_state = require("roomplan.ui.form.state")
 local model = require("roomplan.model")
 local presenter = require("roomplan.ui.presenter")
 
-local function rectangle(id, x, y, width, depth)
-  return { id = id, origin_mm = { x, y }, size_mm = { width, depth } }
-end
+local function rectangle(id, x, y, width, depth) return { id = id, origin_mm = { x, y }, size_mm = { width, depth } } end
 
-local function compound(parts)
-  return { kind = "rect_union", parts = parts }
-end
+local function compound(parts) return { kind = "rect_union", parts = parts } end
 
 local function fixture()
   local plan = {
@@ -21,40 +17,58 @@ local function fixture()
     settings = { grid_mm = 100, fine_step_mm = 10, default_door_width_mm = 900 },
     rooms = {
       {
-        id = "room-living", name = "Living", origin_mm = { 0, 0 },
+        id = "room-living",
+        name = "Living",
+        origin_mm = { 0, 0 },
         footprint = compound({
           rectangle("part-main", 0, 0, 4000, 2000),
           rectangle("part-wing", 0, 2000, 1500, 1500),
         }),
       },
       {
-        id = "room-office", name = "Office", origin_mm = { 4000, 0 },
+        id = "room-office",
+        name = "Office",
+        origin_mm = { 4000, 0 },
         footprint = compound({ rectangle("part-main", 0, 0, 3000, 2000) }),
       },
     },
     doors = {
       {
-        id = "door-living-east", kind = "hinged", room_id = "room-living",
-        connects_to_room_id = "room-office", part_id = "part-main", side = "east",
-        offset_mm = 500, width_mm = 900, hinge = "start", opens_into = "connected",
+        id = "door-living-east",
+        kind = "hinged",
+        room_id = "room-living",
+        connects_to_room_id = "room-office",
+        part_id = "part-main",
+        side = "east",
+        offset_mm = 500,
+        width_mm = 900,
+        hinge = "start",
+        opens_into = "connected",
         open_angle_deg = 90,
       },
     },
     furniture = {
       {
-        id = "furniture-sectional", room_id = "room-living", template_id = "custom:sectional",
-        name = "Sectional", category = "seating", position_mm = { 1000, 1000 },
+        id = "furniture-sectional",
+        room_id = "room-living",
+        template_id = "custom:sectional",
+        name = "Sectional",
+        category = "seating",
+        position_mm = { 1000, 1000 },
         anchor2_mm = { 1000, 500 },
         footprint = compound({
           rectangle("part-main", 0, 0, 1000, 500),
           rectangle("part-wing", 0, 500, 400, 500),
         }),
-        height_mm = 850, rotation_deg = 0,
+        height_mm = 850,
+        rotation_deg = 0,
       },
     },
     custom_templates = {
       {
-        id = "custom:sectional", name = "Sectional", category = "seating",
+        id = "custom:sectional",
+        name = "Sectional",
+        category = "seating",
         default_anchor2_mm = { 1000, 500 },
         default_footprint = compound({
           rectangle("part-main", 0, 0, 1000, 500),
@@ -159,8 +173,12 @@ describe("compound-compatible forms", function()
     assert_equal({ 1600, 1800 }, edit_action.patch.footprint.parts[2].size_mm)
 
     local invalid_spec = forms.room.add(session, {
-      shape = "l_shape", width_mm = 4000, depth_mm = 3000,
-      leg_width_mm = 4000, leg_depth_mm = 1200, placement = "origin",
+      shape = "l_shape",
+      width_mm = 4000,
+      depth_mm = 3000,
+      leg_width_mm = 4000,
+      leg_depth_mm = 1200,
+      placement = "origin",
     })
     local invalid_state, invalid = form_state.validate_all(form_state.new(invalid_spec, invalid_spec.context))
     assert_equal(false, invalid)
@@ -189,14 +207,19 @@ describe("compound-compatible forms", function()
   it("creates canonical one-part v2 rooms, furniture, and doors", function()
     local session = fixture()
     local room_spec = forms.room.add(session, {
-      name = "Bedroom", width_mm = 3200, depth_mm = 2800, placement = "origin",
+      name = "Bedroom",
+      width_mm = 3200,
+      depth_mm = 2800,
+      placement = "origin",
     })
     local room_action = assert(room_spec.build(room_spec.initial, room_spec.context))
     assert_equal(nil, room_action.room.size_mm)
     assert_equal({ 3200, 2800 }, room_action.room.footprint.parts[1].size_mm)
 
     local furniture_spec = forms.furniture.add(session, {
-      room_id = "room-living", template_id = "builtin:sofa", placement = "centre",
+      room_id = "room-living",
+      template_id = "builtin:sofa",
+      placement = "centre",
     })
     local furniture_action = assert(furniture_spec.build(furniture_spec.initial, furniture_spec.context))
     assert_equal(nil, furniture_action.furniture.center_mm)
@@ -205,8 +228,12 @@ describe("compound-compatible forms", function()
     assert_equal({ 2100, 900 }, furniture_action.furniture.footprint.parts[1].size_mm)
 
     local door_spec = forms.door.add(session, {
-      room_id = "room-living", part_id = "part-wing", side = "north", width_mm = 900,
-      placement = "centre", connects_to_room_id = "outside",
+      room_id = "room-living",
+      part_id = "part-wing",
+      side = "north",
+      width_mm = 900,
+      placement = "centre",
+      connects_to_room_id = "outside",
     })
     assert_true(field(door_spec, "part_id") ~= nil)
     local door_action = assert(door_spec.build(door_spec.initial, door_spec.context))
@@ -285,7 +312,9 @@ describe("compound-compatible forms", function()
   it("aligns compound rooms and presents their compact geometry", function()
     local session, plan = fixture()
     local spec = forms.alignment.new(session, {
-      moving_room_id = "room-office", reference_room_id = "room-living", operation = "place_north",
+      moving_room_id = "room-office",
+      reference_room_id = "room-living",
+      operation = "place_north",
     })
     local action = assert(spec.build(spec.initial, spec.context))
     assert_equal("align_room", action.type)

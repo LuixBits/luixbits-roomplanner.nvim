@@ -5,13 +5,9 @@ local json = require("roomplan.codec.json")
 
 local M = {}
 
-local function clamp(value, minimum, maximum)
-  return math.max(minimum, math.min(maximum, value))
-end
+local function clamp(value, minimum, maximum) return math.max(minimum, math.min(maximum, value)) end
 
-local function leap(year)
-  return year % 4 == 0 and (year % 100 ~= 0 or year % 400 == 0)
-end
+local function leap(year) return year % 4 == 0 and (year % 100 ~= 0 or year % 400 == 0) end
 
 local MONTH_DAYS = { 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31 }
 
@@ -27,7 +23,9 @@ function M.parse_date(value)
   local maximum = MONTH_DAYS[month] + (month == 2 and leap(year) and 1 or 0)
   if day < 1 or day > maximum then return nil, "day is outside that month" end
   local ordinal = day
-  for index = 1, month - 1 do ordinal = ordinal + MONTH_DAYS[index] end
+  for index = 1, month - 1 do
+    ordinal = ordinal + MONTH_DAYS[index]
+  end
   if leap(year) and month > 2 then ordinal = ordinal + 1 end
   return { year = year, month = month, day = day, ordinal = ordinal, days_in_year = leap(year) and 366 or 365 }
 end
@@ -81,9 +79,7 @@ function M.format_utc_offset(minutes)
   return string.format("%s%02d:%02d", sign, math.floor(minutes / 60), minutes % 60)
 end
 
-function M.number(value)
-  return json.number_value(value)
-end
+function M.number(value) return json.number_value(value) end
 
 function M.number_text(value, precision)
   local number = M.number(value)
@@ -101,14 +97,21 @@ end
 
 local function terms(date, minutes)
   local fractional_hour = minutes / 60
-  local gamma = 2 * math.pi / date.days_in_year
-    * (date.ordinal - 1 + (fractional_hour - 12) / 24)
-  local equation = 229.18 * (0.000075 + 0.001868 * math.cos(gamma)
-    - 0.032077 * math.sin(gamma) - 0.014615 * math.cos(2 * gamma)
-    - 0.040849 * math.sin(2 * gamma))
-  local declination = 0.006918 - 0.399912 * math.cos(gamma)
-    + 0.070257 * math.sin(gamma) - 0.006758 * math.cos(2 * gamma)
-    + 0.000907 * math.sin(2 * gamma) - 0.002697 * math.cos(3 * gamma)
+  local gamma = 2 * math.pi / date.days_in_year * (date.ordinal - 1 + (fractional_hour - 12) / 24)
+  local equation = 229.18
+    * (
+      0.000075
+      + 0.001868 * math.cos(gamma)
+      - 0.032077 * math.sin(gamma)
+      - 0.014615 * math.cos(2 * gamma)
+      - 0.040849 * math.sin(2 * gamma)
+    )
+  local declination = 0.006918
+    - 0.399912 * math.cos(gamma)
+    + 0.070257 * math.sin(gamma)
+    - 0.006758 * math.cos(2 * gamma)
+    + 0.000907 * math.sin(2 * gamma)
+    - 0.002697 * math.cos(3 * gamma)
     + 0.00148 * math.sin(3 * gamma)
   return equation, declination
 end
@@ -131,9 +134,9 @@ function M.position(site, date_value, time_value)
   local latitude_rad = math.rad(latitude)
   local hour_rad = math.rad(hour_angle)
   local cosine_zenith = clamp(
-    math.sin(latitude_rad) * math.sin(declination)
-      + math.cos(latitude_rad) * math.cos(declination) * math.cos(hour_rad),
-    -1, 1
+    math.sin(latitude_rad) * math.sin(declination) + math.cos(latitude_rad) * math.cos(declination) * math.cos(hour_rad),
+    -1,
+    1
   )
   local zenith = math.deg(math.acos(cosine_zenith))
   local elevation = 90 - zenith
@@ -141,8 +144,9 @@ function M.position(site, date_value, time_value)
   local sine_zenith = math.sin(math.rad(zenith))
   if math.abs(sine_zenith) > 1e-12 and math.abs(math.cos(latitude_rad)) > 1e-12 then
     local argument = clamp(
-      (math.sin(latitude_rad) * cosine_zenith - math.sin(declination))
-        / (math.cos(latitude_rad) * sine_zenith), -1, 1
+      (math.sin(latitude_rad) * cosine_zenith - math.sin(declination)) / (math.cos(latitude_rad) * sine_zenith),
+      -1,
+      1
     )
     local angle = math.deg(math.acos(argument))
     azimuth = hour_angle > 0 and (angle + 180) % 360 or (540 - angle) % 360
@@ -151,8 +155,7 @@ function M.position(site, date_value, time_value)
   local noon_equation, noon_declination = terms(date, 12 * 60)
   local solar_noon = 720 - 4 * longitude - noon_equation + offset
   local sunrise, sunset, daylight_state
-  local cosine_hour = math.cos(math.rad(90.833))
-      / (math.cos(latitude_rad) * math.cos(noon_declination))
+  local cosine_hour = math.cos(math.rad(90.833)) / (math.cos(latitude_rad) * math.cos(noon_declination))
     - math.tan(latitude_rad) * math.tan(noon_declination)
   if cosine_hour > 1 then
     daylight_state = "polar_night"

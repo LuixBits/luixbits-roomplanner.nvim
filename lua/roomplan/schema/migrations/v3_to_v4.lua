@@ -17,23 +17,25 @@ function M.migrate(document)
         message = "schema v3 extension data collides with the generated schema-v4 field 'placement'",
         value = outlet.placement,
       }
-      return nil, {
-        code = diagnostic.code,
-        path = diagnostic.path,
-        message = diagnostic.message,
-        diagnostics = { diagnostic },
-      }
+      return nil,
+        {
+          code = diagnostic.code,
+          path = diagnostic.path,
+          message = diagnostic.message,
+          diagnostics = { diagnostic },
+        }
     end
     outlet.placement = "wall"
   end
   result.schema_version = 4
-  return result, {
+  return result,
     {
-      code = "SCHEMA_MIGRATED_V3_TO_V4",
-      path = "$.outlets",
-      message = "classified existing outlets as wall outlets",
-    },
-  }
+      {
+        code = "SCHEMA_MIGRATED_V3_TO_V4",
+        path = "$.outlets",
+        message = "classified existing outlets as wall outlets",
+      },
+    }
 end
 
 return M

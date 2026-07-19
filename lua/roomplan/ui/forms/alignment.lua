@@ -6,13 +6,13 @@ local M = {}
 
 local function operations(context)
   local result = {
-  { value = "align_left", label = "Align " .. directions.label("west", context):lower() .. " edges" },
-  { value = "align_right", label = "Align " .. directions.label("east", context):lower() .. " edges" },
-  { value = "align_top", label = "Align " .. directions.label("north", context):lower() .. " edges" },
-  { value = "align_bottom", label = "Align " .. directions.label("south", context):lower() .. " edges" },
-  { value = "align_center_x", label = "Align horizontal centres" },
-  { value = "align_center_y", label = "Align vertical centres" },
-  { value = "snap_corner", label = "Snap corners" },
+    { value = "align_left", label = "Align " .. directions.label("west", context):lower() .. " edges" },
+    { value = "align_right", label = "Align " .. directions.label("east", context):lower() .. " edges" },
+    { value = "align_top", label = "Align " .. directions.label("north", context):lower() .. " edges" },
+    { value = "align_bottom", label = "Align " .. directions.label("south", context):lower() .. " edges" },
+    { value = "align_center_x", label = "Align horizontal centres" },
+    { value = "align_center_y", label = "Align vertical centres" },
+    { value = "snap_corner", label = "Snap corners" },
   }
   for _, choice in ipairs(directions.choices(context)) do
     result[#result + 1] = { value = "place_" .. choice.value, label = "Place " .. choice.label:lower() }
@@ -28,16 +28,16 @@ local function corners(context)
   return result
 end
 
-local function is_place(operation)
-  return type(operation) == "string" and operation:sub(1, 6) == "place_"
-end
+local function is_place(operation) return type(operation) == "string" and operation:sub(1, 6) == "place_" end
 
 local function proposal(draft, context)
   local moving = common.find(context, "room", draft.moving_room_id)
   local reference = common.find(context, "room", draft.reference_room_id)
   if not moving then return nil, { code = "MOVING_ROOM_REQUIRED", message = "choose a moving room" } end
   if not reference then return nil, { code = "REFERENCE_ROOM_REQUIRED", message = "choose a reference room" } end
-  if moving.id == reference.id then return nil, { code = "ALIGNMENT_SAME_ROOM", message = "moving and reference rooms must differ" } end
+  if moving.id == reference.id then
+    return nil, { code = "ALIGNMENT_SAME_ROOM", message = "moving and reference rooms must differ" }
+  end
   return alignment.propose(moving, reference, draft.operation, {
     gap_mm = is_place(draft.operation) and (draft.gap_mm or 0) or 0,
     moving_corner = draft.moving_corner,
@@ -71,27 +71,47 @@ function M.new(session, opts)
       force = opts.force == true,
     },
     fields = {
-      { key = "moving_room_id", label = "Moving room", type = "object_ref", required = true, choices = function(ctx) return common.rooms(ctx) end },
       {
-        key = "reference_room_id", label = "Reference room", type = "object_ref", required = true,
+        key = "moving_room_id",
+        label = "Moving room",
+        type = "object_ref",
+        required = true,
+        choices = function(ctx) return common.rooms(ctx) end,
+      },
+      {
+        key = "reference_room_id",
+        label = "Reference room",
+        type = "object_ref",
+        required = true,
         choices = function(ctx, draft) return common.rooms(ctx, draft.moving_room_id) end,
       },
       { key = "operation", label = "Operation", type = "enum", required = true, choices = operations },
       {
-        key = "gap_mm", label = "Gap", type = "measurement", allow_zero = true,
+        key = "gap_mm",
+        label = "Gap",
+        type = "measurement",
+        allow_zero = true,
         visible = function(_, draft) return is_place(draft.operation) end,
       },
       {
-        key = "moving_corner", label = "Moving corner", type = "enum", choices = corners,
+        key = "moving_corner",
+        label = "Moving corner",
+        type = "enum",
+        choices = corners,
         visible = function(_, draft) return draft.operation == "snap_corner" end,
       },
       {
-        key = "reference_corner", label = "Reference corner", type = "enum", choices = corners,
+        key = "reference_corner",
+        label = "Reference corner",
+        type = "enum",
+        choices = corners,
         visible = function(_, draft) return draft.operation == "snap_corner" end,
       },
       { key = "force", label = "Allow invalid draft", type = "toggle", default = false },
       {
-        key = "resolved_origin", label = "Resulting origin", type = "readonly",
+        key = "resolved_origin",
+        label = "Resulting origin",
+        type = "readonly",
         value = function(ctx, draft)
           local result = proposal(draft, ctx)
           return result and result.origin_mm or nil
@@ -113,8 +133,13 @@ function M.new(session, opts)
       local rounding = result.rounded and " (rounded to integer millimetres)" or ""
       return {
         lines = {
-          string.format("%s relative to %s -> %s%s", moving.name or moving.id, reference.name or reference.id,
-            common.point_text(result.origin_mm), rounding),
+          string.format(
+            "%s relative to %s -> %s%s",
+            moving.name or moving.id,
+            reference.name or reference.id,
+            common.point_text(result.origin_mm),
+            rounding
+          ),
         },
       }
     end,

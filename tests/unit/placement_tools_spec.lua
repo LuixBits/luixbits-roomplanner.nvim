@@ -35,12 +35,8 @@ end
 local function session(plan, selection)
   return {
     selection = selection,
-    model = function()
-      return plan
-    end,
-    current_model = function()
-      return plan
-    end,
+    model = function() return plan end,
+    current_model = function() return plan end,
   }
 end
 
@@ -103,9 +99,7 @@ describe("measurement and wall placement", function()
       snap_enabled = true,
       snap_exclusions = {},
       viewport = require("roomplan.render.viewport").new({ mm_per_column = 1, cell_aspect = 2 }),
-      model = function()
-        return plan
-      end,
+      model = function() return plan end,
     }
     local options = require("roomplan.controller.common").snapping_options(fake)
     h.eq({ x = 10, y = 10 }, options.tolerance_mm)

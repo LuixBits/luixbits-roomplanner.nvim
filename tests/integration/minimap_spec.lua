@@ -46,9 +46,7 @@ describe("minimap", function()
     local roles, colors = {}, {}
     for _, span in ipairs(initial.highlight_spans) do
       roles[span.role] = true
-      if span.color then
-        colors[span.color] = true
-      end
+      if span.color then colors[span.color] = true end
     end
     h.truthy(roles.wall)
     h.truthy(roles.room)

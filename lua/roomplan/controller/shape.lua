@@ -35,9 +35,7 @@ function M.attach(controller)
     undo = controller.undo,
   }
 
-  local function active(session)
-    return session and session.shape_edit or nil
-  end
+  local function active(session) return session and session.shape_edit or nil end
 
   local function workspace_mode(session, mode)
     local ok, workspace = pcall(require, "roomplan.ui.workspace")
@@ -70,13 +68,9 @@ function M.attach(controller)
     controller.refresh(session)
   end
 
-  local function room_for(session, edit)
-    return model.find(session:model(), "room", edit.room_id)
-  end
+  local function room_for(session, edit) return model.find(session:model(), "room", edit.room_id) end
 
-  local function entity_for(value, edit)
-    return model.find(value, edit.kind or "room", edit.entity_id or edit.room_id)
-  end
+  local function entity_for(value, edit) return model.find(value, edit.kind or "room", edit.entity_id or edit.room_id) end
 
   local function world_shape(value, edit)
     local target = entity_for(value, edit)
@@ -115,10 +109,13 @@ function M.attach(controller)
     kind = kind or (selection and selection.kind)
     entity_id = entity_id or (selection and selection.id)
     if kind ~= "room" and kind ~= "furniture" and kind ~= "template" then
-      return notify_error(util.err("SHAPE_REQUIRED",
-        "select a room, placed furniture item, or project template before editing its shape"))
+      return notify_error(
+        util.err("SHAPE_REQUIRED", "select a room, placed furniture item, or project template before editing its shape")
+      )
     end
-    if not entity_id then return notify_error(util.err("SHAPE_REQUIRED", "select an object before editing its shape")) end
+    if not entity_id then
+      return notify_error(util.err("SHAPE_REQUIRED", "select an object before editing its shape"))
+    end
     local edit, start_err = room_shape.start(resolved:model(), entity_id, resolved:revision_id(), kind)
     if not edit then return notify_error(start_err) end
     if kind == "template" then edit.previous_viewport = util.deepcopy(resolved.viewport) end
@@ -129,13 +126,9 @@ function M.attach(controller)
     return result
   end
 
-  function controller.start_room_resize(session, room_id)
-    return controller.start_shape_resize(session, "room", room_id)
-  end
+  function controller.start_room_resize(session, room_id) return controller.start_shape_resize(session, "room", room_id) end
 
-  function controller.edit_selected_shape(session)
-    return controller.start_shape_resize(session)
-  end
+  function controller.edit_selected_shape(session) return controller.start_shape_resize(session) end
 
   function controller.select_room_shape_part(session)
     local resolved, err = resolve(session)
@@ -197,14 +190,20 @@ function M.attach(controller)
     local shape = world_shape(resolved:current_model(), edit)
     local runtime_part
     for _, candidate in ipairs(shape and shape.parts or {}) do
-      if part and candidate.id == part.id then runtime_part = candidate; break end
+      if part and candidate.id == part.id then
+        runtime_part = candidate
+        break
+      end
     end
     if runtime_part and point then
       local center_x = (runtime_part.left2 + runtime_part.right2) / 4
       local center_y = (runtime_part.bottom2 + runtime_part.top2) / 4
       local relative_x, relative_y = point[1] - center_x, point[2] - center_y
-      if math.abs(relative_x) >= math.abs(relative_y) then dx = relative_x < 0 and -1 or 1
-      else dy = relative_y < 0 and -1 or 1 end
+      if math.abs(relative_x) >= math.abs(relative_y) then
+        dx = relative_x < 0 and -1 or 1
+      else
+        dy = relative_y < 0 and -1 or 1
+      end
       dx, dy = room_shape.local_delta(edit, dx, dy)
     end
     return update(resolved, room_shape.add(edit, dx, dy))
@@ -226,7 +225,10 @@ function M.attach(controller)
     if resolved:revision_id() ~= edit.base_revision_id then
       return notify_error(util.err("SHAPE_STALE", "the plan changed; cancel and restart shape editing"))
     end
-    if not room_shape.is_changed(edit) then clear(resolved); return true end
+    if not room_shape.is_changed(edit) then
+      clear(resolved)
+      return true
+    end
     local result, dispatch_err = controller.dispatch(resolved, room_shape.action(edit, scope))
     if not result then return notify_error(dispatch_err) end
     clear(resolved)
@@ -288,8 +290,10 @@ function M.attach(controller)
   controller.save = function(session, ...)
     if active(session) then
       local edit = active(session)
-      local source_template = edit.kind == "furniture" and edit.template_id
-        and model.find(session:model(), "template", edit.template_id) or nil
+      local source_template = edit.kind == "furniture"
+          and edit.template_id
+          and model.find(session:model(), "template", edit.template_id)
+        or nil
       if room_shape.is_changed(edit) and source_template then
         local save_args = { ... }
         return require("roomplan.ui.palette").open({
@@ -326,7 +330,9 @@ function M.attach(controller)
   local function blocked(name, handler)
     return function(session, ...)
       if active(session) then
-        return notify_error(util.err("ROOM_SHAPE_ACTIVE", name .. " is unavailable until resizing is applied or cancelled"))
+        return notify_error(
+          util.err("ROOM_SHAPE_ACTIVE", name .. " is unavailable until resizing is applied or cancelled")
+        )
       end
       return handler(session, ...)
     end

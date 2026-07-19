@@ -3,16 +3,12 @@
 
 local M = {}
 
-local function continuation(byte)
-  return byte and byte >= 0x80 and byte <= 0xBF
-end
+local function continuation(byte) return byte and byte >= 0x80 and byte <= 0xBF end
 
 ---Decode UTF-8 into byte-ranged codepoint records, rejecting overlong encodings,
 ---surrogates, truncation, and values beyond U+10FFFF.
 function M.decode(value)
-  if type(value) ~= "string" then
-    return nil, "text must be a string"
-  end
+  if type(value) ~= "string" then return nil, "text must be a string" end
   local result = {}
   local index = 1
   while index <= #value do
@@ -23,9 +19,7 @@ function M.decode(value)
       codepoint, length = first, 1
     elseif first >= 0xC2 and first <= 0xDF then
       local b2 = value:byte(index + 1)
-      if not continuation(b2) then
-        return nil, "invalid UTF-8 continuation at byte " .. index
-      end
+      if not continuation(b2) then return nil, "invalid UTF-8 continuation at byte " .. index end
       codepoint = (first - 0xC0) * 0x40 + (b2 - 0x80)
       length = 2
     elseif first >= 0xE0 and first <= 0xEF then
@@ -33,12 +27,8 @@ function M.decode(value)
       if not continuation(b2) or not continuation(b3) then
         return nil, "invalid UTF-8 continuation at byte " .. index
       end
-      if first == 0xE0 and b2 < 0xA0 then
-        return nil, "overlong UTF-8 sequence at byte " .. index
-      end
-      if first == 0xED and b2 >= 0xA0 then
-        return nil, "UTF-8 surrogate at byte " .. index
-      end
+      if first == 0xE0 and b2 < 0xA0 then return nil, "overlong UTF-8 sequence at byte " .. index end
+      if first == 0xED and b2 >= 0xA0 then return nil, "UTF-8 surrogate at byte " .. index end
       codepoint = (first - 0xE0) * 0x1000 + (b2 - 0x80) * 0x40 + (b3 - 0x80)
       length = 3
     elseif first >= 0xF0 and first <= 0xF4 then
@@ -46,16 +36,9 @@ function M.decode(value)
       if not continuation(b2) or not continuation(b3) or not continuation(b4) then
         return nil, "invalid UTF-8 continuation at byte " .. index
       end
-      if first == 0xF0 and b2 < 0x90 then
-        return nil, "overlong UTF-8 sequence at byte " .. index
-      end
-      if first == 0xF4 and b2 > 0x8F then
-        return nil, "UTF-8 codepoint beyond U+10FFFF at byte " .. index
-      end
-      codepoint = (first - 0xF0) * 0x40000
-        + (b2 - 0x80) * 0x1000
-        + (b3 - 0x80) * 0x40
-        + (b4 - 0x80)
+      if first == 0xF0 and b2 < 0x90 then return nil, "overlong UTF-8 sequence at byte " .. index end
+      if first == 0xF4 and b2 > 0x8F then return nil, "UTF-8 codepoint beyond U+10FFFF at byte " .. index end
+      codepoint = (first - 0xF0) * 0x40000 + (b2 - 0x80) * 0x1000 + (b3 - 0x80) * 0x40 + (b4 - 0x80)
       length = 4
     else
       return nil, "invalid UTF-8 leading byte at byte " .. index
@@ -71,9 +54,7 @@ function M.decode(value)
   return result
 end
 
-local function in_range(value, first, last)
-  return value >= first and value <= last
-end
+local function in_range(value, first, last) return value >= first and value <= last end
 
 function M.is_combining(codepoint)
   return in_range(codepoint, 0x0300, 0x036F)
@@ -160,24 +141,21 @@ function M.is_combining(codepoint)
     or in_range(codepoint, 0xE0100, 0xE01EF)
 end
 
-local function is_regional_indicator(codepoint)
-  return in_range(codepoint, 0x1F1E6, 0x1F1FF)
-end
+local function is_regional_indicator(codepoint) return in_range(codepoint, 0x1F1E6, 0x1F1FF) end
 
 ---Split into conservative display clusters.  It handles combining sequences,
 ---variation selectors, regional pairs, and complete ZWJ chains; complex emoji
 ---are later replaced with one addressable marker.
 function M.clusters(value)
   local decoded, err = M.decode(value)
-  if not decoded then
-    return nil, err
-  end
+  if not decoded then return nil, err end
   local clusters = {}
   local index = 1
   while index <= #decoded do
     local first_index = index
     local has_zwj = false
-    if is_regional_indicator(decoded[index].codepoint)
+    if
+      is_regional_indicator(decoded[index].codepoint)
       and decoded[index + 1]
       and is_regional_indicator(decoded[index + 1].codepoint)
     then
@@ -212,16 +190,11 @@ function M.clusters(value)
 end
 
 local function codepoint_width(codepoint)
-  if codepoint == 0 then
-    return 0
-  end
-  if codepoint < 32 or in_range(codepoint, 0x7F, 0x9F) then
-    return 0
-  end
-  if M.is_combining(codepoint) then
-    return 0
-  end
-  if in_range(codepoint, 0x1100, 0x115F)
+  if codepoint == 0 then return 0 end
+  if codepoint < 32 or in_range(codepoint, 0x7F, 0x9F) then return 0 end
+  if M.is_combining(codepoint) then return 0 end
+  if
+    in_range(codepoint, 0x1100, 0x115F)
     or codepoint == 0x2329
     or codepoint == 0x232A
     or in_range(codepoint, 0x2E80, 0xA4CF)
@@ -243,9 +216,7 @@ end
 ---strdisplaywidth for authoritative runtime behavior.
 function M.default_width(value)
   local decoded = M.decode(value)
-  if not decoded then
-    return -1
-  end
+  if not decoded then return -1 end
   local width = 0
   local has_zwj = false
   for i = 1, #decoded do
@@ -255,9 +226,7 @@ function M.default_width(value)
       width = width + codepoint_width(decoded[i].codepoint)
     end
   end
-  if has_zwj then
-    return math.max(2, width > 0 and 2 or 0)
-  end
+  if has_zwj then return math.max(2, width > 0 and 2 or 0) end
   if #decoded == 2 and is_regional_indicator(decoded[1].codepoint) and is_regional_indicator(decoded[2].codepoint) then
     return 2
   end
@@ -267,12 +236,8 @@ end
 local function validated_replacement(replacement, width_fn)
   replacement = type(replacement) == "string" and replacement or "?"
   local decoded = M.decode(replacement)
-  if not decoded or width_fn(replacement) ~= 1 then
-    replacement = "?"
-  end
-  if width_fn(replacement) ~= 1 then
-    return nil, "replacement glyph does not occupy one display cell"
-  end
+  if not decoded or width_fn(replacement) ~= 1 then replacement = "?" end
+  if width_fn(replacement) ~= 1 then return nil, "replacement glyph does not occupy one display cell" end
   return replacement
 end
 
@@ -282,13 +247,9 @@ end
 function M.sanitize_cells(value, max_cells, width_fn, replacement)
   width_fn = width_fn or M.default_width
   local parsed, err = M.clusters(value)
-  if not parsed then
-    return nil, err
-  end
+  if not parsed then return nil, err end
   local safe_replacement, replacement_err = validated_replacement(replacement, width_fn)
-  if not safe_replacement then
-    return nil, replacement_err
-  end
+  if not safe_replacement then return nil, replacement_err end
 
   max_cells = max_cells == nil and math.huge or math.max(0, math.floor(max_cells))
   local cells = {}
@@ -331,9 +292,7 @@ end
 
 function M.sanitize(value, max_cells, width_fn, replacement)
   local cells, metadata = M.sanitize_cells(value, max_cells, width_fn, replacement)
-  if not cells then
-    return nil, metadata
-  end
+  if not cells then return nil, metadata end
   return table.concat(cells), metadata
 end
 
@@ -352,14 +311,10 @@ end
 
 ---Convert a zero-based byte column to a one-based logical cell.
 function M.byte_to_cell(offsets, byte_column)
-  if type(offsets) ~= "table" or #offsets < 2 then
-    return nil
-  end
+  if type(offsets) ~= "table" or #offsets < 2 then return nil end
   byte_column = math.max(0, byte_column or 0)
   local count = #offsets - 1
-  if byte_column >= offsets[count + 1] then
-    return count
-  end
+  if byte_column >= offsets[count + 1] then return count end
   local low, high = 1, count
   while low <= high do
     local middle = math.floor((low + high) / 2)

@@ -15,8 +15,12 @@ local function temp(suffix)
 end
 
 local function cleanup()
-  for _, session in ipairs(state.list()) do session:destroy({ force = true }) end
-  for _, path in ipairs(temporary) do pcall(vim.uv.fs_unlink, path) end
+  for _, session in ipairs(state.list()) do
+    session:destroy({ force = true })
+  end
+  for _, path in ipairs(temporary) do
+    pcall(vim.uv.fs_unlink, path)
+  end
   temporary = {}
 end
 
@@ -38,8 +42,13 @@ local function drive_ui(inputs, selections, callback)
     local wanted = selections[selection_index]
     local chosen
     for _, item in ipairs(items) do
-      if item == wanted or (type(item) == "table"
-        and (item.id == wanted or item.label == wanted or item.name == wanted or item.value == wanted)) then
+      if
+        item == wanted
+        or (
+          type(item) == "table"
+          and (item.id == wanted or item.label == wanted or item.name == wanted or item.value == wanted)
+        )
+      then
         chosen = item
         break
       end
@@ -86,8 +95,10 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-bedroom", name = "Bedroom",
-        origin_mm = { 5000, 0 }, size_mm = { 3000, 3000 },
+        id = "room-bedroom",
+        name = "Bedroom",
+        origin_mm = { 5000, 0 },
+        size_mm = { 3000, 3000 },
       }),
     }))
     local furniture_form = h.truthy(controller.add_furniture(session))
@@ -99,12 +110,8 @@ describe("controller lifecycle", function()
     h.eq(furniture_form.winid, vim.api.nvim_get_current_win())
     h.truthy(require("roomplan.ui.workspace").reflow(session, true))
     h.eq(furniture_form.winid, vim.api.nvim_get_current_win())
-    h.eq("room-living-room", h.truthy(form.set_value(
-      furniture_form, "room_id", "room-living-room", { raw = false }
-    )))
-    h.eq("builtin:sofa", h.truthy(form.set_value(
-      furniture_form, "template_id", "builtin:sofa", { raw = false }
-    )))
+    h.eq("room-living-room", h.truthy(form.set_value(furniture_form, "room_id", "room-living-room", { raw = false })))
+    h.eq("builtin:sofa", h.truthy(form.set_value(furniture_form, "template_id", "builtin:sofa", { raw = false })))
     h.eq(2100, h.truthy(form.set_value(furniture_form, "width_mm", "2100")))
     h.truthy(furniture_form.state.preview.graphic)
     h.eq(900, h.truthy(form.set_value(furniture_form, "depth_mm", "900")))
@@ -124,29 +131,30 @@ describe("controller lifecycle", function()
     h.eq(1, #session:model().furniture)
     session.selection = { kind = "room", id = "room-living-room" }
     local door_form = h.truthy(controller.add_door(session))
-    h.eq("room-living-room", h.truthy(form.set_value(
-      door_form, "room_id", "room-living-room", { raw = false }
-    )))
+    h.eq("room-living-room", h.truthy(form.set_value(door_form, "room_id", "room-living-room", { raw = false })))
     h.eq("east", h.truthy(form.set_value(door_form, "side", "east", { raw = false })))
     h.eq(900, h.truthy(form.set_value(door_form, "width_mm", "900")))
     h.eq("exact", h.truthy(form.set_value(door_form, "placement", "exact", { raw = false })))
     h.eq(1000, h.truthy(form.set_value(door_form, "offset_mm", "1000")))
-    h.eq("room-bedroom", h.truthy(form.set_value(
-      door_form, "connects_to_room_id", "room-bedroom", { raw = false }
-    )))
+    h.eq("room-bedroom", h.truthy(form.set_value(door_form, "connects_to_room_id", "room-bedroom", { raw = false })))
     h.eq("connected", h.truthy(form.set_value(door_form, "opens_into", "connected", { raw = false })))
     h.truthy(form.apply(door_form))
     h.eq("room-bedroom", session:model().doors[1].connects_to_room_id)
     h.truthy(controller.dispatch(session, {
-      type = "toggle_door_hinge", id = session:model().doors[1].id,
+      type = "toggle_door_hinge",
+      id = session:model().doors[1].id,
     }))
     h.eq("end", session:model().doors[1].hinge)
     h.truthy(controller.dispatch(session, {
-      type = "rotate_furniture", id = session:model().furniture[1].id, delta_deg = 90,
+      type = "rotate_furniture",
+      id = session:model().furniture[1].id,
+      delta_deg = 90,
     }))
     h.truthy(controller.dispatch(session, {
-      type = "move_furniture", id = session:model().furniture[1].id,
-      position_mm = { 4900, 3900 }, exact = true,
+      type = "move_furniture",
+      id = session:model().furniture[1].id,
+      position_mm = { 4900, 3900 },
+      exact = true,
     }))
     local _, invalid_summary = controller.validate(session)
     h.truthy(invalid_summary.errors > 0)
@@ -275,8 +283,10 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-footprint", name = "Footprint",
-        origin_mm = { 0, 0 }, size_mm = { 3000, 2000 },
+        id = "room-footprint",
+        name = "Footprint",
+        origin_mm = { 0, 0 },
+        size_mm = { 3000, 2000 },
       }),
     }))
     session.selection = { kind = "room", id = "room-footprint" }
@@ -306,7 +316,10 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-shape", name = "Shape", origin_mm = { 0, 0 }, size_mm = { 3000, 2000 },
+        id = "room-shape",
+        name = "Shape",
+        origin_mm = { 0, 0 },
+        size_mm = { 3000, 2000 },
       }),
     }))
     session.selection = { kind = "room", id = "room-shape" }
@@ -353,7 +366,10 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-editor-transition", name = "Before", origin_mm = { 0, 0 }, size_mm = { 3000, 2000 },
+        id = "room-editor-transition",
+        name = "Before",
+        origin_mm = { 0, 0 },
+        size_mm = { 3000, 2000 },
       }),
     }))
     session.selection = { kind = "room", id = "room-editor-transition" }
@@ -378,26 +394,37 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-moving", name = "Moving", origin_mm = { 0, 0 }, size_mm = { 3000, 2000 },
+        id = "room-moving",
+        name = "Moving",
+        origin_mm = { 0, 0 },
+        size_mm = { 3000, 2000 },
       }),
     }))
     h.truthy(controller.dispatch(session, {
       type = "add_furniture",
       furniture = model.new_furniture({
-        id = "furniture-moving", room_id = "room-moving", template_id = "builtin:chair",
-        name = "Chair", category = "seating", position_mm = { 1000, 1000 }, size_mm = { 500, 500, 800 },
+        id = "furniture-moving",
+        room_id = "room-moving",
+        template_id = "builtin:chair",
+        name = "Chair",
+        category = "seating",
+        position_mm = { 1000, 1000 },
+        size_mm = { 500, 500, 800 },
       }),
     }))
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-fixed", name = "Fixed", origin_mm = { 3050, 0 }, size_mm = { 2000, 2000 },
+        id = "room-fixed",
+        name = "Fixed",
+        origin_mm = { 3050, 0 },
+        size_mm = { 2000, 2000 },
       }),
     }))
     session.selection = { kind = "room", id = "room-moving" }
-    local before_shape = h.truthy(require("roomplan.geometry.footprint").from_furniture(
-      session:model().rooms[1], session:model().furniture[1]
-    ))
+    local before_shape = h.truthy(
+      require("roomplan.geometry.footprint").from_furniture(session:model().rooms[1], session:model().furniture[1])
+    )
     local before = h.truthy(require("roomplan.geometry.footprint").bounds(before_shape))
 
     h.truthy(controller.set_mode(session, "MOVE"))
@@ -416,9 +443,9 @@ describe("controller lifecycle", function()
     h.eq(40, session:model().rooms[1].origin_mm[1])
     h.eq("left 10 mm", session.move_feedback)
     h.eq({ 1000, 1000 }, session:model().furniture[1].position_mm)
-    local after_shape = h.truthy(require("roomplan.geometry.footprint").from_furniture(
-      session:model().rooms[1], session:model().furniture[1]
-    ))
+    local after_shape = h.truthy(
+      require("roomplan.geometry.footprint").from_furniture(session:model().rooms[1], session:model().furniture[1])
+    )
     local after = h.truthy(require("roomplan.geometry.footprint").bounds(after_shape))
     h.eq(before.left + 40, after.left)
     h.eq(before.right + 40, after.right)
@@ -432,16 +459,25 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-furniture-shape", name = "Shape room", origin_mm = { 0, 0 }, size_mm = { 4000, 3000 },
+        id = "room-furniture-shape",
+        name = "Shape room",
+        origin_mm = { 0, 0 },
+        size_mm = { 4000, 3000 },
       }),
     }))
     h.truthy(controller.dispatch(session, {
       type = "add_furniture",
       furniture = model.new_furniture({
-        id = "furniture-shape", room_id = "room-furniture-shape", template_id = "builtin:custom-rectangle",
-        name = "Sectional", category = "seating", position_mm = { 2000, 1500 },
-        anchor2_mm = { 1000, 500 }, footprint = model.rectangle_footprint({ 1000, 500 }),
-        height_mm = 800, rotation_deg = 90,
+        id = "furniture-shape",
+        room_id = "room-furniture-shape",
+        template_id = "builtin:custom-rectangle",
+        name = "Sectional",
+        category = "seating",
+        position_mm = { 2000, 1500 },
+        anchor2_mm = { 1000, 500 },
+        footprint = model.rectangle_footprint({ 1000, 500 }),
+        height_mm = 800,
+        rotation_deg = 90,
       }),
     }))
     session.selection = { kind = "room", id = "room-furniture-shape" }
@@ -453,15 +489,25 @@ describe("controller lifecycle", function()
     h.truthy(workspace.focus(session, "objects"))
     local furniture_row
     for line, row in pairs(session.workspace.rendered.objects.row_map or {}) do
-      if row.kind == "furniture" and row.id == "furniture-shape" then furniture_row = line; break end
+      if row.kind == "furniture" and row.id == "furniture-shape" then
+        furniture_row = line
+        break
+      end
     end
     h.truthy(furniture_row)
     vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { furniture_row, 0 })
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), "x", false)
-    h.truthy(vim.wait(1000, function()
-      return session.selection and session.selection.kind == "furniture"
-        and session.selection.id == "furniture-shape"
-    end, 10))
+    h.truthy(
+      vim.wait(
+        1000,
+        function()
+          return session.selection
+            and session.selection.kind == "furniture"
+            and session.selection.id == "furniture-shape"
+        end,
+        10
+      )
+    )
     vim.api.nvim_feedkeys("r", "x", false)
     h.truthy(vim.wait(1000, function() return session.shape_edit ~= nil end, 10))
     h.eq("RESIZE", session.mode)
@@ -492,8 +538,11 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_custom_template",
       template = model.new_custom_template({
-        id = "custom:sectional", name = "Sectional", category = "seating",
-        default_anchor2_mm = { 1000, 500 }, default_height_mm = 800,
+        id = "custom:sectional",
+        name = "Sectional",
+        category = "seating",
+        default_anchor2_mm = { 1000, 500 },
+        default_height_mm = 800,
         default_footprint = model.rectangle_footprint({ 1000, 500 }),
       }),
     }))
@@ -510,7 +559,8 @@ describe("controller lifecycle", function()
     h.eq("template", session.shape_edit.kind)
     h.eq("RESIZE", session.mode)
     local preview_scene = require("roomplan.scene.build").build(session:current_model(), nil, {
-      shape_edit = session.shape_edit, detail_level = "none",
+      shape_edit = session.shape_edit,
+      detail_level = "none",
     })
     h.eq(1, #preview_scene.objects)
     h.eq("template", preview_scene.objects[1].type)
@@ -524,8 +574,7 @@ describe("controller lifecycle", function()
     h.eq(nil, session.shape_edit)
     h.eq(previous_viewport, session.viewport)
     h.eq(1100, session:model().custom_templates[1].default_footprint.parts[1].size_mm[1])
-    h.eq(1100, h.truthy(model.decode(source.read_file(path))).custom_templates[1]
-      .default_footprint.parts[1].size_mm[1])
+    h.eq(1100, h.truthy(model.decode(source.read_file(path))).custom_templates[1].default_footprint.parts[1].size_mm[1])
     h.truthy(controller.undo(session))
     h.eq(1000, session:model().custom_templates[1].default_footprint.parts[1].size_mm[1])
     controller.close(session, { bang = true })
@@ -539,14 +588,20 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-template", name = "Template room", origin_mm = { 0, 0 }, size_mm = { 4000, 3000 },
+        id = "room-template",
+        name = "Template room",
+        origin_mm = { 0, 0 },
+        size_mm = { 4000, 3000 },
       }),
     }))
     h.truthy(controller.dispatch(session, {
       type = "add_custom_template",
       template = model.new_custom_template({
-        id = "custom:sectional", name = "Sectional", category = "seating",
-        default_anchor2_mm = { 1000, 500 }, default_height_mm = 800,
+        id = "custom:sectional",
+        name = "Sectional",
+        category = "seating",
+        default_anchor2_mm = { 1000, 500 },
+        default_height_mm = 800,
         default_footprint = model.rectangle_footprint({ 1000, 500 }),
       }),
     }))
@@ -554,9 +609,14 @@ describe("controller lifecycle", function()
       h.truthy(controller.dispatch(session, {
         type = "add_furniture",
         furniture = model.new_furniture({
-          id = id, room_id = "room-template", template_id = "custom:sectional",
-          name = id, category = "seating", position_mm = { index * 1300 - 300, 1000 },
-          anchor2_mm = { 1000, 500 }, height_mm = 800,
+          id = id,
+          room_id = "room-template",
+          template_id = "custom:sectional",
+          name = id,
+          category = "seating",
+          position_mm = { index * 1300 - 300, 1000 },
+          anchor2_mm = { 1000, 500 },
+          height_mm = 800,
           footprint = model.rectangle_footprint({ 1000, 500 }),
         }),
       }))
@@ -609,22 +669,30 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-wall-features", name = "Wall features",
-        origin_mm = { 0, 0 }, size_mm = { 5000, 4000 },
+        id = "room-wall-features",
+        name = "Wall features",
+        origin_mm = { 0, 0 },
+        size_mm = { 5000, 4000 },
       }),
     }))
 
     h.truthy(controller.dispatch(session, {
       type = "add_window",
       window = model.new_window({
-        id = "window-north", room_id = "room-wall-features", side = "north",
-        offset_mm = 700, width_mm = 1200,
+        id = "window-north",
+        room_id = "room-wall-features",
+        side = "north",
+        offset_mm = 700,
+        width_mm = 1200,
       }),
     }))
     h.eq({ kind = "window", id = "window-north" }, session.selection)
     h.eq("MOVE", h.truthy(controller.set_mode(session, "MOVE")))
     local visible_step = require("roomplan.render.viewport").visible_move_step(
-      session.viewport, 1, 0, session:model().settings.normal_step_mm
+      session.viewport,
+      1,
+      0,
+      session:model().settings.normal_step_mm
     )
     h.truthy(controller.direction(session, 1, 0, "normal"))
     h.eq(700 + visible_step, session:model().windows[1].offset_mm)
@@ -634,8 +702,12 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_outlet",
       outlet = model.new_outlet({
-        id = "outlet-east", room_id = "room-wall-features", side = "east",
-        offset_mm = 800, outlet_type = "power", slots = 2,
+        id = "outlet-east",
+        room_id = "room-wall-features",
+        side = "east",
+        offset_mm = 800,
+        outlet_type = "power",
+        slots = 2,
       }),
     }))
     h.eq({ kind = "outlet", id = "outlet-east" }, session.selection)
@@ -652,9 +724,7 @@ describe("controller lifecycle", function()
     h.truthy(session.selection.id ~= "outlet-east")
     h.truthy(model.find(session:model(), "outlet", session.selection.id))
 
-    drive_ui({}, { "Delete" }, function()
-      h.truthy(controller.delete_selected(session))
-    end)
+    drive_ui({}, { "Delete" }, function() h.truthy(controller.delete_selected(session)) end)
     h.eq(1, #session:model().outlets)
     h.eq(nil, session.selection)
 
@@ -692,7 +762,10 @@ describe("controller lifecycle", function()
     local workspace = require("roomplan.ui.workspace")
     local issue_row
     for row, item in pairs(session.workspace.rendered.issues.row_map) do
-      if item.id then issue_row = row; break end
+      if item.id then
+        issue_row = row
+        break
+      end
     end
     h.truthy(issue_row)
     local issues_window = session.workspace.windows.left or session.workspace.windows.drawer
@@ -755,17 +828,23 @@ describe("controller lifecycle", function()
     h.truthy(workspace.focus(session, "objects"))
     local room_row
     for row, item in pairs(session.workspace.rendered.objects.row_map) do
-      if item.id == "room-living-room" then room_row = row; break end
+      if item.id == "room-living-room" then
+        room_row = row
+        break
+      end
     end
     h.truthy(room_row)
     local navigator_window = session.workspace.windows.left or session.workspace.windows.drawer
     h.truthy(navigator_window)
     vim.api.nvim_win_set_cursor(navigator_window, { room_row, 0 })
     h.eq({ kind = "room", id = "room-living-room" }, workspace.select_focused(session))
-    h.truthy(vim.wait(1000, function()
-      local header = vim.api.nvim_buf_get_lines(handle.buf, 0, 1, false)[1] or ""
-      return header:find("room: Living room", 1, true) ~= nil
-    end, 5), "workspace selection should redraw the canvas header and highlight")
+    h.truthy(
+      vim.wait(1000, function()
+        local header = vim.api.nvim_buf_get_lines(handle.buf, 0, 1, false)[1] or ""
+        return header:find("room: Living room", 1, true) ~= nil
+      end, 5),
+      "workspace selection should redraw the canvas header and highlight"
+    )
     h.eq(handle.win, vim.api.nvim_get_current_win())
     local footer_buf = session.workspace and session.workspace.buffers.action_bar or handle.buf
     local footer = table.concat(vim.api.nvim_buf_get_lines(footer_buf, 0, -1, false), " ")
@@ -800,8 +879,10 @@ describe("controller lifecycle", function()
     local second_room, second_room_err = controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-bedroom", name = "Bedroom",
-        origin_mm = { 4000, 0 }, size_mm = { 3000, 3000 },
+        id = "room-bedroom",
+        name = "Bedroom",
+        origin_mm = { 4000, 0 },
+        size_mm = { 3000, 3000 },
       }),
     })
     h.truthy(second_room, vim.inspect(second_room_err))
@@ -843,10 +924,13 @@ describe("controller lifecycle", function()
     h.eq("end", session:model().doors[2].hinge)
     h.eq(session:model().doors[1].connects_to_room_id, session:model().doors[2].connects_to_room_id)
 
-    h.truthy(vim.wait(1000, function()
-      local footer = vim.api.nvim_buf_get_lines(session.workspace.buffers.action_bar, 0, 1, false)[1] or ""
-      return footer:find("NAV", 1, true) ~= nil
-    end, 10), "canvas mode label should return to NAV after forms close")
+    h.truthy(
+      vim.wait(1000, function()
+        local footer = vim.api.nvim_buf_get_lines(session.workspace.buffers.action_bar, 0, 1, false)[1] or ""
+        return footer:find("NAV", 1, true) ~= nil
+      end, 10),
+      "canvas mode label should return to NAV after forms close"
+    )
     controller.close(session, { bang = true })
     cleanup()
   end)
@@ -916,9 +1000,13 @@ describe("controller lifecycle", function()
       h.eq(dirty, session:model_dirty())
     end
 
-    h.eq(1, viewport.rotation(h.truthy(controller.rotate_view(session, {
-      direction = "clockwise", quiet = true,
-    }))))
+    h.eq(
+      1,
+      viewport.rotation(h.truthy(controller.rotate_view(session, {
+        direction = "clockwise",
+        quiet = true,
+      })))
+    )
     unchanged()
 
     h.truthy(controller.fit(session, { immediate = true }))
@@ -933,17 +1021,26 @@ describe("controller lifecycle", function()
 
     vim.cmd("RoomPlanRotateView counterclockwise")
     h.eq(0, viewport.rotation(session.viewport))
-    h.eq(1, viewport.rotation(h.truthy(controller.rotate_view(session, {
-      direction = "clockwise", quiet = true,
-    }))))
-    h.eq(0, viewport.rotation(h.truthy(controller.rotate_view(session, {
-      direction = "reset", quiet = true,
-    }))))
+    h.eq(
+      1,
+      viewport.rotation(h.truthy(controller.rotate_view(session, {
+        direction = "clockwise",
+        quiet = true,
+      })))
+    )
+    h.eq(
+      0,
+      viewport.rotation(h.truthy(controller.rotate_view(session, {
+        direction = "reset",
+        quiet = true,
+      })))
+    )
     unchanged()
 
     local before_invalid = viewport.copy(session.viewport)
     local invalid, invalid_err = controller.rotate_view(session, {
-      direction = "diagonal", quiet = true,
+      direction = "diagonal",
+      quiet = true,
     })
     h.eq(nil, invalid)
     h.eq("VIEW_ROTATION_INVALID", h.truthy(invalid_err).code)
@@ -983,7 +1080,9 @@ describe("controller lifecycle", function()
     h.eq(before.x + 100, after.x)
     h.eq(100, session.viewport.world_left_mm)
 
-    for _ = 1, 5 do h.truthy(controller.direction(session, 1, 0, "normal")) end
+    for _ = 1, 5 do
+      h.truthy(controller.direction(session, 1, 0, "normal"))
+    end
     cursor = h.truthy(canvas.logical_cursor(session))
     h.eq(right_edge, cursor.column)
     h.eq(600, session.viewport.world_left_mm)
@@ -1046,11 +1145,21 @@ describe("controller lifecycle", function()
     vim.env.ROOMPLAN_GUARD_MARKER = marker
     local root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h:h")
     vim.fn.system({
-      vim.v.progpath, "--headless", "-u", "NONE", "-i", "NONE", "-n",
-      "-c", "lua dofile(" .. string.format("%q", root .. "/tests/guard_child.lua") .. ")",
-      "-c", "qall",
-      "-c", "lua vim.fn.writefile({'ordinary qall was blocked'}, vim.env.ROOMPLAN_GUARD_MARKER)",
-      "-c", "qall!",
+      vim.v.progpath,
+      "--headless",
+      "-u",
+      "NONE",
+      "-i",
+      "NONE",
+      "-n",
+      "-c",
+      "lua dofile(" .. string.format("%q", root .. "/tests/guard_child.lua") .. ")",
+      "-c",
+      "qall",
+      "-c",
+      "lua vim.fn.writefile({'ordinary qall was blocked'}, vim.env.ROOMPLAN_GUARD_MARKER)",
+      "-c",
+      "qall!",
     })
     vim.env.ROOMPLAN_GUARD_PLAN, vim.env.ROOMPLAN_GUARD_MARKER = previous_plan, previous_marker
     h.truthy(vim.uv.fs_lstat(marker), "ordinary qall exited before the guard marker command")
@@ -1065,8 +1174,10 @@ describe("controller lifecycle", function()
     h.falsy(session:model_dirty())
 
     local room = model.new_room({
-      id = "room-living", name = "Living room",
-      origin_mm = { 0, 0 }, size_mm = { 5000, 4000 },
+      id = "room-living",
+      name = "Living room",
+      origin_mm = { 0, 0 },
+      size_mm = { 5000, 4000 },
     })
     local result, action_err = controller.dispatch(session, { type = "add_room", room = room })
     h.truthy(result, vim.inspect(action_err))
@@ -1134,7 +1245,8 @@ describe("controller lifecycle", function()
     h.falsy(session)
     h.eq("NORG_MULTIPLE_HEADINGS", err.code)
     h.eq(before, source.buffer_text(bufnr))
-    local initialized, init_err = controller.init_source(nil, { bufnr = bufnr, heading_line = 3, noninteractive = true })
+    local initialized, init_err =
+      controller.init_source(nil, { bufnr = bufnr, heading_line = 3, noninteractive = true })
     h.truthy(initialized, vim.inspect(init_err))
     h.matches("second\n\n@code json roomplan%.nvim", source.buffer_text(bufnr))
     controller.close(initialized, { bang = true })
@@ -1460,9 +1572,7 @@ describe("controller lifecycle", function()
     local session = h.truthy(controller.init_source(nil, { path = path }))
     local bufnr = session.source.bufnr
     local original_write = source.write_buffer
-    source.write_buffer = function()
-      return nil, { code = "SOURCE_WRITE_FAILED", message = "intentional save failure" }
-    end
+    source.write_buffer = function() return nil, { code = "SOURCE_WRITE_FAILED", message = "intentional save failure" } end
     local room = model.new_room({ id = "room-staged", name = "Staged", origin_mm = { 0, 0 }, size_mm = { 2000, 2000 } })
     h.truthy(controller.dispatch(session, { type = "add_room", room = room }))
     local saved, save_err = controller.save(session, { quiet = true, noninteractive = true })
@@ -1486,12 +1596,15 @@ describe("controller lifecycle", function()
     local session = h.truthy(controller.init_source(nil, { path = path }))
     h.truthy(controller.dispatch(session, {
       type = "add_room",
-      room = model.new_room({ id = "room-native-write", name = "Native write", origin_mm = { 0, 0 }, size_mm = { 1200, 900 }, }),
+      room = model.new_room({
+        id = "room-native-write",
+        name = "Native write",
+        origin_mm = { 0, 0 },
+        size_mm = { 1200, 900 },
+      }),
     }))
     local original_write = source.write_buffer
-    source.write_buffer = function()
-      return nil, { code = "SOURCE_WRITE_FAILED", message = "intentional staged write" }
-    end
+    source.write_buffer = function() return nil, { code = "SOURCE_WRITE_FAILED", message = "intentional staged write" } end
     local saved = controller.save(session, { quiet = true, noninteractive = true })
     source.write_buffer = original_write
     h.falsy(saved)
@@ -1512,7 +1625,12 @@ describe("controller lifecycle", function()
     local old_bufnr = session.source.bufnr
     h.truthy(controller.dispatch(session, {
       type = "add_room",
-      room = model.new_room({ id = "room-after-wipe", name = "After wipe", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 }, }),
+      room = model.new_room({
+        id = "room-after-wipe",
+        name = "After wipe",
+        origin_mm = { 0, 0 },
+        size_mm = { 1000, 1000 },
+      }),
     }))
     vim.api.nvim_buf_delete(old_bufnr, { force = true })
     h.eq(nil, session.source.bufnr)
@@ -1532,40 +1650,56 @@ describe("controller lifecycle", function()
     local source_path = temp(".roomplan.json")
     local session = h.truthy(controller.init_source(nil, { path = source_path }))
     h.truthy(controller.dispatch(session, {
-      type = "edit_metadata", patch = { name = "Save As model" },
+      type = "edit_metadata",
+      patch = { name = "Save As model" },
     }))
 
     local existing = temp(".roomplan.json")
     local old_model = h.truthy(model.new({ name = "Existing destination" }))
     write_bytes(existing, h.truthy(model.encode(old_model)))
     local refused, confirm_err = controller.save_as(session, {
-      path = existing, noninteractive = true,
+      path = existing,
+      noninteractive = true,
     })
     h.falsy(refused)
     h.eq("SAVE_AS_CONFIRM_REQUIRED", confirm_err.code)
     h.eq("Existing destination", h.truthy(model.decode(source.read_file(existing))).metadata.name)
     local replaced, replace_err = controller.save_as(session, {
-      path = existing, bang = true, noninteractive = true,
+      path = existing,
+      bang = true,
+      noninteractive = true,
     })
     h.truthy(replaced, vim.inspect(replace_err))
     h.eq("Save As model", h.truthy(model.decode(source.read_file(existing))).metadata.name)
 
     h.truthy(controller.dispatch(session, {
       type = "add_room",
-      room = model.new_room({ id = "room-invalid-save-as", name = "Room", origin_mm = { 0, 0 }, size_mm = { 1000, 1000 }, }),
+      room = model.new_room({
+        id = "room-invalid-save-as",
+        name = "Room",
+        origin_mm = { 0, 0 },
+        size_mm = { 1000, 1000 },
+      }),
     }))
     h.truthy(controller.dispatch(session, {
       type = "add_furniture",
       furniture = model.new_furniture({
-        id = "furniture-invalid-save-as", room_id = "room-invalid-save-as",
-        template_id = "builtin:chair", name = "Outside", category = "seating",
-        center_mm = { 5000, 5000 }, size_mm = { 500, 500, 800 }, rotation_deg = 0,
+        id = "furniture-invalid-save-as",
+        room_id = "room-invalid-save-as",
+        template_id = "builtin:chair",
+        name = "Outside",
+        category = "seating",
+        center_mm = { 5000, 5000 },
+        size_mm = { 500, 500, 800 },
+        rotation_deg = 0,
       }),
     }))
     local invalid_target = temp(".roomplan.json")
     write_bytes(invalid_target, h.truthy(model.encode(old_model)))
     local invalid_saved, invalid_err = controller.save_as(session, {
-      path = invalid_target, bang = true, noninteractive = true,
+      path = invalid_target,
+      bang = true,
+      noninteractive = true,
     })
     h.falsy(invalid_saved)
     h.eq("MODEL_LAYOUT_INVALID", invalid_err.code)
@@ -1574,7 +1708,10 @@ describe("controller lifecycle", function()
     local malformed = temp(".roomplan.json")
     write_bytes(malformed, "not json\n")
     local malformed_result, malformed_err = controller.save_as(session, {
-      path = malformed, bang = true, allow_invalid = true, noninteractive = true,
+      path = malformed,
+      bang = true,
+      allow_invalid = true,
+      noninteractive = true,
     })
     h.falsy(malformed_result)
     h.truthy(malformed_err)
@@ -1588,7 +1725,8 @@ describe("controller lifecycle", function()
     local source_path = temp(".roomplan.json")
     local session = h.truthy(controller.init_source(nil, { path = source_path }))
     h.truthy(controller.dispatch(session, {
-      type = "edit_metadata", patch = { name = "Incoming model" },
+      type = "edit_metadata",
+      patch = { name = "Incoming model" },
     }))
     local destination = temp(".roomplan.json")
     local original = h.truthy(model.new({ name = "Original destination" }))
@@ -1627,7 +1765,8 @@ describe("controller lifecycle", function()
     local source_path = temp(".roomplan.json")
     local session = h.truthy(controller.init_source(nil, { path = source_path }))
     h.truthy(controller.dispatch(session, {
-      type = "edit_metadata", patch = { name = "Incoming through link" },
+      type = "edit_metadata",
+      patch = { name = "Incoming through link" },
     }))
     local target = temp(".roomplan.json")
     local link = temp(".roomplan.json")
@@ -1640,7 +1779,9 @@ describe("controller lifecycle", function()
       local original_notify = compatibility.notify
       compatibility.notify = function() end
       local saved, save_err = controller.save_as(session, {
-        path = link, bang = true, noninteractive = true,
+        path = link,
+        bang = true,
+        noninteractive = true,
       })
       compatibility.notify = original_notify
       h.falsy(saved)

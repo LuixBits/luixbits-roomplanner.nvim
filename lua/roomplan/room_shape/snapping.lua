@@ -21,7 +21,9 @@ local function part_features(part, kind, id, label)
 end
 
 local function append(target, values)
-  for _, value in ipairs(values or {}) do target[#target + 1] = value end
+  for _, value in ipairs(values or {}) do
+    target[#target + 1] = value
+  end
 end
 
 local function persisted_world_shape(edit, context)
@@ -54,13 +56,15 @@ local function target_features(edit, model, context)
   local current_shape = persisted_world_shape(edit, context)
   for index, part in ipairs(current_shape and current_shape.parts or {}) do
     if part.id ~= edit.selected_part_id then
-      append_edges(targets, part_features(
-        part,
-        edit.kind == "furniture" and "furniture_edge"
-          or edit.kind == "template" and "template_edge" or "room_edge",
-        tostring(edit.entity_id or edit.room_id) .. "/" .. tostring(part.id),
-        "Section " .. index
-      ))
+      append_edges(
+        targets,
+        part_features(
+          part,
+          edit.kind == "furniture" and "furniture_edge" or edit.kind == "template" and "template_edge" or "room_edge",
+          tostring(edit.entity_id or edit.room_id) .. "/" .. tostring(part.id),
+          "Section " .. index
+        )
+      )
     end
   end
   -- A project template is edited in an isolated local preview. Its own section
@@ -74,9 +78,8 @@ local function target_features(edit, model, context)
       for _, segment in ipairs(boundary or {}) do
         local axis = segment.axis == "x" and "y" or "x"
         local label = tostring(other.name or other.id) .. " " .. tostring(segment.side) .. " wall"
-        targets[axis][#targets[axis] + 1] = snapping.feature(
-          axis, segment.fixed2, "room_edge", other.id, label, { segment.start2, segment.finish2 }
-        )
+        targets[axis][#targets[axis] + 1] =
+          snapping.feature(axis, segment.fixed2, "room_edge", other.id, label, { segment.start2, segment.finish2 })
       end
     end
   end
@@ -84,11 +87,14 @@ local function target_features(edit, model, context)
     if edit.kind ~= "furniture" or other.id ~= edit.entity_id then
       local owner
       for _, candidate in ipairs(model.rooms or {}) do
-        if candidate.id == other.room_id then owner = candidate; break end
+        if candidate.id == other.room_id then
+          owner = candidate
+          break
+        end
       end
       local shape = owner and footprint.from_furniture(owner, other) or nil
-      local features = shape and snapping.boundary_features(shape, "furniture_edge", other.id,
-        tostring(other.name or other.id), "edge")
+      local features = shape
+          and snapping.boundary_features(shape, "furniture_edge", other.id, tostring(other.name or other.id), "edge")
         or nil
       append_feature_sets(targets, features)
     end
@@ -107,10 +113,12 @@ local function moving_features(edit, context, dx, dy)
   local shape = persisted_world_shape(edit, context)
   local part = runtime_part(shape, edit.selected_part_id)
   if not part then return { x = {}, y = {} } end
-  local features = part_features(part,
-    edit.kind == "furniture" and "furniture_edge"
-      or edit.kind == "template" and "template_edge" or "room_edge",
-    tostring(edit.entity_id or edit.room_id) .. "/" .. tostring(part.id), "Selected section")
+  local features = part_features(
+    part,
+    edit.kind == "furniture" and "furniture_edge" or edit.kind == "template" and "template_edge" or "room_edge",
+    tostring(edit.entity_id or edit.room_id) .. "/" .. tostring(part.id),
+    "Selected section"
+  )
   local edges = edit.resize_edges or {}
   local side_map = rotated_sides[edit.rotation_deg or 0] or rotated_sides[0]
   local result = { x = {}, y = {} }
@@ -129,9 +137,8 @@ local function add_grid_targets(targets, moving, grid_mm)
   for axis, features in pairs(moving) do
     for _, feature in ipairs(features) do
       local nearest = number.round_to_grid(feature.value2 / 2, grid_mm)
-      targets[axis][#targets[axis] + 1] = snapping.feature(
-        axis, 2 * nearest, "grid", "grid", "Grid " .. tostring(nearest) .. " mm"
-      )
+      targets[axis][#targets[axis] + 1] =
+        snapping.feature(axis, 2 * nearest, "grid", "grid", "Grid " .. tostring(nearest) .. " mm")
     end
   end
 end
@@ -235,8 +242,6 @@ function M.release(edit, dx, dy)
   return edit
 end
 
-function M.summary(edit)
-  return snapping.summary(edit.snap_guides)
-end
+function M.summary(edit) return snapping.summary(edit.snap_guides) end
 
 return M

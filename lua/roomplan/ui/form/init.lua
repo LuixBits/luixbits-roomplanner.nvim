@@ -13,13 +13,9 @@ local M = {}
 
 local next_id = 0
 
-local function valid_buffer(bufnr)
-  return type(bufnr) == "number" and vim.api.nvim_buf_is_valid(bufnr)
-end
+local function valid_buffer(bufnr) return type(bufnr) == "number" and vim.api.nvim_buf_is_valid(bufnr) end
 
-local function valid_window(winid)
-  return type(winid) == "number" and vim.api.nvim_win_is_valid(winid)
-end
+local function valid_window(winid) return type(winid) == "number" and vim.api.nvim_win_is_valid(winid) end
 
 local function message(err)
   if type(err) == "table" then return err.message or err.code or vim.inspect(err) end
@@ -27,9 +23,7 @@ local function message(err)
 end
 
 local function revision_id(handle)
-  if type(handle.callbacks.revision) == "function" then
-    return handle.callbacks.revision(handle.session, handle)
-  end
+  if type(handle.callbacks.revision) == "function" then return handle.callbacks.revision(handle.session, handle) end
   if type(handle.session.revision_id) == "function" then return handle.session:revision_id() end
   return nil
 end
@@ -88,9 +82,7 @@ local function highlight_line(handle, row, group)
 end
 
 local function highlight_range(handle, row, start_col, end_col, group)
-  if type(row) ~= "number" or type(start_col) ~= "number" or type(end_col) ~= "number"
-    or end_col <= start_col
-  then
+  if type(row) ~= "number" or type(start_col) ~= "number" or type(end_col) ~= "number" or end_col <= start_col then
     return
   end
   vim.api.nvim_buf_set_extmark(handle.bufnr, handle.namespace, row - 1, start_col, {
@@ -106,8 +98,12 @@ local function apply_highlights(handle, output)
   vim.api.nvim_buf_clear_namespace(handle.bufnr, handle.namespace, 0, -1)
   highlight_line(handle, output.meta.title_row, "RoomPlanFormTitle")
   if output.meta.active_row then highlight_line(handle, output.meta.active_row, "RoomPlanFormActive") end
-  for row in pairs(output.meta.error_rows) do highlight_line(handle, row, "RoomPlanFormError") end
-  for row in pairs(output.meta.readonly_rows) do highlight_line(handle, row, "RoomPlanFormMuted") end
+  for row in pairs(output.meta.error_rows) do
+    highlight_line(handle, row, "RoomPlanFormError")
+  end
+  for row in pairs(output.meta.readonly_rows) do
+    highlight_line(handle, row, "RoomPlanFormMuted")
+  end
   if next(output.meta.preview_graphic_rows or {}) ~= nil then
     local accent = handle.state.preview and handle.state.preview.accent
     local graphic_group = "RoomPlanFormPreviewShape" .. handle.id
@@ -121,10 +117,14 @@ local function apply_highlights(handle, output)
         highlight_range(handle, span.row, span.start_col, span.end_col, graphic_group)
       end
     else
-      for row in pairs(output.meta.preview_graphic_rows) do highlight_line(handle, row, graphic_group) end
+      for row in pairs(output.meta.preview_graphic_rows) do
+        highlight_line(handle, row, graphic_group)
+      end
     end
   end
-  for row in pairs(output.meta.footer_rows) do highlight_line(handle, row, "RoomPlanFormFooter") end
+  for row in pairs(output.meta.footer_rows) do
+    highlight_line(handle, row, "RoomPlanFormFooter")
+  end
 end
 
 local function publish_workspace(handle)
@@ -177,9 +177,7 @@ function M.render(handle)
 end
 
 local function mark_stale(handle)
-  if handle.state.stale then
-    return nil, util.err("FORM_REVISION_STALE", "the plan changed while the form was open")
-  end
+  if handle.state.stale then return nil, util.err("FORM_REVISION_STALE", "the plan changed while the form was open") end
   handle.state = form_state.reduce(handle.state, {
     type = "stale",
     error = "The plan changed while this form was open. Cancel and reopen it before applying.",
@@ -190,9 +188,7 @@ local function mark_stale(handle)
 end
 
 local function guarded(handle)
-  if not M.is_current(handle) then
-    return nil, util.err("FORM_STALE", "the RoomPlan form is no longer active")
-  end
+  if not M.is_current(handle) then return nil, util.err("FORM_STALE", "the RoomPlan form is no longer active") end
   if not revision_current(handle) then return mark_stale(handle) end
   return true
 end
@@ -220,22 +216,24 @@ local function finish(handle, reason, opts)
   if handle.session.form == handle then handle.session.form = nil end
   if handle.session.workspace and handle.session.workspace.state then
     local ok, workspace = pcall(require, "roomplan.ui.workspace")
-    if ok then
-      workspace.set_interaction(handle.session, handle.session.mode or "NAV", nil)
-    end
+    if ok then workspace.set_interaction(handle.session, handle.session.mode or "NAV", nil) end
   end
   detach_buffer(handle)
   if handle.augroup then pcall(vim.api.nvim_del_augroup_by_id, handle.augroup) end
   side_preview.close(handle)
   if not opts.skip_window and valid_window(handle.winid) then pcall(vim.api.nvim_win_close, handle.winid, true) end
-  if not opts.skip_buffer and valid_buffer(handle.bufnr) then pcall(vim.api.nvim_buf_delete, handle.bufnr, { force = true }) end
+  if not opts.skip_buffer and valid_buffer(handle.bufnr) then
+    pcall(vim.api.nvim_buf_delete, handle.bufnr, { force = true })
+  end
   handle.internal_closing = false
   handle.finish_reason = reason
   return true
 end
 
 function M.cancel(handle, reason, opts)
-  if not M.is_current(handle) and not (handle and not handle.closed and handle.session.form == handle) then return false end
+  if not M.is_current(handle) and not (handle and not handle.closed and handle.session.form == handle) then
+    return false
+  end
   local callback = handle.callbacks.on_cancel
   local draft = util.deepcopy(handle.state.draft)
   local done = finish(handle, reason or "cancelled", opts)
@@ -298,7 +296,9 @@ function M.set_value(handle, key, value, opts)
   if type(handle.callbacks.on_change) == "function" then
     handle.callbacks.on_change(util.deepcopy(handle.state.draft), handle.state, handle)
   end
-  if handle.state.errors[key] then return nil, util.err("FORM_FIELD_INVALID", handle.state.errors[key], { field = key }) end
+  if handle.state.errors[key] then
+    return nil, util.err("FORM_FIELD_INVALID", handle.state.errors[key], { field = key })
+  end
   return handle.state.draft[key]
 end
 
@@ -313,7 +313,9 @@ function M.cycle(handle, delta)
   local key = handle.state.active_key
   local field = key and form_state.field(handle.state, key) or nil
   if not field then return nil, util.err("FORM_FIELD_MISSING", "no editable form field is active") end
-  if field.type == "toggle" then return M.set_value(handle, key, not handle.state.draft[key], { raw = false, trusted = true }) end
+  if field.type == "toggle" then
+    return M.set_value(handle, key, not handle.state.draft[key], { raw = false, trusted = true })
+  end
   if field.type ~= "enum" and field.type ~= "object_ref" then
     return nil, util.err("FORM_FIELD_NOT_CHOICE", (field.label or key) .. " is not a choice field")
   end
@@ -341,21 +343,14 @@ function M.edit(handle)
     if type(callback) ~= "function" then
       return nil, util.err("FORM_ACTION_UNAVAILABLE", (field.label or key) .. " is unavailable")
     end
-    local called, result, action_err = pcall(
-      callback,
-      field.action or key,
-      handle.state,
-      handle,
-      field
-    )
+    local called, result, action_err = pcall(callback, field.action or key, handle.state, handle, field)
     if not called or result == false or (result == nil and action_err ~= nil) then
       local failure = not called and result or action_err or "the action could not be opened"
       if M.is_current(handle) then
         handle.state = form_state.reduce(handle.state, { type = "form_error", error = failure })
         M.render(handle)
       end
-      return nil, type(failure) == "table" and failure
-        or util.err("FORM_ACTION_FAILED", tostring(failure))
+      return nil, type(failure) == "table" and failure or util.err("FORM_ACTION_FAILED", tostring(failure))
     end
     return result == nil and true or result
   end
@@ -409,9 +404,10 @@ function M.apply(handle)
   handle.state = next_state
   M.render(handle)
   if not valid then
-    return nil, util.err("FORM_INVALID", handle.state.form_error or "correct the highlighted fields before applying", {
-      errors = util.deepcopy(handle.state.errors),
-    })
+    return nil,
+      util.err("FORM_INVALID", handle.state.form_error or "correct the highlighted fields before applying", {
+        errors = util.deepcopy(handle.state.errors),
+      })
   end
   local callback = handle.callbacks.on_submit or handle.spec.submit
   local draft = util.deepcopy(handle.state.draft)
@@ -459,9 +455,7 @@ local function set_buffer_options(bufnr)
 end
 
 local function install_keymaps(handle)
-  local function map(lhs, rhs, desc, name)
-    mappings.set(handle.bufnr, lhs, rhs, desc, name)
-  end
+  local function map(lhs, rhs, desc, name) mappings.set(handle.bufnr, lhs, rhs, desc, name) end
   map("j", function() M.move(handle, 1) end, "Next RoomPlan form field")
   map("k", function() M.move(handle, -1) end, "Previous RoomPlan form field")
   map("<Tab>", function() M.move(handle, 1) end, "Next RoomPlan form field", "form_next_field")
@@ -473,8 +467,7 @@ local function install_keymaps(handle)
   map("<Space>", function() M.cycle(handle, 1) end, "Toggle RoomPlan form choice", "form_toggle")
   map("<C-s>", function() M.apply(handle) end, "Apply RoomPlan form", "form_apply")
   map("R", function() M.reset(handle) end, "Reset RoomPlan form", "form_reset")
-  map("?", function() require("roomplan.ui.help").open(handle.session) end,
-    "Open RoomPlan form actions", "help")
+  map("?", function() require("roomplan.ui.help").open(handle.session) end, "Open RoomPlan form actions", "help")
   map("q", function() M.cancel(handle, "cancelled") end, "Cancel RoomPlan form")
   map("<Esc>", function() M.cancel(handle, "cancelled") end, "Cancel RoomPlan form", "form_cancel")
 end
@@ -508,9 +501,10 @@ function M.open(session, spec, callbacks)
   end
   session.workflow = session.workflow or { generation = 0, kind = nil }
   if session.workflow.kind then
-    return nil, util.err("WORKFLOW_ACTIVE", "another RoomPlan workflow is already active", {
-      active = session.workflow.kind,
-    })
+    return nil,
+      util.err("WORKFLOW_ACTIVE", "another RoomPlan workflow is already active", {
+        active = session.workflow.kind,
+      })
   end
   session.workflow.generation = session.workflow.generation + 1
   local workflow_generation = session.workflow.generation
@@ -597,9 +591,7 @@ function M.open(session, spec, callbacks)
   return handle
 end
 
-function M.for_session(session)
-  return session and session.form or nil
-end
+function M.for_session(session) return session and session.form or nil end
 
 M.close = M.cancel
 M.fields = fields

@@ -39,9 +39,7 @@ function M.configure_window(workspace, winid, role, fixed)
   end
 end
 
-function M.define_highlights()
-  require("roomplan.highlights").setup()
-end
+function M.define_highlights() require("roomplan.highlights").setup() end
 
 function M.close_window(workspace, key)
   local winid = workspace.windows[key]
@@ -51,7 +49,9 @@ end
 
 function M.close_owned_windows(workspace)
   -- The canvas is deliberately absent: it is not workspace-owned.
-  for _, key in ipairs({ "drawer", "left", "properties", "action_bar" }) do M.close_window(workspace, key) end
+  for _, key in ipairs({ "drawer", "left", "properties", "action_bar" }) do
+    M.close_window(workspace, key)
+  end
   workspace.drawer_role = nil
   workspace.owns_footer = false
 end
@@ -70,8 +70,12 @@ local function open_split(buffer, anchor, direction, size)
   local winid = vim.api.nvim_get_current_win()
   local placeholder = vim.api.nvim_win_get_buf(winid)
   vim.api.nvim_win_set_buf(winid, buffer)
-  if placeholder ~= buffer and util.valid_buffer(placeholder)
-    and vim.api.nvim_buf_get_name(placeholder) == "" and not vim.bo[placeholder].modified then
+  if
+    placeholder ~= buffer
+    and util.valid_buffer(placeholder)
+    and vim.api.nvim_buf_get_name(placeholder) == ""
+    and not vim.bo[placeholder].modified
+  then
     pcall(vim.api.nvim_buf_delete, placeholder, { force = true })
   end
   if util.valid_window(previous) then vim.api.nvim_set_current_win(previous) end
@@ -120,8 +124,10 @@ end
 local function layout_windows_valid(workspace, next_layout)
   if not util.valid_window(workspace.canvas_winid) then return false end
   if next_layout.footer_height > 0 then
-    if not util.valid_window(workspace.windows.action_bar)
-      or vim.api.nvim_win_get_buf(workspace.windows.action_bar) ~= workspace.buffers.action_bar then
+    if
+      not util.valid_window(workspace.windows.action_bar)
+      or vim.api.nvim_win_get_buf(workspace.windows.action_bar) ~= workspace.buffers.action_bar
+    then
       return false
     end
   elseif util.valid_window(workspace.windows.action_bar) then
@@ -130,8 +136,10 @@ local function layout_windows_valid(workspace, next_layout)
   local left_visible = next_layout.panes.left and next_layout.panes.left.persistent
   if left_visible then
     local role = M.left_role(workspace)
-    if not util.valid_window(workspace.windows.left)
-      or vim.api.nvim_win_get_buf(workspace.windows.left) ~= workspace.buffers[role] then
+    if
+      not util.valid_window(workspace.windows.left)
+      or vim.api.nvim_win_get_buf(workspace.windows.left) ~= workspace.buffers[role]
+    then
       return false
     end
   elseif util.valid_window(workspace.windows.left) then
@@ -139,8 +147,10 @@ local function layout_windows_valid(workspace, next_layout)
   end
   local details_visible = next_layout.panes.properties and next_layout.panes.properties.persistent
   if details_visible then
-    if not util.valid_window(workspace.windows.properties)
-      or vim.api.nvim_win_get_buf(workspace.windows.properties) ~= workspace.buffers.properties then
+    if
+      not util.valid_window(workspace.windows.properties)
+      or vim.api.nvim_win_get_buf(workspace.windows.properties) ~= workspace.buffers.properties
+    then
       return false
     end
   elseif util.valid_window(workspace.windows.properties) then
@@ -210,15 +220,22 @@ function M.reflow(api, session, force)
   -- workspace panes. A resize/reflow must never replace their native focus
   -- with the workspace's last remembered pane unless a pane focus was
   -- explicitly requested through pending_focus.
-  local preserved_winid = pending_focus == nil and current_pane == nil
-      and util.valid_window(current_winid) and current_winid
+  local preserved_winid = pending_focus == nil
+      and current_pane == nil
+      and util.valid_window(current_winid)
+      and current_winid
     or nil
   local restore_pane = pending_focus or current_pane or workspace.state.focused_pane
   local columns, lines = dimensions(workspace)
   local next_layout = workspace_state.calculate_layout(columns, lines, workspace.opts, workspace.state)
-  if not force and workspace.layout and workspace.layout.kind == next_layout.kind
-    and workspace.layout.columns == next_layout.columns and workspace.layout.lines == next_layout.lines
-    and layout_windows_valid(workspace, next_layout) then
+  if
+    not force
+    and workspace.layout
+    and workspace.layout.kind == next_layout.kind
+    and workspace.layout.columns == next_layout.columns
+    and workspace.layout.lines == next_layout.lines
+    and layout_windows_valid(workspace, next_layout)
+  then
     workspace.pending_focus = nil
     render.refresh(session)
     restore_reflow_focus(workspace, restore_pane, preserved_winid)
@@ -232,27 +249,20 @@ function M.reflow(api, session, force)
 
     local canvas = workspace.canvas_winid
     if next_layout.footer_height > 0 then
-      workspace.windows.action_bar = open_split(workspace.buffers.action_bar, canvas, "below", next_layout.footer_height)
+      workspace.windows.action_bar =
+        open_split(workspace.buffers.action_bar, canvas, "below", next_layout.footer_height)
       M.configure_window(workspace, workspace.windows.action_bar, "action_bar", "footer")
       workspace.owns_footer = true
     end
     if next_layout.panes.left and next_layout.panes.left.persistent then
-      workspace.windows.left = open_split(
-        workspace.buffers[M.left_role(workspace)],
-        canvas,
-        "left",
-        next_layout.panes.left.width
-      )
+      workspace.windows.left =
+        open_split(workspace.buffers[M.left_role(workspace)], canvas, "left", next_layout.panes.left.width)
       M.configure_window(workspace, workspace.windows.left, M.left_role(workspace), "width")
     end
     if next_layout.panes.properties and next_layout.panes.properties.persistent then
       local direction = next_layout.panes.properties.dock == "left" and "left" or "right"
-      workspace.windows.properties = open_split(
-        workspace.buffers.properties,
-        canvas,
-        direction,
-        next_layout.panes.properties.width
-      )
+      workspace.windows.properties =
+        open_split(workspace.buffers.properties, canvas, direction, next_layout.panes.properties.width)
       M.configure_window(workspace, workspace.windows.properties, "properties", "width")
     end
     M.show_left_buffer(workspace)
@@ -280,8 +290,11 @@ local function open_drawer(session, role)
     style = "minimal",
     border = workspace.opts.border or "rounded",
     title = " RoomPlan · "
-      .. (workspace.pane_titles and workspace.pane_titles[role]
-        or util.pane_titles[role] or role:gsub("^%l", string.upper)) .. " ",
+      .. (workspace.pane_titles and workspace.pane_titles[role] or util.pane_titles[role] or role:gsub(
+        "^%l",
+        string.upper
+      ))
+      .. " ",
     title_pos = "center",
     width = pane.width,
     height = pane.height,

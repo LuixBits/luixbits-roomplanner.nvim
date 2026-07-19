@@ -124,9 +124,7 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  if type(opts) ~= "table" then
-    error("roomplan.setup: expected table", 2)
-  end
+  if type(opts) ~= "table" then error("roomplan.setup: expected table", 2) end
   local candidate = util.deepcopy(defaults)
   local errors = {}
   merge_checked(candidate, opts, defaults, "", errors)
@@ -137,20 +135,30 @@ function M.setup(opts)
   numeric_positive(candidate, "canvas.max_mm_per_column", candidate.canvas.max_mm_per_column, errors)
   numeric_positive(candidate, "snapping.tolerance_cells", candidate.snapping.tolerance_cells, errors)
   numeric_positive(candidate, "snapping.max_distance_mm", candidate.snapping.max_distance_mm, errors)
-  integer_positive("sun_study.window_defaults.sill_height_mm",
-    candidate.sun_study.window_defaults.sill_height_mm, errors, true)
-  integer_positive("sun_study.window_defaults.head_height_mm",
-    candidate.sun_study.window_defaults.head_height_mm, errors)
-  integer_positive("sun_study.playback.step_minutes",
-    candidate.sun_study.playback.step_minutes, errors)
-  integer_positive("sun_study.playback.frame_duration_ms",
-    candidate.sun_study.playback.frame_duration_ms, errors)
+  integer_positive(
+    "sun_study.window_defaults.sill_height_mm",
+    candidate.sun_study.window_defaults.sill_height_mm,
+    errors,
+    true
+  )
+  integer_positive(
+    "sun_study.window_defaults.head_height_mm",
+    candidate.sun_study.window_defaults.head_height_mm,
+    errors
+  )
+  integer_positive("sun_study.playback.step_minutes", candidate.sun_study.playback.step_minutes, errors)
+  integer_positive("sun_study.playback.frame_duration_ms", candidate.sun_study.playback.frame_duration_ms, errors)
   for key, value in pairs(candidate.plan_defaults.settings) do
     integer_positive("plan_defaults.settings." .. key, value, errors)
   end
   for _, key in ipairs({
-    "max_dimension_mm", "max_abs_coordinate_mm", "max_plan_span_mm", "max_auto_place_distance_mm",
-    "max_history", "max_history_bytes_per_session", "max_history_bytes_global",
+    "max_dimension_mm",
+    "max_abs_coordinate_mm",
+    "max_plan_span_mm",
+    "max_auto_place_distance_mm",
+    "max_history",
+    "max_history_bytes_per_session",
+    "max_history_bytes_global",
   }) do
     integer_positive("limits." .. key, candidate.limits[key], errors)
   end
@@ -161,17 +169,21 @@ function M.setup(opts)
   integer_positive("canvas.pan_coarse_step_cells", candidate.canvas.pan_coarse_step_cells, errors)
   integer_positive("autosave.debounce_ms", candidate.autosave.debounce_ms, errors)
   for _, key in ipairs({
-    "left_width", "right_width", "wide_min_columns", "compact_max_columns",
-    "compact_min_rows", "min_canvas_width", "min_canvas_height", "footer_height",
+    "left_width",
+    "right_width",
+    "wide_min_columns",
+    "compact_max_columns",
+    "compact_min_rows",
+    "min_canvas_width",
+    "min_canvas_height",
+    "footer_height",
   }) do
     integer_positive("ui.workspace." .. key, candidate.ui.workspace[key], errors, key == "footer_height")
   end
   if candidate.canvas.min_mm_per_column > candidate.canvas.max_mm_per_column then
     errors[#errors + 1] = "canvas.min_mm_per_column: must not exceed max_mm_per_column"
   end
-  if candidate.sun_study.window_defaults.head_height_mm
-      <= candidate.sun_study.window_defaults.sill_height_mm
-  then
+  if candidate.sun_study.window_defaults.head_height_mm <= candidate.sun_study.window_defaults.sill_height_mm then
     errors[#errors + 1] = "sun_study.window_defaults.head_height_mm: must exceed sill_height_mm"
   end
   if candidate.sun_study.playback.step_minutes > 720 then
@@ -183,54 +195,61 @@ function M.setup(opts)
   if candidate.sun_study.playback.frame_duration_ms > 60000 then
     errors[#errors + 1] = "sun_study.playback.frame_duration_ms: must be at most 60000"
   end
-  if candidate.canvas.zoom_factor <= 1 then errors[#errors + 1] = "canvas.zoom_factor: expected number greater than 1" end
+  if candidate.canvas.zoom_factor <= 1 then
+    errors[#errors + 1] = "canvas.zoom_factor: expected number greater than 1"
+  end
   if candidate.canvas.open ~= "tab" and candidate.canvas.open ~= "split" and candidate.canvas.open ~= "vsplit" then
     errors[#errors + 1] = "canvas.open: expected tab, split, or vsplit"
   end
-  if candidate.canvas.unicode ~= "auto" and candidate.canvas.unicode ~= "unicode" and candidate.canvas.unicode ~= "ascii" then
+  if
+    candidate.canvas.unicode ~= "auto"
+    and candidate.canvas.unicode ~= "unicode"
+    and candidate.canvas.unicode ~= "ascii"
+  then
     errors[#errors + 1] = "canvas.unicode: expected auto, unicode, or ascii"
   end
   if not canvas_detail.valid(candidate.canvas.detail_level) then
     errors[#errors + 1] = "canvas.detail_level: expected high, middle, or none"
   end
-  if candidate.ui.workspace.layout ~= "auto" and candidate.ui.workspace.layout ~= "wide"
-    and candidate.ui.workspace.layout ~= "medium" and candidate.ui.workspace.layout ~= "compact" then
+  if
+    candidate.ui.workspace.layout ~= "auto"
+    and candidate.ui.workspace.layout ~= "wide"
+    and candidate.ui.workspace.layout ~= "medium"
+    and candidate.ui.workspace.layout ~= "compact"
+  then
     errors[#errors + 1] = "ui.workspace.layout: expected auto, wide, medium, or compact"
   end
-  if candidate.ui.notify_level ~= "debug" and candidate.ui.notify_level ~= "info"
-    and candidate.ui.notify_level ~= "warn" and candidate.ui.notify_level ~= "error" then
+  if
+    candidate.ui.notify_level ~= "debug"
+    and candidate.ui.notify_level ~= "info"
+    and candidate.ui.notify_level ~= "warn"
+    and candidate.ui.notify_level ~= "error"
+  then
     errors[#errors + 1] = "ui.notify_level: expected debug, info, warn, or error"
   end
-  if #errors > 0 then
-    error("roomplan.setup failed:\n- " .. table.concat(errors, "\n- "), 2)
-  end
+  if #errors > 0 then error("roomplan.setup failed:\n- " .. table.concat(errors, "\n- "), 2) end
   local catalog_ok, catalog_errors = require("roomplan.catalog").configure(candidate.furniture, candidate.limits)
-  if not catalog_ok then
-    error("roomplan.setup failed:\n- " .. table.concat(catalog_errors, "\n- "), 2)
-  end
+  if not catalog_ok then error("roomplan.setup failed:\n- " .. table.concat(catalog_errors, "\n- "), 2) end
   effective = candidate
   return util.deepcopy(effective)
 end
 
-function M.get()
-  return effective
-end
+function M.get() return effective end
 
 ---Override the terminal cell height/width calibration for this Neovim
 ---process without rebuilding the rest of the effective configuration.
 function M.set_cell_aspect(value)
   if type(value) ~= "number" or value ~= value or value <= 0 or value == math.huge then
-    return nil, util.err("CONFIG_CELL_ASPECT", "canvas.cell_aspect must be a positive finite number", {
-      value = value,
-    })
+    return nil,
+      util.err("CONFIG_CELL_ASPECT", "canvas.cell_aspect must be a positive finite number", {
+        value = value,
+      })
   end
   effective.canvas.cell_aspect = value
   return value
 end
 
-function M.defaults()
-  return util.deepcopy(defaults)
-end
+function M.defaults() return util.deepcopy(defaults) end
 
 function M.reset()
   effective = util.deepcopy(defaults)

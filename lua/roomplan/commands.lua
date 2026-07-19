@@ -8,15 +8,16 @@ local function invoke(method, args)
     local ok, err = xpcall(function()
       local controller = require("roomplan.controller")
       local fn = assert(controller[method], "missing controller method " .. method)
-      return fn(nil, vim.tbl_extend("force", args or {}, {
-        args = command.args,
-        bang = command.bang,
-        fargs = command.fargs,
-      }))
+      return fn(
+        nil,
+        vim.tbl_extend("force", args or {}, {
+          args = command.args,
+          bang = command.bang,
+          fargs = command.fargs,
+        })
+      )
     end, debug.traceback)
-    if not ok then
-      compat.notify(tostring(err), vim.log.levels.ERROR)
-    end
+    if not ok then compat.notify(tostring(err), vim.log.levels.ERROR) end
   end
 end
 
@@ -49,12 +50,15 @@ local definitions = {
   RoomPlanMinimap = { method = "toggle_minimap", desc = "Toggle the RoomPlan minimap" },
   RoomPlanAspect = { method = "set_aspect", nargs = "?", desc = "Calibrate RoomPlan terminal cell aspect" },
   RoomPlanCanvasDetail = {
-    method = "set_detail_level", nargs = "?",
+    method = "set_detail_level",
+    nargs = "?",
     complete = function() return { "high", "middle", "none", "cycle" } end,
     desc = "Set or cycle RoomPlan canvas detail",
   },
   RoomPlanRotateView = {
-    method = "rotate_view", nargs = "?", desc = "Rotate the RoomPlan view without changing geometry",
+    method = "rotate_view",
+    nargs = "?",
+    desc = "Rotate the RoomPlan view without changing geometry",
   },
   RoomPlanSunStudy = { method = "sun_study", desc = "Open the RoomPlan sunlight study" },
   RoomPlanSave = { method = "save", bang = true, desc = "Save RoomPlan" },
@@ -64,9 +68,7 @@ local definitions = {
 }
 
 function M.register()
-  if registered then
-    return
-  end
+  if registered then return end
   registered = true
   require("roomplan.highlights").setup()
   local group = vim.api.nvim_create_augroup("RoomPlan", { clear = false })

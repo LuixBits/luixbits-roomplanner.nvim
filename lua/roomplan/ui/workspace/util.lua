@@ -6,24 +6,24 @@ M.pane_titles = {
   properties = "Details",
 }
 
-function M.valid_buffer(bufnr)
-  return type(bufnr) == "number" and vim.api.nvim_buf_is_valid(bufnr)
-end
+function M.valid_buffer(bufnr) return type(bufnr) == "number" and vim.api.nvim_buf_is_valid(bufnr) end
 
-function M.valid_window(winid)
-  return type(winid) == "number" and vim.api.nvim_win_is_valid(winid)
-end
+function M.valid_window(winid) return type(winid) == "number" and vim.api.nvim_win_is_valid(winid) end
 
 function M.copy(value)
   if type(value) ~= "table" then return value end
   local result = {}
-  for key, item in pairs(value) do result[key] = M.copy(item) end
+  for key, item in pairs(value) do
+    result[key] = M.copy(item)
+  end
   return result
 end
 
 function M.merge(target, source)
   target = M.copy(target or {})
-  for key, value in pairs(source or {}) do target[key] = M.copy(value) end
+  for key, value in pairs(source or {}) do
+    target[key] = M.copy(value)
+  end
   return target
 end
 

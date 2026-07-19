@@ -25,9 +25,7 @@ local function positive_integer(value)
 end
 
 local function dimensions(value)
-  if type(value) ~= "table" then
-    return failure("$.default_size_mm", "must contain [width, depth, height]", value)
-  end
+  if type(value) ~= "table" then return failure("$.default_size_mm", "must contain [width, depth, height]", value) end
   local count = 0
   for key in pairs(value) do
     if type(key) ~= "number" or key < 1 or key ~= math.floor(key) then
@@ -40,38 +38,26 @@ local function dimensions(value)
   end
   for index = 1, 3 do
     if not positive_integer(value[index]) then
-      return failure(
-        string.format("$.default_size_mm[%d]", index),
-        "must be a positive exact integer",
-        value[index]
-      )
+      return failure(string.format("$.default_size_mm[%d]", index), "must be a positive exact integer", value[index])
     end
   end
   return value[1], value[2], value[3]
 end
 
 local function convert(definition, validate_id)
-  if type(definition) ~= "table" then
-    return failure("$", "catalogue definition must be an object", definition)
-  end
+  if type(definition) ~= "table" then return failure("$", "catalogue definition must be an object", definition) end
   local valid_id, id_error = validate_id(definition.id)
-  if not valid_id then
-    return failure("$.id", id_error.message, definition.id)
-  end
+  if not valid_id then return failure("$.id", id_error.message, definition.id) end
   local name, name_error = schema_common.validate_text(definition.name, {
     path = "$.name",
     nonempty = true,
   })
-  if not name then
-    return failure("$.name", name_error.message, definition.name)
-  end
+  if not name then return failure("$.name", name_error.message, definition.name) end
   local category, category_error = schema_common.validate_text(definition.category, {
     path = "$.category",
     nonempty = true,
   })
-  if not category then
-    return failure("$.category", category_error.message, definition.category)
-  end
+  if not category then return failure("$.category", category_error.message, definition.category) end
   if definition.shape ~= nil and definition.shape ~= "rectangle" then
     return failure("$.shape", "external catalogue v1 supports only rectangle", definition.shape)
   end
@@ -113,8 +99,6 @@ end
 ---Convert any trusted process-catalogue rectangle, including built-ins. User
 ---definitions still enter through from_external_v1 and retain the custom-ID
 ---contract; this wider helper is only the internal v2 view boundary.
-function M.from_catalog_v1(definition)
-  return convert(definition, ids.valid_template_reference)
-end
+function M.from_catalog_v1(definition) return convert(definition, ids.valid_template_reference) end
 
 return M

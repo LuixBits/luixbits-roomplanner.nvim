@@ -16,13 +16,7 @@ function M.normalize_with(document, schema_version, entity_normalizers, normaliz
   if not result then return common.result_or_error(context) end
 
   if result.format ~= common.FORMAT then
-    common.add_error(
-      context,
-      "SCHEMA_FORMAT",
-      "$.format",
-      "must be exactly '" .. common.FORMAT .. "'",
-      result.format
-    )
+    common.add_error(context, "SCHEMA_FORMAT", "$.format", "must be exactly '" .. common.FORMAT .. "'", result.format)
   end
   result.format = common.FORMAT
 
@@ -59,8 +53,13 @@ function M.normalize_with(document, schema_version, entity_normalizers, normaliz
   result.schema_version = version
 
   if result.units ~= "mm" then
-    common.add_error(context, "SCHEMA_UNITS", "$.units",
-      "must be exactly 'mm' in schema v" .. schema_version, result.units)
+    common.add_error(
+      context,
+      "SCHEMA_UNITS",
+      "$.units",
+      "must be exactly 'mm' in schema v" .. schema_version,
+      result.units
+    )
   end
   result.units = "mm"
 
@@ -127,8 +126,13 @@ function M.normalize_with(document, schema_version, entity_normalizers, normaliz
     result.extensions = json.deep_copy(result.extensions)
   end
 
-  if result.rooms and result.doors and result.windows and result.outlets
-    and result.furniture and result.custom_templates
+  if
+    result.rooms
+    and result.doors
+    and result.windows
+    and result.outlets
+    and result.furniture
+    and result.custom_templates
   then
     local index, index_errors = ids.index(result)
     if not index then
@@ -150,8 +154,6 @@ function M.normalize_with(document, schema_version, entity_normalizers, normaliz
   return common.result_or_error(context, result)
 end
 
-function M.normalize(document)
-  return M.normalize_with(document, VERSION, entities)
-end
+function M.normalize(document) return M.normalize_with(document, VERSION, entities) end
 
 return M

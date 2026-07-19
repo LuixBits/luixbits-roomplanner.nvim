@@ -14,7 +14,8 @@ function M.select_focused(api, session)
   local row = render.selected_row(session, role)
   if not row then return false end
   local selection = row.kind == "plan" and { kind = "plan" }
-    or (row.kind and row.id and { kind = row.kind, id = row.id }) or nil
+    or (row.kind and row.id and { kind = row.kind, id = row.id })
+    or nil
   session.selection = selection
   if role == "issues" then session.validation_index = row.index end
   render.refresh(session)
@@ -32,13 +33,9 @@ end
 
 function M.toggle_mark_focused(_, session)
   local workspace = session and session.workspace
-  if not workspace or workspace.state.focused_pane ~= "objects" then
-    return false
-  end
+  if not workspace or workspace.state.focused_pane ~= "objects" then return false end
   local row = render.selected_row(session, "objects")
-  if not row or row.kind == "plan" or not row.id then
-    return false
-  end
+  if not row or row.kind == "plan" or not row.id then return false end
   local selection_set = require("roomplan.selection_set")
   local reference = { kind = row.kind, id = row.id }
   local key = selection_set.key(reference)
@@ -51,9 +48,7 @@ function M.toggle_mark_focused(_, session)
   session.selection = reference
   render.refresh(session, { "objects", "properties", "action_bar" })
   local canvas_ok, canvas = pcall(require, "roomplan.render.canvas")
-  if canvas_ok and canvas.schedule_redraw then
-    canvas.schedule_redraw(session, "workspace-mark")
-  end
+  if canvas_ok and canvas.schedule_redraw then canvas.schedule_redraw(session, "workspace-mark") end
   return session.marked_objects[key] ~= nil
 end
 
@@ -115,9 +110,7 @@ function M.expand_focused(_, session, value)
   return true
 end
 
-function M.collapse_focused(api, session)
-  return M.expand_focused(api, session, false)
-end
+function M.collapse_focused(api, session) return M.expand_focused(api, session, false) end
 
 function M.filter_focused(api, session)
   local workspace = session and session.workspace
@@ -228,14 +221,16 @@ function M.escape(api, session)
 end
 
 function M.map_common(api, session, buffer, role)
-  local function map(lhs, rhs, desc, name)
-    return mappings.set(buffer, lhs, rhs, desc, name)
-  end
+  local function map(lhs, rhs, desc, name) return mappings.set(buffer, lhs, rhs, desc, name) end
   local workspace = session.workspace
   if not workspace or workspace.opts.cycle_tabs ~= false then
     map("<Tab>", function() api.cycle_focus(session, 1) end, "Next RoomPlan workspace pane", "workspace_next_pane")
-    map("<S-Tab>", function() api.cycle_focus(session, -1) end,
-      "Previous RoomPlan workspace pane", "workspace_previous_pane")
+    map(
+      "<S-Tab>",
+      function() api.cycle_focus(session, -1) end,
+      "Previous RoomPlan workspace pane",
+      "workspace_previous_pane"
+    )
   end
   map("1", function() api.toggle(session, "objects") end, "Toggle RoomPlan navigator", "focus_objects")
   map("2", function() api.focus(session, "canvas") end, "Focus RoomPlan canvas", "focus_canvas")
@@ -253,18 +248,49 @@ function M.map_common(api, session, buffer, role)
     end
   end, "Hide RoomPlan workspace", "hide")
   for _, id in ipairs({
-    "add", "edit", "resize_dimensions", "move", "pan", "align", "rotate", "duplicate", "delete",
-    "validate", "save", "fit", "toggle_minimap", "cycle_detail_level", "sun_study", "help",
-    "add_door", "add_window", "add_outlet", "add_furniture", "undo", "redo",
-    "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view", "apply", "reset", "shape_apply",
-    "next_issue", "previous_issue",
+    "add",
+    "edit",
+    "resize_dimensions",
+    "move",
+    "pan",
+    "align",
+    "rotate",
+    "duplicate",
+    "delete",
+    "validate",
+    "save",
+    "fit",
+    "toggle_minimap",
+    "cycle_detail_level",
+    "sun_study",
+    "help",
+    "add_door",
+    "add_window",
+    "add_outlet",
+    "add_furniture",
+    "undo",
+    "redo",
+    "rotate_view_clockwise",
+    "rotate_view_counterclockwise",
+    "reset_view",
+    "apply",
+    "reset",
+    "shape_apply",
+    "next_issue",
+    "previous_issue",
   }) do
     local definition = action_registry.get(id, { keymaps = require("roomplan.config").get().keymaps })
     local lhs = definition and definition.key
     if lhs then
       local action_id = id
-      mappings.set(buffer, lhs, function() api.invoke(session, action_id) end,
-        "RoomPlan " .. action_id, nil, { enabled = true, mappings = {} })
+      mappings.set(
+        buffer,
+        lhs,
+        function() api.invoke(session, action_id) end,
+        "RoomPlan " .. action_id,
+        nil,
+        { enabled = true, mappings = {} }
+      )
     end
   end
   if role == "objects" or role == "issues" then
@@ -272,16 +298,21 @@ function M.map_common(api, session, buffer, role)
     map("/", function() api.filter_prompt(session, role) end, "Filter RoomPlan rows", "workspace_filter_focused")
   end
   if role == "objects" then
-    map("<Space>", function()
-      api.toggle_mark_focused(session)
-    end, "Mark or unmark RoomPlan object", "workspace_toggle_mark_focused")
-    map("h", function() api.expand_focused(session, false) end,
-      "Collapse RoomPlan room", "workspace_collapse_focused")
-    map("l", function() api.expand_focused(session, true) end,
-      "Expand RoomPlan room", "workspace_expand_focused")
+    map(
+      "<Space>",
+      function() api.toggle_mark_focused(session) end,
+      "Mark or unmark RoomPlan object",
+      "workspace_toggle_mark_focused"
+    )
+    map("h", function() api.expand_focused(session, false) end, "Collapse RoomPlan room", "workspace_collapse_focused")
+    map("l", function() api.expand_focused(session, true) end, "Expand RoomPlan room", "workspace_expand_focused")
   elseif role == "properties" then
-    map("<CR>", function() api.toggle_details_section(session) end,
-      "Toggle RoomPlan details section", "workspace_toggle_details_section")
+    map(
+      "<CR>",
+      function() api.toggle_details_section(session) end,
+      "Toggle RoomPlan details section",
+      "workspace_toggle_details_section"
+    )
     map("<Space>", function() api.toggle_details_section(session) end, "Toggle RoomPlan details section")
     map("h", function() api.set_details_section(session, false) end, "Collapse RoomPlan details section")
     map("l", function() api.set_details_section(session, true) end, "Expand RoomPlan details section")
@@ -293,19 +324,22 @@ function M.apply_canvas_keymaps(api, session, opts)
   local workspace = session and session.workspace
   local buffer = workspace and workspace.canvas_bufnr
   if not util.valid_buffer(buffer) then return false end
-  local function map(lhs, rhs, desc, name)
-    return mappings.set(buffer, lhs, rhs, desc, name)
-  end
+  local function map(lhs, rhs, desc, name) return mappings.set(buffer, lhs, rhs, desc, name) end
   if opts.cycle_tabs ~= false then
     map("<Tab>", function()
-      if session.shape_edit then require("roomplan.controller").cycle_room_shape_part(session, 1)
-      else api.cycle_focus(session, 1) end
+      if session.shape_edit then
+        require("roomplan.controller").cycle_room_shape_part(session, 1)
+      else
+        api.cycle_focus(session, 1)
+      end
     end, "Next RoomPlan workspace pane or room section", "workspace_next_pane")
     map("<S-Tab>", function()
-      if session.shape_edit then require("roomplan.controller").cycle_room_shape_part(session, -1)
-      else api.cycle_focus(session, -1) end
-    end,
-      "Previous RoomPlan workspace pane", "workspace_previous_pane")
+      if session.shape_edit then
+        require("roomplan.controller").cycle_room_shape_part(session, -1)
+      else
+        api.cycle_focus(session, -1)
+      end
+    end, "Previous RoomPlan workspace pane", "workspace_previous_pane")
   end
   map("1", function() api.toggle(session, "objects") end, "Toggle RoomPlan navigator", "focus_objects")
   map("2", function() api.focus(session, "canvas") end, "Focus RoomPlan canvas", "focus_canvas")

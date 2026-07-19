@@ -16,13 +16,9 @@ local COLLECTION_FOR_KIND = {
   template = "custom_templates",
 }
 
-function M.deep_copy(value)
-  return json.deep_copy(value)
-end
+function M.deep_copy(value) return json.deep_copy(value) end
 
-function M.deep_equal(left, right)
-  return json.deep_equal(left, right)
-end
+function M.deep_equal(left, right) return json.deep_equal(left, right) end
 
 function M.new(options)
   options = options or {}
@@ -33,18 +29,14 @@ function M.new(options)
     notes = options.notes or metadata_options.notes or schema.defaults.metadata.notes,
   })
   for key, value in pairs(metadata_options) do
-    if key ~= "name" and key ~= "notes" then
-      metadata[key] = json.deep_copy(value)
-    end
+    if key ~= "name" and key ~= "notes" then metadata[key] = json.deep_copy(value) end
   end
   local settings = json.object()
   for key, default in pairs(schema.defaults.settings) do
     settings[key] = settings_options[key] == nil and default or settings_options[key]
   end
   for key, value in pairs(settings_options) do
-    if settings[key] == nil then
-      settings[key] = json.deep_copy(value)
-    end
+    if settings[key] == nil then settings[key] = json.deep_copy(value) end
   end
   local extensions = options.extensions
   if extensions == nil then
@@ -52,7 +44,8 @@ function M.new(options)
   elseif json.is_object(extensions) then
     extensions = json.deep_copy(extensions)
   else
-    return nil, { code = "MODEL_EXTENSIONS", path = "$.extensions", message = "new-plan extensions must be a tagged JSON object" }
+    return nil,
+      { code = "MODEL_EXTENSIONS", path = "$.extensions", message = "new-plan extensions must be a tagged JSON object" }
   end
   local document = json.object({
     format = schema.FORMAT,
@@ -70,9 +63,7 @@ function M.new(options)
     extensions = extensions,
   })
   local normalized, info_or_error = schema.normalize(document)
-  if not normalized then
-    return nil, info_or_error
-  end
+  if not normalized then return nil, info_or_error end
   return normalized, info_or_error
 end
 
@@ -104,30 +95,20 @@ M.rectangle_footprint = entities.rectangle_footprint
 
 function M.find(model, kind, id)
   local collection_name = COLLECTION_FOR_KIND[kind]
-  if not collection_name or type(model) ~= "table" then
-    return nil
-  end
+  if not collection_name or type(model) ~= "table" then return nil end
   local collection = model[collection_name]
-  if type(collection) ~= "table" then
-    return nil
-  end
+  if type(collection) ~= "table" then return nil end
   local position = 1
   while position <= #collection do
-    if collection[position].id == id then
-      return collection[position], position, collection_name
-    end
+    if collection[position].id == id then return collection[position], position, collection_name end
     position = position + 1
   end
   return nil
 end
 
-function M.decode(text, options)
-  return schema.decode(text, options)
-end
+function M.decode(text, options) return schema.decode(text, options) end
 
-function M.encode(model, options)
-  return schema.encode(model, options)
-end
+function M.encode(model, options) return schema.encode(model, options) end
 
 -- Cycle-safe deterministic estimate used for history budgets. It intentionally
 -- estimates retained Lua memory rather than claiming allocator-exact bytes.
@@ -146,9 +127,7 @@ function M.estimate_size(value)
     elseif value_type ~= "table" then
       return 16
     end
-    if seen[current] then
-      return 0
-    end
+    if seen[current] then return 0 end
     seen[current] = true
     if current == json.null then
       return 8
@@ -162,9 +141,7 @@ function M.estimate_size(value)
     end
     table.sort(keys, function(left, right)
       local left_type, right_type = type(left), type(right)
-      if left_type == right_type then
-        return tostring(left) < tostring(right)
-      end
+      if left_type == right_type then return tostring(left) < tostring(right) end
       return left_type < right_type
     end)
     local position = 1

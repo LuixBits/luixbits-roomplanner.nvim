@@ -13,18 +13,10 @@ local VERSION = 2
 function M.normalize(document)
   local context = common.new_context()
   local result = common.object(context, document, "$")
-  if not result then
-    return common.result_or_error(context)
-  end
+  if not result then return common.result_or_error(context) end
 
   if result.format ~= common.FORMAT then
-    common.add_error(
-      context,
-      "SCHEMA_FORMAT",
-      "$.format",
-      "must be exactly '" .. common.FORMAT .. "'",
-      result.format
-    )
+    common.add_error(context, "SCHEMA_FORMAT", "$.format", "must be exactly '" .. common.FORMAT .. "'", result.format)
   end
   result.format = common.FORMAT
 
@@ -84,9 +76,7 @@ function M.normalize(document)
     context,
     common.required(context, result, "rooms", "$"),
     "$.rooms",
-    function(entity_context, source, path)
-      return entities.normalize_room(entity_context, source, path, room_footprints)
-    end
+    function(entity_context, source, path) return entities.normalize_room(entity_context, source, path, room_footprints) end
   )
   result.doors = common.normalize_collection(
     context,

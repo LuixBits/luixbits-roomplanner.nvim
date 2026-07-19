@@ -79,7 +79,9 @@ function M.line(document, value, opts)
   document.lines[#document.lines + 1] = line
   local row = #document.lines
   if opts.row_map ~= nil then document.row_map[row] = opts.row_map end
-  for _, span in ipairs(opts.highlights or {}) do append_highlight(document, row, line, span) end
+  for _, span in ipairs(opts.highlights or {}) do
+    append_highlight(document, row, line, span)
+  end
   return row, line
 end
 
@@ -98,7 +100,9 @@ end
 ---`vim.deepcopy` when exercised outside Neovim.
 function M.copy_list(values)
   local result = {}
-  for index, value in ipairs(values or {}) do result[index] = value end
+  for index, value in ipairs(values or {}) do
+    result[index] = value
+  end
   return result
 end
 

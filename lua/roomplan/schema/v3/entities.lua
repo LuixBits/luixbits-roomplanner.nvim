@@ -16,26 +16,16 @@ local M = {
 
 local SIDES = { north = true, east = true, south = true, west = true }
 local OUTLET_TYPES = {}
-for _, value in ipairs(outlet_types.values) do OUTLET_TYPES[value] = true end
+for _, value in ipairs(outlet_types.values) do
+  OUTLET_TYPES[value] = true
+end
 
 local function normalize_wall_owner(context, result, path)
-  result.room_id = common.normalize_id(
-    context,
-    common.required(context, result, "room_id", path),
-    path .. ".room_id",
-    "room"
-  )
-  result.part_id = footprint.normalize_part_id(
-    context,
-    common.required(context, result, "part_id", path),
-    path .. ".part_id"
-  )
-  result.side = common.enum(
-    context,
-    common.required(context, result, "side", path),
-    path .. ".side",
-    SIDES
-  )
+  result.room_id =
+    common.normalize_id(context, common.required(context, result, "room_id", path), path .. ".room_id", "room")
+  result.part_id =
+    footprint.normalize_part_id(context, common.required(context, result, "part_id", path), path .. ".part_id")
+  result.side = common.enum(context, common.required(context, result, "side", path), path .. ".side", SIDES)
   result.offset_mm = common.integer(
     context,
     common.required(context, result, "offset_mm", path),
@@ -49,48 +39,25 @@ end
 function M.normalize_window(context, source, path)
   local result = common.object(context, source, path)
   if not result then return nil end
-  result.id = common.normalize_id(
-    context,
-    common.required(context, result, "id", path),
-    path .. ".id",
-    "window"
-  )
+  result.id = common.normalize_id(context, common.required(context, result, "id", path), path .. ".id", "window")
   normalize_wall_owner(context, result, path)
   local connected = common.required(context, result, "connects_to_room_id", path)
   if json.is_null(connected) then
     result.connects_to_room_id = json.null
   else
-    result.connects_to_room_id = common.normalize_id(
-      context,
-      connected,
-      path .. ".connects_to_room_id",
-      "room"
-    )
+    result.connects_to_room_id = common.normalize_id(context, connected, path .. ".connects_to_room_id", "room")
   end
-  result.width_mm = common.dimension(
-    context,
-    common.required(context, result, "width_mm", path),
-    path .. ".width_mm"
-  )
+  result.width_mm = common.dimension(context, common.required(context, result, "width_mm", path), path .. ".width_mm")
   return result
 end
 
 function M.normalize_outlet(context, source, path)
   local result = common.object(context, source, path)
   if not result then return nil end
-  result.id = common.normalize_id(
-    context,
-    common.required(context, result, "id", path),
-    path .. ".id",
-    "outlet"
-  )
+  result.id = common.normalize_id(context, common.required(context, result, "id", path), path .. ".id", "outlet")
   normalize_wall_owner(context, result, path)
-  result.outlet_type = common.enum(
-    context,
-    common.required(context, result, "outlet_type", path),
-    path .. ".outlet_type",
-    OUTLET_TYPES
-  )
+  result.outlet_type =
+    common.enum(context, common.required(context, result, "outlet_type", path), path .. ".outlet_type", OUTLET_TYPES)
   result.slots = common.integer(
     context,
     common.required(context, result, "slots", path),

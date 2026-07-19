@@ -12,13 +12,9 @@ end
 
 local function local_target(destination)
   destination = destination:match("^%s*(.-)%s*$")
-  if destination:sub(1, 1) == "<" and destination:sub(-1) == ">" then
-    destination = destination:sub(2, -2)
-  end
+  if destination:sub(1, 1) == "<" and destination:sub(-1) == ">" then destination = destination:sub(2, -2) end
   destination = destination:match("^[^#?]*") or destination
-  if destination == "" or destination:match("^[%a][%w+.-]*:") or destination:sub(1, 2) == "//" then
-    return nil
-  end
+  if destination == "" or destination:match("^[%a][%w+.-]*:") or destination:sub(1, 2) == "//" then return nil end
   return destination
 end
 
@@ -49,12 +45,8 @@ h.describe("documentation", function()
     local missing = {}
     for name in pairs(vim.api.nvim_get_commands({})) do
       if name:match("^RoomPlan") then
-        if not markdown:find(":" .. name, 1, true) then
-          missing[#missing + 1] = name .. " (Markdown)"
-        end
-        if not help:find("*:" .. name .. "*", 1, true) then
-          missing[#missing + 1] = name .. " (help)"
-        end
+        if not markdown:find(":" .. name, 1, true) then missing[#missing + 1] = name .. " (Markdown)" end
+        if not help:find("*:" .. name .. "*", 1, true) then missing[#missing + 1] = name .. " (help)" end
       end
     end
     table.sort(missing)
@@ -70,12 +62,8 @@ h.describe("documentation", function()
       if type(value) == "function" then
         local markdown_name = name == "aspect" and "roomplan.aspect" or ("`" .. name .. "(")
         local help_name = "roomplan." .. name
-        if not markdown:find(markdown_name, 1, true) then
-          missing[#missing + 1] = name .. " (Markdown)"
-        end
-        if not help:find(help_name, 1, true) then
-          missing[#missing + 1] = name .. " (help)"
-        end
+        if not markdown:find(markdown_name, 1, true) then missing[#missing + 1] = name .. " (Markdown)" end
+        if not help:find(help_name, 1, true) then missing[#missing + 1] = name .. " (help)" end
       end
     end
     table.sort(missing)

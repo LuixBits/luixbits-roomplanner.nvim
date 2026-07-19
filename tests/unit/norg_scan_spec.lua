@@ -1,16 +1,17 @@
 local scan = require("roomplan.storage.norg_scan")
 
-local function decode(text)
-  return vim.json.decode(text)
-end
+local function decode(text) return vim.json.decode(text) end
 
 describe("norg scanner", function()
   it("discovers CRLF encoded Norg blocks", function()
     local codec = require("roomplan.codec.json")
     local text = table.concat({
-      "* Plan", "", "@code json roomplan.nvim",
+      "* Plan",
+      "",
+      "@code json roomplan.nvim",
       '{"format":"roomplan.nvim","schema_version":1,"units":"mm"}',
-      "@end", "",
+      "@end",
+      "",
     }, "\r\n")
     local found, err = scan.discover(text, function(payload)
       local value, decode_err = codec.decode(payload)
@@ -41,7 +42,7 @@ describe("norg scanner", function()
     local result = assert(scan.discover(source, decode))
     assert_equal(result.kind, "found")
     assert_true(result.block.marked)
-    local replaced = assert(scan.replace(source, result.block, [[{"format":"roomplan.nvim","schema_version":1,"x":1}]]) )
+    local replaced = assert(scan.replace(source, result.block, [[{"format":"roomplan.nvim","schema_version":1,"x":1}]]))
     assert_true(replaced:find("outside", 1, true) ~= nil)
     assert_true(replaced:find('"x":1', 1, true) ~= nil)
   end)

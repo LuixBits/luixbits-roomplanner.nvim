@@ -8,8 +8,12 @@ local M = {}
 
 local function display_key(key)
   local friendly = {
-    ["<CR>"] = "Enter", ["<C-s>"] = "Ctrl-s", ["<Esc>"] = "Esc",
-    ["<Space>"] = "Space", ["<Tab>"] = "Tab", ["<S-Tab>"] = "Shift-Tab",
+    ["<CR>"] = "Enter",
+    ["<C-s>"] = "Ctrl-s",
+    ["<Esc>"] = "Esc",
+    ["<Space>"] = "Space",
+    ["<Tab>"] = "Tab",
+    ["<S-Tab>"] = "Shift-Tab",
   }
   return key and (friendly[key] or key) or nil
 end
@@ -24,14 +28,21 @@ local function footer_lines(state, active, opts)
   if type(footer) == "function" then footer = footer(state, active) end
   if type(footer) == "string" then return { footer } end
   if type(footer) == "table" then return footer end
-  local keys = opts.keys or {
-    edit = "<CR>", previous_choice = "h", next_choice = "l", toggle = "<Space>",
-    apply = "<C-s>", cancel = "<Esc>", cancel_alt = "q",
-  }
+  local keys = opts.keys
+    or {
+      edit = "<CR>",
+      previous_choice = "h",
+      next_choice = "l",
+      toggle = "<Space>",
+      apply = "<C-s>",
+      cancel = "<Esc>",
+      cancel_alt = "q",
+    }
   local edit_hint = hint(keys.edit, "Edit")
   if active then
     if active.type == "enum" or active.type == "object_ref" then
-      local cycle = display_key(keys.previous_choice) and display_key(keys.next_choice)
+      local cycle = display_key(keys.previous_choice)
+          and display_key(keys.next_choice)
           and string.format("[%s/%s] Cycle", display_key(keys.previous_choice), display_key(keys.next_choice))
         or "Cycle (unmapped)"
       edit_hint = hint(keys.edit, "Choose") .. "  " .. cycle
@@ -57,7 +68,9 @@ end
 local function preview_lines(state)
   local preview = state.preview or {}
   local lines = {}
-  for index = 1, #(preview.lines or {}) do lines[index] = tostring(preview.lines[index]) end
+  for index = 1, #(preview.lines or {}) do
+    lines[index] = tostring(preview.lines[index])
+  end
   return lines, preview.error
 end
 
@@ -99,7 +112,8 @@ function M.build(state, opts)
     local marker = field.key == state.active_key and ">" or " "
     local suffix = fields.enabled(field, state.context, state.draft, state) and "" or "  (read-only)"
     if field.type == "action" then suffix = "  [Enter]" end
-    local row = push(string.format("%s %-" .. label_width .. "s  %s%s", marker, field.label or field.key, formatted, suffix))
+    local row =
+      push(string.format("%s %-" .. label_width .. "s  %s%s", marker, field.label or field.key, formatted, suffix))
     meta.field_rows[field.key] = row
     if not fields.enabled(field, state.context, state.draft, state) then meta.readonly_rows[row] = true end
     if state.errors[field.key] then
@@ -144,7 +158,9 @@ function M.build(state, opts)
 
   push("")
   local active = state.active_key and form_state.field(state, state.active_key) or nil
-  for _, line in ipairs(footer_lines(state, active, opts)) do meta.footer_rows[push(line)] = true end
+  for _, line in ipairs(footer_lines(state, active, opts)) do
+    meta.footer_rows[push(line)] = true
+  end
 
   meta.active_row = state.active_key and meta.field_rows[state.active_key] or nil
   meta.width = opts.width

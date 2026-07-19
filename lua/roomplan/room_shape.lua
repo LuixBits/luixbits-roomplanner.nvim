@@ -11,9 +11,7 @@ local util = require("roomplan.util")
 
 local M = {}
 
-local function failure(code, message, details)
-  return nil, { code = code, message = message, details = details or {} }
-end
+local function failure(code, message, details) return nil, { code = code, message = message, details = details or {} } end
 
 local function entity(model, kind, id)
   local collection = kind == "furniture" and model.furniture
@@ -38,14 +36,18 @@ end
 
 local function valid_footprint(edit, value)
   local runtime, err = geometry.from_persisted(value)
-  if err then return failure(err.code or "ROOM_SHAPE_INVALID", err.message or "the room shape is invalid", err.details) end
+  if err then
+    return failure(err.code or "ROOM_SHAPE_INVALID", err.message or "the room shape is invalid", err.details)
+  end
   if edit.kind == "furniture" or edit.kind == "template" then
     local anchor = edit.anchor2_mm
-    local contains, anchor_err = type(anchor) == "table"
-      and geometry.contains_point2(runtime, anchor[1], anchor[2]) or false
+    local contains, anchor_err = type(anchor) == "table" and geometry.contains_point2(runtime, anchor[1], anchor[2])
+      or false
     if not contains then
-      return failure("FURNITURE_SHAPE_ANCHOR", anchor_err and anchor_err.message
-        or "the furniture anchor must remain on or inside its footprint")
+      return failure(
+        "FURNITURE_SHAPE_ANCHOR",
+        anchor_err and anchor_err.message or "the furniture anchor must remain on or inside its footprint"
+      )
     end
   end
   return true
@@ -79,13 +81,11 @@ function M.start(model, entity_id, revision_id, kind)
     return failure("SHAPE_KIND", "shape editing supports rooms, placed furniture, and project templates")
   end
   local source = entity(model, kind, entity_id)
-  local source_footprint = kind == "template" and source and source.default_footprint
-    or source and source.footprint
+  local source_footprint = kind == "template" and source and source.default_footprint or source and source.footprint
   if not source or type(source_footprint) ~= "table" or not source_footprint.parts[1] then
     return failure("SHAPE_UNAVAILABLE", "select a compound-schema " .. kind .. " before editing its shape")
   end
-  local anchor = kind == "furniture" and source.anchor2_mm
-    or kind == "template" and source.default_anchor2_mm
+  local anchor = kind == "furniture" and source.anchor2_mm or kind == "template" and source.default_anchor2_mm
   return {
     kind = kind,
     entity_id = entity_id,
@@ -107,8 +107,11 @@ function M.preview_model(model, edit)
   local result = util.deepcopy(model)
   local target = entity(result, edit.kind or "room", edit.entity_id or edit.room_id)
   if not target then return failure("SHAPE_STALE", "the edited " .. noun(edit) .. " no longer exists") end
-  if edit.kind == "template" then target.default_footprint = util.deepcopy(edit.footprint)
-  else target.footprint = util.deepcopy(edit.footprint) end
+  if edit.kind == "template" then
+    target.default_footprint = util.deepcopy(edit.footprint)
+  else
+    target.footprint = util.deepcopy(edit.footprint)
+  end
   return result
 end
 
@@ -117,14 +120,15 @@ function M.selected(edit)
   return part and util.deepcopy(part) or nil, index
 end
 
-function M.clear_feedback(edit)
-  return clear_feedback(util.deepcopy(edit))
-end
+function M.clear_feedback(edit) return clear_feedback(util.deepcopy(edit)) end
 
 function M.select_world(edit, origin_or_shape, world_mm)
   local shape, err
-  if type(origin_or_shape) == "table" and type(origin_or_shape.parts) == "table"
-    and type(origin_or_shape.parts[1]) == "table" and origin_or_shape.parts[1].left2 ~= nil
+  if
+    type(origin_or_shape) == "table"
+    and type(origin_or_shape.parts) == "table"
+    and type(origin_or_shape.parts[1]) == "table"
+    and origin_or_shape.parts[1].left2 ~= nil
   then
     shape = origin_or_shape
   else
@@ -219,9 +223,13 @@ end
 
 local function next_part_id(footprint)
   local used = {}
-  for _, part in ipairs(footprint.parts or {}) do used[part.id] = true end
+  for _, part in ipairs(footprint.parts or {}) do
+    used[part.id] = true
+  end
   local serial = 1
-  while used["part-" .. serial] do serial = serial + 1 end
+  while used["part-" .. serial] do
+    serial = serial + 1
+  end
   return "part-" .. serial
 end
 
@@ -242,14 +250,18 @@ function M.add(edit, preferred_dx, preferred_dy)
   local width, depth = part.size_mm[1], part.size_mm[2]
   local x, y = part.origin_mm[1], part.origin_mm[2]
   local directions = {
-    { 1, 0, x + width, y }, { 0, 1, x, y + depth },
-    { -1, 0, x - width, y }, { 0, -1, x, y - depth },
+    { 1, 0, x + width, y },
+    { 0, 1, x, y + depth },
+    { -1, 0, x - width, y },
+    { 0, -1, x, y - depth },
   }
   if preferred_dx ~= 0 or preferred_dy ~= 0 then
-    table.sort(directions, function(left, right)
-      return left[1] * preferred_dx + left[2] * preferred_dy
-        > right[1] * preferred_dx + right[2] * preferred_dy
-    end)
+    table.sort(
+      directions,
+      function(left, right)
+        return left[1] * preferred_dx + left[2] * preferred_dy > right[1] * preferred_dx + right[2] * preferred_dy
+      end
+    )
   end
   local id = next_part_id(edit.footprint)
   for _, direction in ipairs(directions) do
@@ -278,9 +290,7 @@ local function references(model, room_id, part_id)
 end
 
 function M.remove(edit, model)
-  if #edit.footprint.parts <= 1 then
-    return failure("SHAPE_EMPTY", "a shape must keep at least one section")
-  end
+  if #edit.footprint.parts <= 1 then return failure("SHAPE_EMPTY", "a shape must keep at least one section") end
   local _, index = selected(edit)
   if not index then return failure("SHAPE_SELECTION", "the selected section no longer exists") end
   local used = edit.kind == "room" and references(model, edit.room_id, edit.selected_part_id) or {}
@@ -294,9 +304,7 @@ function M.remove(edit, model)
   return result and reset_handles(result) or nil, err
 end
 
-function M.snap_summary(edit)
-  return shape_snapping.summary(edit)
-end
+function M.snap_summary(edit) return shape_snapping.summary(edit) end
 
 function M.edge_summary(edit)
   local edges = edit and edit.resize_edges or {}
@@ -314,9 +322,7 @@ function M.edge_summary(edit)
   return horizontal or vertical
 end
 
-function M.is_changed(edit)
-  return not json.deep_equal(edit.original_footprint, edit.footprint)
-end
+function M.is_changed(edit) return not json.deep_equal(edit.original_footprint, edit.footprint) end
 
 function M.action(edit, scope)
   if edit.kind == "template" then

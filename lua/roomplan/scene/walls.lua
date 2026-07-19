@@ -29,17 +29,18 @@ local function finite_number(value)
 end
 
 local function valid_room_geometry(room)
-  if not (type(room) == "table"
-    and type(room.id) == "string"
-    and type(room.origin_mm) == "table"
-    and finite_number(room.origin_mm[1])
-    and finite_number(room.origin_mm[2]))
+  if
+    not (
+      type(room) == "table"
+      and type(room.id) == "string"
+      and type(room.origin_mm) == "table"
+      and finite_number(room.origin_mm[1])
+      and finite_number(room.origin_mm[2])
+    )
   then
     return false
   end
-  if room.footprint ~= nil then
-    return footprint.from_room(room) ~= nil
-  end
+  if room.footprint ~= nil then return footprint.from_room(room) ~= nil end
   return type(room.size_mm) == "table"
     and finite_number(room.size_mm[1])
     and finite_number(room.size_mm[2])
@@ -79,9 +80,7 @@ end
 ---@param order integer|nil
 ---@return table
 function M.room_edges(room, order)
-  if not valid_room_geometry(room) then
-    return {}
-  end
+  if not valid_room_geometry(room) then return {} end
 
   order = order or 0
   if room.footprint ~= nil then
@@ -150,7 +149,8 @@ local function classify_aperture(kind, value, rooms_by_id, room_orders, order)
     result.reason = "unsupported owner side"
     return result
   end
-  if not finite_number(value.offset_mm)
+  if
+    not finite_number(value.offset_mm)
     or not finite_number(value.width_mm)
     or value.offset_mm < 0
     or value.width_mm <= 0
@@ -188,9 +188,7 @@ local function classify_aperture(kind, value, rooms_by_id, room_orders, order)
 
   result.owner_edge_valid = true
   result.connection_requested = value.connects_to_room_id ~= nil and not json.is_null(value.connects_to_room_id)
-  if not result.connection_requested then
-    return result
-  end
+  if not result.connection_requested then return result end
 
   local connected = rooms_by_id[value.connects_to_room_id]
   if not connected or connected.id == owner.id then
@@ -307,17 +305,13 @@ end
 
 local function sort_intervals(intervals)
   table.sort(intervals, function(a, b)
-    if a[1] ~= b[1] then
-      return a[1] < b[1]
-    end
+    if a[1] ~= b[1] then return a[1] < b[1] end
     return a[2] < b[2]
   end)
 end
 
 local function subtract_intervals(start_value, finish_value, cuts)
-  if not cuts or #cuts == 0 then
-    return { { start_value, finish_value } }
-  end
+  if not cuts or #cuts == 0 then return { { start_value, finish_value } } end
 
   sort_intervals(cuts)
   local result = {}
@@ -326,17 +320,11 @@ local function subtract_intervals(start_value, finish_value, cuts)
     local cut_start = math.max(start_value, cuts[i][1])
     local cut_finish = math.min(finish_value, cuts[i][2])
     if cut_finish > cut_start then
-      if cut_start > cursor then
-        result[#result + 1] = { cursor, cut_start }
-      end
-      if cut_finish > cursor then
-        cursor = cut_finish
-      end
+      if cut_start > cursor then result[#result + 1] = { cursor, cut_start } end
+      if cut_finish > cursor then cursor = cut_finish end
     end
   end
-  if cursor < finish_value then
-    result[#result + 1] = { cursor, finish_value }
-  end
+  if cursor < finish_value then result[#result + 1] = { cursor, finish_value } end
   return result
 end
 
@@ -363,23 +351,15 @@ local function line_key(edge)
 end
 
 local function contributor_sort(a, b)
-  if a.room_order ~= b.room_order then
-    return a.room_order < b.room_order
-  end
-  if a.room_id ~= b.room_id then
-    return a.room_id < b.room_id
-  end
+  if a.room_order ~= b.room_order then return a.room_order < b.room_order end
+  if a.room_id ~= b.room_id then return a.room_id < b.room_id end
   return a.side < b.side
 end
 
 local function same_contributors(a, b)
-  if #a ~= #b then
-    return false
-  end
+  if #a ~= #b then return false end
   for i = 1, #a do
-    if a[i].room_id ~= b[i].room_id or a[i].side ~= b[i].side then
-      return false
-    end
+    if a[i].room_id ~= b[i].room_id or a[i].side ~= b[i].side then return false end
   end
   return true
 end
@@ -393,9 +373,7 @@ local function refs_for_contributors(contributors)
 end
 
 local function coordinates_for_segment(orientation, fixed, start_value, finish_value)
-  if orientation == "horizontal" then
-    return start_value, fixed, finish_value, fixed
-  end
+  if orientation == "horizontal" then return start_value, fixed, finish_value, fixed end
   return fixed, start_value, fixed, finish_value
 end
 
@@ -437,9 +415,7 @@ function M.group_contributions(contributions)
 
     local unique = {}
     for i = 1, #endpoints do
-      if i == 1 or endpoints[i] ~= endpoints[i - 1] then
-        unique[#unique + 1] = endpoints[i]
-      end
+      if i == 1 or endpoints[i] ~= endpoints[i - 1] then unique[#unique + 1] = endpoints[i] end
     end
 
     local line_segments = {}
@@ -451,9 +427,7 @@ function M.group_contributions(contributions)
         local contributors = {}
         for edge_index = 1, #line.edges do
           local edge = line.edges[edge_index]
-          if edge.start <= midpoint and edge.finish >= midpoint then
-            contributors[#contributors + 1] = edge
-          end
+          if edge.start <= midpoint and edge.finish >= midpoint then contributors[#contributors + 1] = edge end
         end
         if #contributors > 0 then
           table.sort(contributors, contributor_sort)
@@ -491,15 +465,9 @@ function M.group_contributions(contributions)
   end
 
   table.sort(segments, function(a, b)
-    if a.orientation ~= b.orientation then
-      return a.orientation < b.orientation
-    end
-    if a.fixed ~= b.fixed then
-      return a.fixed < b.fixed
-    end
-    if a.start ~= b.start then
-      return a.start < b.start
-    end
+    if a.orientation ~= b.orientation then return a.orientation < b.orientation end
+    if a.fixed ~= b.fixed then return a.fixed < b.fixed end
+    if a.start ~= b.start then return a.start < b.start end
     return a.finish < b.finish
   end)
   return segments
@@ -507,22 +475,13 @@ end
 
 local function add_aperture_cuts(cuts, aperture)
   if not aperture.owner_edge_valid then return end
-  local owner_key = cut_key(
-    aperture.owner_room_id,
-    aperture.owner_side,
-    aperture.orientation,
-    aperture.fixed
-  )
+  local owner_key = cut_key(aperture.owner_room_id, aperture.owner_side, aperture.orientation, aperture.fixed)
   cuts[owner_key] = cuts[owner_key] or {}
   cuts[owner_key][#cuts[owner_key] + 1] = { aperture.start, aperture.finish }
 
   if not aperture.connection_valid then return end
-  local connected_key = cut_key(
-    aperture.connected_room_id,
-    aperture.connected_side,
-    aperture.orientation,
-    aperture.fixed
-  )
+  local connected_key =
+    cut_key(aperture.connected_room_id, aperture.connected_side, aperture.orientation, aperture.fixed)
   cuts[connected_key] = cuts[connected_key] or {}
   cuts[connected_key][#cuts[connected_key] + 1] = { aperture.start, aperture.finish }
 end
@@ -581,11 +540,8 @@ function M.build(rooms, doors, windows, outlets)
   local cut_contributions = {}
   for i = 1, #contributions do
     local edge = contributions[i]
-    local pieces = subtract_intervals(
-      edge.start,
-      edge.finish,
-      cuts[cut_key(edge.room_id, edge.side, edge.orientation, edge.fixed)]
-    )
+    local pieces =
+      subtract_intervals(edge.start, edge.finish, cuts[cut_key(edge.room_id, edge.side, edge.orientation, edge.fixed)])
     for j = 1, #pieces do
       cut_contributions[#cut_contributions + 1] = copy_contribution(edge, pieces[j][1], pieces[j][2])
     end
@@ -603,8 +559,6 @@ function M.build(rooms, doors, windows, outlets)
 end
 
 M.valid_room_geometry = valid_room_geometry
-M.opposite_side = function(side)
-  return OPPOSITE[side]
-end
+M.opposite_side = function(side) return OPPOSITE[side] end
 
 return M

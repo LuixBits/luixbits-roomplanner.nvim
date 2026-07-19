@@ -14,12 +14,17 @@ local function editable_rectangle(template, version)
   local parts = template.default_footprint and template.default_footprint.parts
   local part = parts and #parts == 1 and parts[1] or nil
   local anchor = template.default_anchor2_mm
-  if not part then
-    return false, { nil, nil, template.default_height_mm }, "compound"
-  end
-  if part.id ~= "part-main" or not part.origin_mm or not part.size_mm
-    or part.origin_mm[1] ~= 0 or part.origin_mm[2] ~= 0
-    or not anchor or anchor[1] ~= part.size_mm[1] or anchor[2] ~= part.size_mm[2] then
+  if not part then return false, { nil, nil, template.default_height_mm }, "compound" end
+  if
+    part.id ~= "part-main"
+    or not part.origin_mm
+    or not part.size_mm
+    or part.origin_mm[1] ~= 0
+    or part.origin_mm[2] ~= 0
+    or not anchor
+    or anchor[1] ~= part.size_mm[1]
+    or anchor[2] ~= part.size_mm[2]
+  then
     return false, { nil, nil, template.default_height_mm }, "custom anchor"
   end
   return true, { part.size_mm[1], part.size_mm[2], template.default_height_mm }, "rectangle"
@@ -57,17 +62,29 @@ function M.edit(session, template)
   }
   if can_resize then
     spec.fields[#spec.fields + 1] = {
-      key = "width_mm", label = "Default width", type = "measurement", max = maximum,
+      key = "width_mm",
+      label = "Default width",
+      type = "measurement",
+      max = maximum,
     }
     spec.fields[#spec.fields + 1] = {
-      key = "depth_mm", label = "Default depth", type = "measurement", max = maximum,
+      key = "depth_mm",
+      label = "Default depth",
+      type = "measurement",
+      max = maximum,
     }
   else
     spec.fields[#spec.fields + 1] = {
-      key = "footprint", label = "Footprint", type = "readonly",
+      key = "footprint",
+      label = "Footprint",
+      type = "readonly",
       value = function()
-        return string.format("%d part%s · %s", #(template.default_footprint.parts or {}),
-          #(template.default_footprint.parts or {}) == 1 and "" or "s", shape_label)
+        return string.format(
+          "%d part%s · %s",
+          #(template.default_footprint.parts or {}),
+          #(template.default_footprint.parts or {}) == 1 and "" or "s",
+          shape_label
+        )
       end,
     }
   end
@@ -80,15 +97,19 @@ function M.edit(session, template)
     value = "Edit sections on canvas…",
   }
   spec.fields[#spec.fields + 1] = {
-    key = "height_mm", label = "Default height", type = "measurement", max = maximum,
+    key = "height_mm",
+    label = "Default height",
+    type = "measurement",
+    max = maximum,
   }
   spec.fields[#spec.fields + 1] = {
-    key = "shape", label = "Shape", type = "readonly",
+    key = "shape",
+    label = "Shape",
+    type = "readonly",
     value = function() return shape_label end,
   }
   spec.preview = function(draft)
-    local geometry = can_resize and string.format("%d x %d x %d mm", draft.width_mm,
-      draft.depth_mm, draft.height_mm)
+    local geometry = can_resize and string.format("%d x %d x %d mm", draft.width_mm, draft.depth_mm, draft.height_mm)
       or string.format("%d-part footprint · %d mm high", #(template.default_footprint.parts or {}), draft.height_mm)
     return { lines = { string.format("%s · %s · %s", draft.name, draft.category, geometry) } }
   end

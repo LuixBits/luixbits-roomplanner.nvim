@@ -3,13 +3,9 @@
 
 local M = {}
 
-local function valid_buffer(bufnr)
-  return type(bufnr) == "number" and vim.api.nvim_buf_is_valid(bufnr)
-end
+local function valid_buffer(bufnr) return type(bufnr) == "number" and vim.api.nvim_buf_is_valid(bufnr) end
 
-local function valid_window(winid)
-  return type(winid) == "number" and vim.api.nvim_win_is_valid(winid)
-end
+local function valid_window(winid) return type(winid) == "number" and vim.api.nvim_win_is_valid(winid) end
 
 local function configure_buffer(bufnr)
   vim.bo[bufnr].buftype = "nofile"
@@ -24,8 +20,12 @@ local function position(winid, width, height, col, row)
   if not valid_window(winid) then return end
   col, row = math.max(0, col), math.max(0, row)
   local current = vim.api.nvim_win_get_config(winid)
-  if current.relative == "editor" and current.width == width and current.height == height
-    and current.col == col and current.row == row
+  if
+    current.relative == "editor"
+    and current.width == width
+    and current.height == height
+    and current.col == col
+    and current.row == row
   then
     return
   end
@@ -88,13 +88,9 @@ local function layout(handle)
   }
 end
 
-function M.visible(handle)
-  return layout(handle).visible
-end
+function M.visible(handle) return layout(handle).visible end
 
-function M.width(handle)
-  return layout(handle).main_width
-end
+function M.width(handle) return layout(handle).main_width end
 
 local function highlight_rows(handle, lines, meta)
   handle.preview_namespace = handle.preview_namespace
@@ -128,19 +124,23 @@ local function highlight_rows(handle, lines, meta)
       vim.api.nvim_set_hl(0, graphic_group, { link = "RoomPlanPreview" })
     end
     if #meta.graphic_spans > 0 then
-      for _, span in ipairs(meta.graphic_spans) do mark_range(span, graphic_group) end
+      for _, span in ipairs(meta.graphic_spans) do
+        mark_range(span, graphic_group)
+      end
     else
-      for row in pairs(meta.graphic_rows) do mark(row, graphic_group) end
+      for row in pairs(meta.graphic_rows) do
+        mark(row, graphic_group)
+      end
     end
   end
-  for row in pairs(meta.error_rows) do mark(row, "RoomPlanFormError") end
+  for row in pairs(meta.error_rows) do
+    mark(row, "RoomPlanFormError")
+  end
 end
 
 function M.close(handle)
   if valid_window(handle.preview_winid) then pcall(vim.api.nvim_win_close, handle.preview_winid, true) end
-  if valid_buffer(handle.preview_bufnr) then
-    pcall(vim.api.nvim_buf_delete, handle.preview_bufnr, { force = true })
-  end
+  if valid_buffer(handle.preview_bufnr) then pcall(vim.api.nvim_buf_delete, handle.preview_bufnr, { force = true }) end
   handle.preview_winid, handle.preview_bufnr = nil, nil
 end
 

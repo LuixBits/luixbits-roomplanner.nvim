@@ -20,25 +20,24 @@ local ROOM_ROWS = 4
 local ROOM_WIDTH = 6000
 local ROOM_DEPTH = 5000
 
-local function room_id(column, row)
-  return string.format("room-%02d", (row - 1) * ROOM_COLUMNS + column)
-end
+local function room_id(column, row) return string.format("room-%02d", (row - 1) * ROOM_COLUMNS + column) end
 
-local function append(collection, value)
-  collection[#collection + 1] = value
-end
+local function append(collection, value) collection[#collection + 1] = value end
 
 local function reference_model()
   local plan = assert(model.new({ name = "RoomPlan reference benchmark" }))
 
   for row = 1, ROOM_ROWS do
     for column = 1, ROOM_COLUMNS do
-      append(plan.rooms, model.new_room({
-        id = room_id(column, row),
-        name = string.format("Room %d/%d", column, row),
-        origin_mm = { (column - 1) * ROOM_WIDTH, (row - 1) * ROOM_DEPTH },
-        size_mm = { ROOM_WIDTH, ROOM_DEPTH },
-      }))
+      append(
+        plan.rooms,
+        model.new_room({
+          id = room_id(column, row),
+          name = string.format("Room %d/%d", column, row),
+          origin_mm = { (column - 1) * ROOM_WIDTH, (row - 1) * ROOM_DEPTH },
+          size_mm = { ROOM_WIDTH, ROOM_DEPTH },
+        })
+      )
     end
   end
 
@@ -64,32 +63,38 @@ local function reference_model()
   end
   for index, edge in ipairs(shared_edges) do
     door_number = door_number + 1
-    append(plan.doors, model.new_door({
-      id = string.format("door-%03d", door_number),
-      room_id = edge.owner,
-      connects_to_room_id = edge.connected,
-      side = edge.side,
-      offset_mm = 1000,
-      width_mm = 800,
-      hinge = index % 2 == 0 and "end" or "start",
-      opens_into = "connected",
-      open_angle_deg = 90,
-    }))
+    append(
+      plan.doors,
+      model.new_door({
+        id = string.format("door-%03d", door_number),
+        room_id = edge.owner,
+        connects_to_room_id = edge.connected,
+        side = edge.side,
+        offset_mm = 1000,
+        width_mm = 800,
+        hinge = index % 2 == 0 and "end" or "start",
+        opens_into = "connected",
+        open_angle_deg = 90,
+      })
+    )
   end
   for index = 1, 19 do
     local edge = shared_edges[index]
     door_number = door_number + 1
-    append(plan.doors, model.new_door({
-      id = string.format("door-%03d", door_number),
-      room_id = edge.owner,
-      connects_to_room_id = edge.connected,
-      side = edge.side,
-      offset_mm = 3200,
-      width_mm = 800,
-      hinge = index % 2 == 0 and "start" or "end",
-      opens_into = "connected",
-      open_angle_deg = 90,
-    }))
+    append(
+      plan.doors,
+      model.new_door({
+        id = string.format("door-%03d", door_number),
+        room_id = edge.owner,
+        connects_to_room_id = edge.connected,
+        side = edge.side,
+        offset_mm = 3200,
+        width_mm = 800,
+        hinge = index % 2 == 0 and "start" or "end",
+        opens_into = "connected",
+        open_angle_deg = 90,
+      })
+    )
   end
 
   local furniture_number = 0
@@ -99,16 +104,19 @@ local function reference_model()
     for row = 1, #centers_y do
       for column = 1, #centers_x do
         furniture_number = furniture_number + 1
-        append(plan.furniture, model.new_furniture({
-          id = string.format("furniture-%03d", furniture_number),
-          room_id = plan.rooms[room_number].id,
-          template_id = "builtin:chair",
-          name = "Chair " .. furniture_number,
-          category = "seating",
-          center_mm = { centers_x[column], centers_y[row] },
-          size_mm = { 700, 600, 900 },
-          rotation_deg = (furniture_number % 2) * 90,
-        }))
+        append(
+          plan.furniture,
+          model.new_furniture({
+            id = string.format("furniture-%03d", furniture_number),
+            room_id = plan.rooms[room_number].id,
+            template_id = "builtin:chair",
+            name = "Chair " .. furniture_number,
+            category = "seating",
+            center_mm = { centers_x[column], centers_y[row] },
+            size_mm = { 700, 600, 900 },
+            rotation_deg = (furniture_number % 2) * 90,
+          })
+        )
       end
     end
   end
@@ -119,12 +127,12 @@ local function reference_model()
   return plan
 end
 
-local function percentile(sorted, fraction)
-  return sorted[math.max(1, math.ceil(#sorted * fraction))]
-end
+local function percentile(sorted, fraction) return sorted[math.max(1, math.ceil(#sorted * fraction))] end
 
 local function benchmark(name, samples, callback)
-  for _ = 1, 3 do callback() end
+  for _ = 1, 3 do
+    callback()
+  end
   collectgarbage("collect")
   local timings = {}
   for index = 1, samples do
@@ -175,25 +183,37 @@ local function run()
     })
   end
 
-  io.stdout:write(string.format(
-    "RoomPlan reference workload: %d rooms, %d doors, %d furniture, %dx%d canvas, %d samples\n",
-    #plan.rooms, #plan.doors, #plan.furniture, WIDTH, HEIGHT, samples
-  ))
-  io.stdout:write(string.format(
-    "Validation result: %d error(s), %d warning(s); timing targets are informational\n",
-    summary.errors, summary.warnings
-  ))
+  io.stdout:write(
+    string.format(
+      "RoomPlan reference workload: %d rooms, %d doors, %d furniture, %dx%d canvas, %d samples\n",
+      #plan.rooms,
+      #plan.doors,
+      #plan.furniture,
+      WIDTH,
+      HEIGHT,
+      samples
+    )
+  )
+  io.stdout:write(
+    string.format(
+      "Validation result: %d error(s), %d warning(s); timing targets are informational\n",
+      summary.errors,
+      summary.warnings
+    )
+  )
   benchmark("validation", samples, function() return validate.run(plan, { limits = limits }) end)
   benchmark("full redraw", samples, redraw)
   benchmark("serialization", samples, function() return assert(model.encode(plan, { final_newline = true })) end)
   benchmark("model copy", samples, function() return model.deep_copy(plan) end)
 
   local snapshot_bytes = model.estimate_size(plan)
-  io.stdout:write(string.format(
-    "Estimated snapshots: %.2f MiB each, %.2f MiB for 100 (conservative model estimate)\n",
-    snapshot_bytes / 1024 / 1024,
-    snapshot_bytes * 100 / 1024 / 1024
-  ))
+  io.stdout:write(
+    string.format(
+      "Estimated snapshots: %.2f MiB each, %.2f MiB for 100 (conservative model estimate)\n",
+      snapshot_bytes / 1024 / 1024,
+      snapshot_bytes * 100 / 1024 / 1024
+    )
+  )
   io.stdout:write("Engineering targets: full redraw normally <100 ms; validation normally <200 ms\n")
 end
 

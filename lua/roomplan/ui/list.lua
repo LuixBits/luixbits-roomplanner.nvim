@@ -24,15 +24,11 @@ function M.open(session, opts)
     desc = "Detach RoomPlan list buffer",
   })
   vim.keymap.set("n", "q", function()
-    if vim.api.nvim_win_is_valid(win) then
-      vim.api.nvim_win_close(win, true)
-    end
+    if vim.api.nvim_win_is_valid(win) then vim.api.nvim_win_close(win, true) end
   end, { buffer = buf, silent = true, desc = "Close RoomPlan list" })
   vim.keymap.set("n", "<CR>", function()
     local row = vim.api.nvim_win_get_cursor(0)[1]
-    if opts.on_choose then
-      opts.on_choose(row, opts.items and opts.items[row] or nil)
-    end
+    if opts.on_choose then opts.on_choose(row, opts.items and opts.items[row] or nil) end
   end, { buffer = buf, silent = true, desc = "Choose RoomPlan list item" })
   return { bufnr = buf, winid = win }
 end

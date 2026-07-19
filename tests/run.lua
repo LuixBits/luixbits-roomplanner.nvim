@@ -9,8 +9,6 @@ vim.list_extend(specs, vim.fn.glob(root .. "/tests/integration/*_spec.lua", fals
 table.sort(specs)
 for _, path in ipairs(specs) do
   local ok, err = pcall(dofile, path)
-  if not ok then
-    error("failed loading " .. path .. ": " .. tostring(err), 0)
-  end
+  if not ok then error("failed loading " .. path .. ": " .. tostring(err), 0) end
 end
 harness.run()

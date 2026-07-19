@@ -85,33 +85,64 @@ describe("schema v3 wall-feature foundation", function()
   it("requires both v3 collections and validates their exact scalar contracts", function()
     local missing_windows = fixture("windows-outlets-v3.roomplan.json")
     missing_windows.windows = nil
-    expect_failure(function()
-      return schema_v3.normalize(missing_windows)
-    end, "SCHEMA_REQUIRED", "$.windows")
+    expect_failure(function() return schema_v3.normalize(missing_windows) end, "SCHEMA_REQUIRED", "$.windows")
 
     local cases = {
       { collection = "windows", key = "id", value = "door-wrong", code = "ID_PREFIX", path = "$.windows[1].id" },
-      { collection = "windows", key = "connects_to_room_id", value = "outlet-wrong", code = "ID_PREFIX",
-        path = "$.windows[1].connects_to_room_id" },
-      { collection = "windows", key = "offset_mm", value = -1, code = "SCHEMA_INTEGER_MIN",
-        path = "$.windows[1].offset_mm" },
-      { collection = "windows", key = "width_mm", value = 0, code = "SCHEMA_INTEGER_MIN",
-        path = "$.windows[1].width_mm" },
-      { collection = "outlets", key = "id", value = "window-wrong", code = "ID_PREFIX",
-        path = "$.outlets[1].id" },
-      { collection = "outlets", key = "outlet_type", value = "mains", code = "SCHEMA_ENUM",
-        path = "$.outlets[1].outlet_type" },
-      { collection = "outlets", key = "slots", value = 0, code = "SCHEMA_INTEGER_MIN",
-        path = "$.outlets[1].slots" },
-      { collection = "outlets", key = "slots", value = 33, code = "SCHEMA_INTEGER_MAX",
-        path = "$.outlets[1].slots" },
+      {
+        collection = "windows",
+        key = "connects_to_room_id",
+        value = "outlet-wrong",
+        code = "ID_PREFIX",
+        path = "$.windows[1].connects_to_room_id",
+      },
+      {
+        collection = "windows",
+        key = "offset_mm",
+        value = -1,
+        code = "SCHEMA_INTEGER_MIN",
+        path = "$.windows[1].offset_mm",
+      },
+      {
+        collection = "windows",
+        key = "width_mm",
+        value = 0,
+        code = "SCHEMA_INTEGER_MIN",
+        path = "$.windows[1].width_mm",
+      },
+      {
+        collection = "outlets",
+        key = "id",
+        value = "window-wrong",
+        code = "ID_PREFIX",
+        path = "$.outlets[1].id",
+      },
+      {
+        collection = "outlets",
+        key = "outlet_type",
+        value = "mains",
+        code = "SCHEMA_ENUM",
+        path = "$.outlets[1].outlet_type",
+      },
+      {
+        collection = "outlets",
+        key = "slots",
+        value = 0,
+        code = "SCHEMA_INTEGER_MIN",
+        path = "$.outlets[1].slots",
+      },
+      {
+        collection = "outlets",
+        key = "slots",
+        value = 33,
+        code = "SCHEMA_INTEGER_MAX",
+        path = "$.outlets[1].slots",
+      },
     }
     for _, case in ipairs(cases) do
       local document = fixture("windows-outlets-v3.roomplan.json")
       document[case.collection][1][case.key] = case.value
-      expect_failure(function()
-        return schema_v3.normalize(document)
-      end, case.code, case.path)
+      expect_failure(function() return schema_v3.normalize(document) end, case.code, case.path)
     end
   end)
 
@@ -138,15 +169,11 @@ describe("schema v3 wall-feature foundation", function()
   it("requires window and outlet part IDs to exist in the owner room", function()
     local window = fixture("windows-outlets-v3.roomplan.json")
     window.windows[1].part_id = "part-missing"
-    expect_failure(function()
-      return schema_v3.normalize(window)
-    end, "SCHEMA_WINDOW_PART", "$.windows[1].part_id")
+    expect_failure(function() return schema_v3.normalize(window) end, "SCHEMA_WINDOW_PART", "$.windows[1].part_id")
 
     local outlet = fixture("windows-outlets-v3.roomplan.json")
     outlet.outlets[1].part_id = "part-missing"
-    expect_failure(function()
-      return schema_v3.normalize(outlet)
-    end, "SCHEMA_OUTLET_PART", "$.outlets[1].part_id")
+    expect_failure(function() return schema_v3.normalize(outlet) end, "SCHEMA_OUTLET_PART", "$.outlets[1].part_id")
   end)
 
   it("indexes and generates globally reserved v3 IDs", function()
@@ -155,9 +182,7 @@ describe("schema v3 wall-feature foundation", function()
 
     local document = fixture("windows-outlets-v3.roomplan.json")
     document.windows[2] = json.deep_copy(document.windows[1])
-    expect_failure(function()
-      return schema_v3.normalize(document)
-    end, "ID_DUPLICATE", "$")
+    expect_failure(function() return schema_v3.normalize(document) end, "ID_DUPLICATE", "$")
   end)
 
   it("keeps v2 normalization immutable and migrates v2 to required empty collections", function()
@@ -198,9 +223,7 @@ describe("schema v3 wall-feature foundation", function()
       h.truthy(normalized_v2, vim.inspect(v2_info))
       h.truthy(json.deep_equal(document[field], normalized_v2[field]))
 
-      expect_failure(function()
-        return schema.migrate(document, 3)
-      end, "SCHEMA_MIGRATION_COLLISION", "$." .. field)
+      expect_failure(function() return schema.migrate(document, 3) end, "SCHEMA_MIGRATION_COLLISION", "$." .. field)
       h.truthy(json.deep_equal(original, document))
     end
   end)

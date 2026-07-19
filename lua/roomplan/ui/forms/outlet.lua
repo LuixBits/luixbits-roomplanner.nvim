@@ -9,8 +9,12 @@ local directions = require("roomplan.directions")
 local M = {}
 
 local type_labels = {
-  power = "Power", usb = "USB", ethernet = "Ethernet",
-  coax = "TV / coax", phone = "Phone", other = "Other",
+  power = "Power",
+  usb = "USB",
+  ethernet = "Ethernet",
+  coax = "TV / coax",
+  phone = "Phone",
+  other = "Other",
 }
 
 M.type_choices = {}
@@ -23,9 +27,7 @@ local function schema_version(context)
   return plan and plan.schema_version or 4
 end
 
-local function is_wall(draft)
-  return draft.placement ~= "floor"
-end
+local function is_wall(draft) return draft.placement ~= "floor" end
 
 local function room_centre(room)
   local shape = room and footprint.local_from_room(room) or nil
@@ -60,69 +62,136 @@ local function floor_position_error(draft, context)
   local position, err = floor_position(draft, context)
   if not position then return err.message end
   local shape = footprint.local_from_room(owner)
-  local inside = shape and footprint.contains_point2(
-    shape, 2 * position[1], 2 * position[2], { include_boundary = false }
-  ) or false
+  local inside = shape
+      and footprint.contains_point2(shape, 2 * position[1], 2 * position[2], { include_boundary = false })
+    or false
   if not inside then return "floor outlet must lie strictly inside the owner room" end
 end
 
 local function fields(editing)
   local result = {
-    { key = "room_id", label = "Owner room", type = "object_ref", required = true,
-      choices = function(ctx) return common.rooms(ctx) end },
-    { key = "placement", label = "Location", type = "enum", required = true, choices = {
-      { value = "wall", label = "On a wall" },
-      { value = "floor", label = "On the floor" },
-    } },
+    {
+      key = "room_id",
+      label = "Owner room",
+      type = "object_ref",
+      required = true,
+      choices = function(ctx) return common.rooms(ctx) end,
+    },
+    {
+      key = "placement",
+      label = "Location",
+      type = "enum",
+      required = true,
+      choices = {
+        { value = "wall", label = "On a wall" },
+        { value = "floor", label = "On the floor" },
+      },
+    },
     { key = "outlet_type", label = "Type", type = "enum", required = true, choices = M.type_choices },
     { key = "slots", label = "Slots", type = "integer", required = true, min = 1, max = 32 },
-    { key = "part_id", label = "Footprint part", type = "object_ref", required = true,
-      choices = wall.part_choices, visible = function(_, draft) return is_wall(draft) end },
-    { key = "side", label = "Wall", type = "enum", required = true, choices = wall.side_choices,
-      visible = function(_, draft) return is_wall(draft) end },
-    { key = "wall_positioning", label = "Wall position", type = "enum", required = true, choices = {
-      { value = "centre", label = "Wall centre" },
-      { value = "cursor", label = "At canvas cursor" },
-      { value = "exact", label = "Exact offset" },
-    }, visible = function(_, draft) return is_wall(draft) end },
-    { key = "offset_mm", label = "Offset", type = "measurement", allow_zero = true,
-      visible = function(_, draft) return is_wall(draft) and draft.wall_positioning == "exact" end },
-    { key = "resolved_offset", label = "Resolved offset", type = "readonly",
+    {
+      key = "part_id",
+      label = "Footprint part",
+      type = "object_ref",
+      required = true,
+      choices = wall.part_choices,
+      visible = function(_, draft) return is_wall(draft) end,
+    },
+    {
+      key = "side",
+      label = "Wall",
+      type = "enum",
+      required = true,
+      choices = wall.side_choices,
+      visible = function(_, draft) return is_wall(draft) end,
+    },
+    {
+      key = "wall_positioning",
+      label = "Wall position",
+      type = "enum",
+      required = true,
+      choices = {
+        { value = "centre", label = "Wall centre" },
+        { value = "cursor", label = "At canvas cursor" },
+        { value = "exact", label = "Exact offset" },
+      },
+      visible = function(_, draft) return is_wall(draft) end,
+    },
+    {
+      key = "offset_mm",
+      label = "Offset",
+      type = "measurement",
+      allow_zero = true,
+      visible = function(_, draft) return is_wall(draft) and draft.wall_positioning == "exact" end,
+    },
+    {
+      key = "resolved_offset",
+      label = "Resolved offset",
+      type = "readonly",
       visible = function(_, draft) return is_wall(draft) end,
       value = function(ctx, draft)
         local wall_draft = vim.tbl_extend("force", {}, draft, { placement = draft.wall_positioning })
         return wall.resolve_offset(wall_draft, ctx, 0)
       end,
-      format = function(value) return value and (tostring(value) .. " mm") or "unavailable" end },
-    { key = "floor_positioning", label = "Floor position", type = "enum", required = true, choices = {
-      { value = "centre", label = "Room centre" },
-      { value = "cursor", label = "At canvas cursor" },
-      { value = "exact", label = "Exact room-local coordinates" },
-    }, visible = function(_, draft) return not is_wall(draft) end },
-    { key = "local_x_mm", label = "Room-local X", type = "measurement", allow_negative = true, allow_zero = true,
-      visible = function(_, draft) return not is_wall(draft) and draft.floor_positioning == "exact" end },
-    { key = "local_y_mm", label = "Room-local Y", type = "measurement", allow_negative = true, allow_zero = true,
-      visible = function(_, draft) return not is_wall(draft) and draft.floor_positioning == "exact" end },
-    { key = "resolved_position", label = "Resolved position", type = "readonly",
+      format = function(value) return value and (tostring(value) .. " mm") or "unavailable" end,
+    },
+    {
+      key = "floor_positioning",
+      label = "Floor position",
+      type = "enum",
+      required = true,
+      choices = {
+        { value = "centre", label = "Room centre" },
+        { value = "cursor", label = "At canvas cursor" },
+        { value = "exact", label = "Exact room-local coordinates" },
+      },
+      visible = function(_, draft) return not is_wall(draft) end,
+    },
+    {
+      key = "local_x_mm",
+      label = "Room-local X",
+      type = "measurement",
+      allow_negative = true,
+      allow_zero = true,
+      visible = function(_, draft) return not is_wall(draft) and draft.floor_positioning == "exact" end,
+    },
+    {
+      key = "local_y_mm",
+      label = "Room-local Y",
+      type = "measurement",
+      allow_negative = true,
+      allow_zero = true,
+      visible = function(_, draft) return not is_wall(draft) and draft.floor_positioning == "exact" end,
+    },
+    {
+      key = "resolved_position",
+      label = "Resolved position",
+      type = "readonly",
       visible = function(_, draft) return not is_wall(draft) end,
       value = function(ctx, draft) return floor_position(draft, ctx) end,
-      format = function(value) return common.point_text(value) end },
+      format = function(value) return common.point_text(value) end,
+    },
   }
   if editing then
     result[#result + 1] = {
-      key = "summary", label = "Result", type = "readonly",
+      key = "summary",
+      label = "Result",
+      type = "readonly",
       value = function(_, draft)
-        return string.format("%s outlet · %d slot%s · %s", draft.outlet_type,
-          draft.slots, draft.slots == 1 and "" or "s", is_wall(draft) and "wall" or "floor")
+        return string.format(
+          "%s outlet · %d slot%s · %s",
+          draft.outlet_type,
+          draft.slots,
+          draft.slots == 1 and "" or "s",
+          is_wall(draft) and "wall" or "floor"
+        )
       end,
     }
   end
   return result
 end
 
-local function wall_draft(draft)
-  return vim.tbl_extend("force", {}, draft, { placement = draft.wall_positioning })
-end
+local function wall_draft(draft) return vim.tbl_extend("force", {}, draft, { placement = draft.wall_positioning }) end
 
 local function validate(draft, context, id)
   local errors = {}
@@ -143,7 +212,11 @@ local function validate(draft, context, id)
   local resolved = wall_draft(draft)
   local bounds = wall.bounds_error(resolved, context, 0, true)
   if bounds then
-    if draft.wall_positioning == "exact" then errors.offset_mm = bounds else errors.wall_positioning = bounds end
+    if draft.wall_positioning == "exact" then
+      errors.offset_mm = bounds
+    else
+      errors.wall_positioning = bounds
+    end
   end
   local exterior = wall.exterior_error(resolved, context, 0)
   if exterior then errors.side = exterior end
@@ -157,17 +230,23 @@ local function preview(draft, context)
   if is_wall(draft) then
     local offset, err = wall.resolve_offset(wall_draft(draft), context, 0)
     if offset == nil then return nil, err end
-    first = string.format("%s wall of %s: offset %d mm",
-      directions.label(draft.side, context), owner.name or owner.id, offset)
+    first = string.format(
+      "%s wall of %s: offset %d mm",
+      directions.label(draft.side, context),
+      owner.name or owner.id,
+      offset
+    )
   else
     local position, err = floor_position(draft, context)
     if not position then return nil, err end
     first = string.format("Floor of %s at %s", owner.name or owner.id, common.point_text(position))
   end
-  return { lines = {
-    first,
-    string.format("%s outlet · %d slot%s", draft.outlet_type, draft.slots, draft.slots == 1 and "" or "s"),
-  } }
+  return {
+    lines = {
+      first,
+      string.format("%s outlet · %d slot%s", draft.outlet_type, draft.slots, draft.slots == 1 and "" or "s"),
+    },
+  }
 end
 
 local function on_change(key, value, draft, _, context)

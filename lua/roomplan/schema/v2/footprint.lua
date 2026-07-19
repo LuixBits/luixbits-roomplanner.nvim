@@ -28,27 +28,21 @@ end
 
 local function normalize_part(context, source, path)
   local result = common.object(context, source, path)
-  if not result then
-    return nil
-  end
+  if not result then return nil end
   result.id = M.normalize_part_id(context, common.required(context, result, "id", path), path .. ".id")
   result.origin_mm = common.tuple(
     context,
     common.required(context, result, "origin_mm", path),
     path .. ".origin_mm",
     2,
-    function(value, item_path)
-      return common.coordinate(context, value, item_path)
-    end
+    function(value, item_path) return common.coordinate(context, value, item_path) end
   )
   result.size_mm = common.tuple(
     context,
     common.required(context, result, "size_mm", path),
     path .. ".size_mm",
     2,
-    function(value, item_path)
-      return common.dimension(context, value, item_path)
-    end
+    function(value, item_path) return common.dimension(context, value, item_path) end
   )
   return result
 end
@@ -56,9 +50,7 @@ end
 function M.normalize(context, source, path)
   local initial_error_count = #context.errors
   local result = common.object(context, source, path)
-  if not result then
-    return nil
-  end
+  if not result then return nil end
   local kind = common.required(context, result, "kind", path)
   if kind ~= geometry.KIND then
     common.add_error(
@@ -78,9 +70,7 @@ function M.normalize(context, source, path)
     normalize_part
   )
 
-  if #context.errors > initial_error_count or not result.parts then
-    return result
-  end
+  if #context.errors > initial_error_count or not result.parts then return result end
 
   if #result.parts > geometry.DEFAULT_MAX_PARTS then
     common.add_error(
@@ -108,24 +98,20 @@ function M.normalize(context, source, path)
 end
 
 function M.normalize_anchor(context, source, path)
-  return common.tuple(context, source, path, 2, function(value, item_path)
-    return doubled_coordinate(context, value, item_path)
-  end)
+  return common.tuple(
+    context,
+    source,
+    path,
+    2,
+    function(value, item_path) return doubled_coordinate(context, value, item_path) end
+  )
 end
 
 function M.validate_anchor(context, anchor, runtime, path)
-  if not anchor or not runtime or type(anchor[1]) ~= "number" or type(anchor[2]) ~= "number" then
-    return
-  end
+  if not anchor or not runtime or type(anchor[1]) ~= "number" or type(anchor[2]) ~= "number" then return end
   local contained, containment_error = geometry.contains_point2(runtime, anchor[1], anchor[2])
   if contained == false then
-    common.add_error(
-      context,
-      "SCHEMA_ANCHOR_OUTSIDE",
-      path,
-      "anchor must lie on or inside its footprint",
-      anchor
-    )
+    common.add_error(context, "SCHEMA_ANCHOR_OUTSIDE", path, "anchor must lie on or inside its footprint", anchor)
   elseif contained == nil then
     common.add_error(
       context,

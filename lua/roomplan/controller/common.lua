@@ -8,9 +8,7 @@ local util = require("roomplan.util")
 local M = {}
 
 function M.message(err)
-  if type(err) == "table" then
-    return err.message or err.code or vim.inspect(err)
-  end
+  if type(err) == "table" then return err.message or err.code or vim.inspect(err) end
   return tostring(err)
 end
 
@@ -24,9 +22,7 @@ function M.finish(callback, value, err)
   return value, err
 end
 
-function M.is_session(value)
-  return type(value) == "table" and value.history and value.source and value.id
-end
+function M.is_session(value) return type(value) == "table" and value.history and value.source and value.id end
 
 function M.interactive_call(session, opts)
   return M.is_session(session) or (opts and (opts.interactive == true or opts.fargs ~= nil))
@@ -86,7 +82,8 @@ function M.open_canvas(controller, session)
       if workspace_ok and session.workspace then
         local world = canvas.world_at_cursor(session)
         local canvas_config = config.get().canvas
-        local zoom = session.viewport and session.viewport.mm_per_column
+        local zoom = session.viewport
+            and session.viewport.mm_per_column
             and canvas_config.mm_per_column / session.viewport.mm_per_column
           or 1
         workspace.update_cursor(session, world, zoom)
@@ -113,15 +110,11 @@ function M.open_canvas(controller, session)
   local mounted_ok, mounted = pcall(workspace.mount, session, {
     on_form_action = function(active_session, action)
       local handle = active_session and active_session.form
-      if not handle then
-        return nil, util.err("FORM_UNAVAILABLE", "no structured RoomPlan form is active")
-      end
+      if not handle then return nil, util.err("FORM_UNAVAILABLE", "no structured RoomPlan form is active") end
       return require("roomplan.ui.form").perform(handle, action)
     end,
   })
-  if not mounted_ok then
-    return nil, util.err("WORKSPACE_OPEN_FAILED", tostring(mounted), { cause = mounted })
-  end
+  if not mounted_ok then return nil, util.err("WORKSPACE_OPEN_FAILED", tostring(mounted), { cause = mounted }) end
   workspace.set_interaction(session, session.mode or "NAV", session.form)
   canvas.redraw(opened, nil, nil, { reason = "workspace-mounted" })
   return session

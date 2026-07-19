@@ -61,13 +61,15 @@ describe("state and flows", function()
       assert_equal(selection_index, 2)
 
       local confirmed
-      assert(require("roomplan.ui.prompts").confirm(
-        session,
-        "confirm",
-        "Continue?",
-        { "Continue", "Cancel" },
-        function(choice) confirmed = choice end
-      ))
+      assert(
+        require("roomplan.ui.prompts").confirm(
+          session,
+          "confirm",
+          "Continue?",
+          { "Continue", "Cancel" },
+          function(choice) confirmed = choice end
+        )
+      )
       assert_equal(select_options.kind, "roomplan_confirmation")
       select_done("Continue", 1)
       assert_equal(confirmed, "Continue")

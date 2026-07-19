@@ -7,28 +7,49 @@ local form_state = require("roomplan.ui.form.state")
 local model = require("roomplan.model")
 
 local function line_contains(lines, needle)
-  for _, line in ipairs(lines) do if line:find(needle, 1, true) then return true end end
+  for _, line in ipairs(lines) do
+    if line:find(needle, 1, true) then return true end
+  end
   return false
 end
 
 local function plan_session()
   local plan = h.truthy(model.new({ name = "Form test" }))
   plan.rooms[1] = model.new_room({
-    id = "room-living", name = "Living", origin_mm = { 0, 0 }, size_mm = { 5000, 4000 },
+    id = "room-living",
+    name = "Living",
+    origin_mm = { 0, 0 },
+    size_mm = { 5000, 4000 },
   })
   plan.rooms[2] = model.new_room({
-    id = "room-bedroom", name = "Bedroom", origin_mm = { 5000, 0 }, size_mm = { 3000, 3000 },
+    id = "room-bedroom",
+    name = "Bedroom",
+    origin_mm = { 5000, 0 },
+    size_mm = { 3000, 3000 },
   })
   plan.furniture[1] = model.new_furniture({
-    id = "furniture-sofa", room_id = "room-living", template_id = "builtin:sofa",
-    name = "Sofa", category = "seating", position_mm = { 2500, 2000 }, size_mm = { 2100, 900, 850 },
+    id = "furniture-sofa",
+    room_id = "room-living",
+    template_id = "builtin:sofa",
+    name = "Sofa",
+    category = "seating",
+    position_mm = { 2500, 2000 },
+    size_mm = { 2100, 900, 850 },
   })
   plan.doors[1] = model.new_door({
-    id = "door-living-east", room_id = "room-living", connects_to_room_id = "room-bedroom",
-    side = "east", offset_mm = 1000, width_mm = 900, hinge = "start", opens_into = "connected",
+    id = "door-living-east",
+    room_id = "room-living",
+    connects_to_room_id = "room-bedroom",
+    side = "east",
+    offset_mm = 1000,
+    width_mm = 900,
+    hinge = "start",
+    opens_into = "connected",
   })
   plan.custom_templates[1] = model.new_custom_template({
-    id = "custom:desk", name = "My desk", category = "work",
+    id = "custom:desk",
+    name = "My desk",
+    category = "work",
     default_size_mm = { 1600, 800, 740 },
   })
   local revision = 1
@@ -53,8 +74,13 @@ describe("structured forms", function()
       mode = "TEST",
       apply_label = "Use values",
       initial = {
-        name = "Desk", width = 1000, count = 2, kind = "simple",
-        room = "room-a", enabled = false, detail = "",
+        name = "Desk",
+        width = 1000,
+        count = 2,
+        kind = "simple",
+        room = "room-a",
+        enabled = false,
+        detail = "",
       },
       fields = {
         { key = "name", label = "Name", type = "text", required = true },
@@ -62,19 +88,33 @@ describe("structured forms", function()
         { key = "count", label = "Count", type = "integer", min = 1, max = 4 },
         { key = "kind", label = "Kind", type = "enum", choices = { "simple", "detailed" } },
         {
-          key = "room", label = "Room", type = "object_ref",
+          key = "room",
+          label = "Room",
+          type = "object_ref",
           choices = { { value = "room-a", label = "Room A" }, { value = "room-b", label = "Room B" } },
         },
         { key = "enabled", label = "Enabled", type = "toggle" },
         {
-          key = "detail", label = "Detail", type = "text", required = true,
+          key = "detail",
+          label = "Detail",
+          type = "text",
+          required = true,
           visible = function(_, draft) return draft.kind == "detailed" end,
         },
         {
-          key = "edit_shape", label = "Footprint", type = "action",
-          action = "edit_shape", action_label = "Edit sections", value = "Edit sections on canvas…",
+          key = "edit_shape",
+          label = "Footprint",
+          type = "action",
+          action = "edit_shape",
+          action_label = "Edit sections",
+          value = "Edit sections on canvas…",
         },
-        { key = "summary", label = "Summary", type = "readonly", value = function(_, draft) return draft.name .. " x" .. draft.count end },
+        {
+          key = "summary",
+          label = "Summary",
+          type = "readonly",
+          value = function(_, draft) return draft.name .. " x" .. draft.count end,
+        },
       },
       preview = function(draft) return { lines = { "Width is " .. draft.width .. " mm" } } end,
     }
@@ -108,7 +148,8 @@ describe("structured forms", function()
     h.eq(90, h.truthy(fields.parse(integer, "90", {}, {}, {})))
     h.falsy(fields.parse(integer, "90.5", {}, {}, {}))
     local reference = {
-      key = "room", type = "object_ref",
+      key = "room",
+      type = "object_ref",
       choices = { { id = "room-a", name = "Living" } },
     }
     h.eq("room-a", h.truthy(fields.parse(reference, "room-a", {}, {}, {})))
@@ -122,7 +163,12 @@ describe("structured forms", function()
     local forms = require("roomplan.ui.forms")
 
     local room_spec = forms.room.add(session, {
-      name = "Office", color = "#98C379", width_mm = 2500, depth_mm = 2000, placement = "origin", force = true,
+      name = "Office",
+      color = "#98C379",
+      width_mm = 2500,
+      depth_mm = 2000,
+      placement = "origin",
+      force = true,
     })
     h.eq("ROOM CREATE", room_spec.mode)
     h.eq("roomplan_color", room_spec.fields[2].kind)
@@ -136,11 +182,15 @@ describe("structured forms", function()
     h.eq(true, room_action.force)
 
     local furniture_spec = forms.furniture.add(session, {
-      room_id = "room-living", template_id = "builtin:sofa", placement = "centre", color = "#C678DD",
+      room_id = "room-living",
+      template_id = "builtin:sofa",
+      placement = "centre",
+      color = "#C678DD",
     })
     h.eq("FURNITURE CREATE", furniture_spec.mode)
     h.eq("roomplan_color", furniture_spec.fields[4].kind)
-    local furniture_state, furniture_valid = form_state.validate_all(form_state.new(furniture_spec, furniture_spec.context))
+    local furniture_state, furniture_valid =
+      form_state.validate_all(form_state.new(furniture_spec, furniture_spec.context))
     h.truthy(furniture_valid, vim.inspect(furniture_state.errors))
     local furniture_action = h.truthy(furniture_spec.build(furniture_state.draft, furniture_spec.context))
     h.eq("add_furniture", furniture_action.type)
@@ -157,8 +207,12 @@ describe("structured forms", function()
     h.eq(1, #plan.furniture, "building a form preview must not mutate the plan")
 
     local door_spec = forms.door.add(session, {
-      room_id = "room-living", side = "east", width_mm = 900,
-      placement = "exact", offset_mm = 1000, connects_to_room_id = "room-bedroom",
+      room_id = "room-living",
+      side = "east",
+      width_mm = 900,
+      placement = "exact",
+      offset_mm = 1000,
+      connects_to_room_id = "room-bedroom",
       opens_into = "connected",
     })
     h.eq("DOOR CREATE", door_spec.mode)
@@ -170,11 +224,15 @@ describe("structured forms", function()
     h.eq(1000, door_action.door.offset_mm)
 
     local alignment_spec = forms.alignment.new(session, {
-      moving_room_id = "room-bedroom", reference_room_id = "room-living", operation = "place_north", gap_mm = 100,
+      moving_room_id = "room-bedroom",
+      reference_room_id = "room-living",
+      operation = "place_north",
+      gap_mm = 100,
       force = true,
     })
     h.eq("ROOM ALIGN", alignment_spec.mode)
-    local alignment_state, alignment_valid = form_state.validate_all(form_state.new(alignment_spec, alignment_spec.context))
+    local alignment_state, alignment_valid =
+      form_state.validate_all(form_state.new(alignment_spec, alignment_spec.context))
     h.truthy(alignment_valid, vim.inspect(alignment_state.errors))
     local alignment_action = h.truthy(alignment_spec.build(alignment_state.draft, alignment_spec.context))
     h.eq("align_room", alignment_action.type)
@@ -213,9 +271,11 @@ describe("structured forms", function()
 
     local furniture_spec = forms.furniture.edit(session, plan.furniture[1])
     h.eq("FURNITURE EDIT", furniture_spec.mode)
-    local furniture_state, furniture_valid = form_state.validate_all(form_state.new(furniture_spec, furniture_spec.context))
+    local furniture_state, furniture_valid =
+      form_state.validate_all(form_state.new(furniture_spec, furniture_spec.context))
     h.truthy(furniture_valid, vim.inspect(furniture_state.errors))
-    furniture_state = form_state.reduce(furniture_state, { type = "set_value", key = "template_id", value = "builtin:desk" })
+    furniture_state =
+      form_state.reduce(furniture_state, { type = "set_value", key = "template_id", value = "builtin:desk" })
     furniture_state = form_state.reduce(furniture_state, { type = "set_value", key = "color", value = "#E06C75" })
     -- Changing template metadata must retain explicit dimensions while editing.
     h.eq(2100, furniture_state.draft.width_mm)
@@ -264,14 +324,26 @@ describe("structured forms", function()
         { key = "size", label = "Size", type = "measurement" },
         { key = "choice", label = "Choice", type = "enum", choices = { "one", "two" } },
         { key = "enabled", label = "Enabled", type = "toggle" },
-        { key = "shape", label = "Footprint", type = "action", action = "edit_shape", value = "Edit sections on canvas…" },
+        {
+          key = "shape",
+          label = "Footprint",
+          type = "action",
+          action = "edit_shape",
+          value = "Edit sections on canvas…",
+        },
         { key = "summary", label = "Summary", type = "readonly", value = function(_, draft) return draft.name end },
       },
     }
     local handle = h.truthy(form.open(session, spec, {
-      on_submit = function(draft) submitted = draft; return { committed = true } end,
+      on_submit = function(draft)
+        submitted = draft
+        return { committed = true }
+      end,
       on_cancel = function(reason) cancelled = reason end,
-      on_action = function(action) opened_action = action; return true end,
+      on_action = function(action)
+        opened_action = action
+        return true
+      end,
     }))
     h.truthy(vim.api.nvim_win_is_valid(handle.winid))
     local lines = vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false)
@@ -281,14 +353,14 @@ describe("structured forms", function()
     h.truthy(line_contains(lines, "Choice"))
     h.truthy(line_contains(lines, "Edit sections on canvas"))
     h.truthy(line_contains(lines, "Summary"))
-    local help_mapping = vim.api.nvim_buf_call(handle.bufnr, function()
-      return vim.fn.maparg("?", "n", false, true)
-    end)
+    local help_mapping = vim.api.nvim_buf_call(handle.bufnr, function() return vim.fn.maparg("?", "n", false, true) end)
     h.eq("Open RoomPlan form actions", help_mapping.desc)
 
     local original_input = vim.ui.input
     local pending, input_options
-    vim.ui.input = function(opts, callback) input_options, pending = opts, callback end
+    vim.ui.input = function(opts, callback)
+      input_options, pending = opts, callback
+    end
     h.truthy(form.activate(handle, "name"))
     h.truthy(form.edit(handle))
     h.eq("window", input_options.scope)
@@ -355,16 +427,17 @@ describe("structured forms", function()
   it("shows a live furniture silhouette beside the form with a compact fallback", function()
     local session = plan_session()
     local spec = require("roomplan.ui.forms").furniture.add(session, {
-      room_id = "room-living", template_id = "builtin:sofa", placement = "centre", color = "#C678DD",
+      room_id = "room-living",
+      template_id = "builtin:sofa",
+      placement = "centre",
+      color = "#C678DD",
     })
     local original_columns = vim.o.columns
     vim.o.columns = 100
     local handle = h.truthy(form.open(session, spec, {}))
     h.truthy(handle.preview_winid and vim.api.nvim_win_is_valid(handle.preview_winid))
     h.eq(handle.winid, vim.api.nvim_get_current_win())
-    local next_choice = vim.api.nvim_buf_call(handle.bufnr, function()
-      return vim.fn.maparg("l", "n", false, true)
-    end)
+    local next_choice = vim.api.nvim_buf_call(handle.bufnr, function() return vim.fn.maparg("l", "n", false, true) end)
     h.eq("Next RoomPlan form choice", next_choice.desc)
     vim.api.nvim_feedkeys("l", "x", false)
     h.eq(handle.winid, vim.api.nvim_get_current_win())
@@ -392,7 +465,9 @@ describe("structured forms", function()
   it("rejects late scalar callbacks and Apply after the model revision changes", function()
     local session = plan_session()
     local spec = {
-      id = "revision-test", title = "Revision guard", initial = { name = "Original" },
+      id = "revision-test",
+      title = "Revision guard",
+      initial = { name = "Original" },
       fields = { { key = "name", label = "Name", type = "text" } },
     }
     local handle = h.truthy(form.open(session, spec, {}))

@@ -3,16 +3,12 @@ local util = require("roomplan.util")
 local M = {}
 
 local function close(fd)
-  if fd then
-    return vim.uv.fs_close(fd)
-  end
+  if fd then return vim.uv.fs_close(fd) end
   return true
 end
 
 local function cleanup(path)
-  if path then
-    pcall(vim.uv.fs_unlink, path)
-  end
+  if path then pcall(vim.uv.fs_unlink, path) end
 end
 
 local function result_error(code, message, path, extra)
@@ -26,9 +22,7 @@ function M.write_new(path, data, opts)
   if type(path) ~= "string" or path == "" then
     return result_error("ATOMIC_PATH_INVALID", "expected a non-empty path", path)
   end
-  if vim.uv.fs_lstat(path) then
-    return result_error("ATOMIC_TARGET_EXISTS", "target already exists", path)
-  end
+  if vim.uv.fs_lstat(path) then return result_error("ATOMIC_TARGET_EXISTS", "target already exists", path) end
   local parent = vim.fs.dirname(path)
   local parent_stat = vim.uv.fs_stat(parent)
   if not parent_stat or parent_stat.type ~= "directory" then
@@ -40,13 +34,9 @@ function M.write_new(path, data, opts)
   for attempt = 1, 100 do
     temp = string.format("%s/.%s.roomplan-tmp-%d-%d", parent, vim.fs.basename(path), vim.uv.os_getpid(), attempt)
     fd = vim.uv.fs_open(temp, "wx", opts.mode or 420)
-    if fd then
-      break
-    end
+    if fd then break end
   end
-  if not fd then
-    return result_error("ATOMIC_TEMP_CREATE_FAILED", "could not create exclusive temporary file", path)
-  end
+  if not fd then return result_error("ATOMIC_TEMP_CREATE_FAILED", "could not create exclusive temporary file", path) end
 
   local offset = 0
   while offset < #data do
@@ -88,7 +78,12 @@ function M.write_new(path, data, opts)
   end
   local unlinked, unlink_err = vim.uv.fs_unlink(temp)
   if not unlinked then
-    return result_error("ATOMIC_TEMP_CLEANUP_FAILED", tostring(unlink_err), path, { temp = temp, target_created = true })
+    return result_error(
+      "ATOMIC_TEMP_CLEANUP_FAILED",
+      tostring(unlink_err),
+      path,
+      { temp = temp, target_created = true }
+    )
   end
 
   local dir_fd = vim.uv.fs_open(parent, "r", 438)

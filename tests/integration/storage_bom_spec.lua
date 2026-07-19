@@ -22,20 +22,18 @@ local function write_bytes(path, bytes)
 end
 
 local function cleanup()
-  for _, session in ipairs(state.list()) do session:destroy({ force = true }) end
+  for _, session in ipairs(state.list()) do
+    session:destroy({ force = true })
+  end
   for _, path in ipairs(temporary) do
     local bufnr = vim.fn.bufnr(path)
-    if bufnr ~= -1 and vim.api.nvim_buf_is_valid(bufnr) then
-      pcall(vim.api.nvim_buf_delete, bufnr, { force = true })
-    end
+    if bufnr ~= -1 and vim.api.nvim_buf_is_valid(bufnr) then pcall(vim.api.nvim_buf_delete, bufnr, { force = true }) end
     pcall(vim.uv.fs_unlink, path)
   end
   temporary = {}
 end
 
-local function crlf(text)
-  return text:gsub("\n", "\r\n")
-end
+local function crlf(text) return text:gsub("\n", "\r\n") end
 
 local function assert_bom_crlf(bytes)
   h.eq(BOM, bytes:sub(1, #BOM))

@@ -37,9 +37,7 @@ end
 
 local function report_runtime(health)
   local runtime = _VERSION
-  if type(jit) == "table" and type(jit.version) == "string" then
-    runtime = runtime .. " / " .. jit.version
-  end
+  if type(jit) == "table" and type(jit.version) == "string" then runtime = runtime .. " / " .. jit.version end
   health.info("Lua runtime: " .. runtime .. " (RoomPlan uses Lua 5.1-compatible syntax)")
   if vim.uv and type(vim.uv.hrtime) == "function" then
     health.ok("vim.uv runtime is available")
@@ -100,18 +98,22 @@ local function report_glyphs(health, effective)
   end
 
   local resolved, fallback_reason = glyph_module.resolve(requested, custom, width_of)
-  health.info(string.format(
-    "canvas glyph mode: requested=%s, effective=%s%s",
-    tostring(requested),
-    tostring(resolved.mode),
-    custom ~= nil and " (custom set configured)" or ""
-  ))
+  health.info(
+    string.format(
+      "canvas glyph mode: requested=%s, effective=%s%s",
+      tostring(requested),
+      tostring(resolved.mode),
+      custom ~= nil and " (custom set configured)" or ""
+    )
+  )
 
   local failures = glyph_failures(candidate)
   if #failures == 0 then
     health.ok("all configured canvas glyphs occupy one display cell")
   else
-    for _, failure in ipairs(failures) do health.warn(failure) end
+    for _, failure in ipairs(failures) do
+      health.warn(failure)
+    end
     health.warn("invalid glyph set falls back atomically to ASCII: " .. tostring(fallback_reason))
   end
 
@@ -139,7 +141,9 @@ local function report_keymaps(health, effective)
 
   local overrides = type(keymaps.mappings) == "table" and keymaps.mappings or {}
   local names = {}
-  for name in pairs(overrides) do names[#names + 1] = name end
+  for name in pairs(overrides) do
+    names[#names + 1] = name
+  end
   table.sort(names)
   local disabled = 0
   local lhs_owners = {}
@@ -181,11 +185,15 @@ local function report_configuration(health, effective)
   local sun = type(effective.sun_study) == "table" and effective.sun_study or {}
   local windows = type(sun.window_defaults) == "table" and sun.window_defaults or {}
   local playback = type(sun.playback) == "table" and sun.playback or {}
-  health.info(string.format(
-    "sun study defaults: sill/head=%s/%s mm, step=%s min, frame=%s ms",
-    tostring(windows.sill_height_mm), tostring(windows.head_height_mm),
-    tostring(playback.step_minutes), tostring(playback.frame_duration_ms)
-  ))
+  health.info(
+    string.format(
+      "sun study defaults: sill/head=%s/%s mm, step=%s min, frame=%s ms",
+      tostring(windows.sill_height_mm),
+      tostring(windows.head_height_mm),
+      tostring(playback.step_minutes),
+      tostring(playback.frame_duration_ms)
+    )
+  )
 end
 
 local function discover_neorg_version(neorg)
@@ -290,7 +298,9 @@ local function report_path_hint(health, path, detached)
     elseif stat then
       health.warn("detached atomic creation requires a new destination; this path already exists")
     else
-      health.warn("same-directory atomic creation is unlikely to succeed because the parent is not writable: " .. parent)
+      health.warn(
+        "same-directory atomic creation is unlikely to succeed because the parent is not writable: " .. parent
+      )
     end
   end
 end
@@ -309,12 +319,14 @@ local function report_source(health, session)
     local fileencoding = (vim.bo[bufnr].fileencoding or ""):lower()
     local encoding = fileencoding == "" and "utf-8 (editor default)" or fileencoding
     local fileformat = vim.bo[bufnr].fileformat
-    health.info(string.format(
-      "source buffer format: fileencoding=%s, fileformat=%s, BOM=%s",
-      encoding,
-      fileformat,
-      vim.bo[bufnr].bomb and "yes" or "no"
-    ))
+    health.info(
+      string.format(
+        "source buffer format: fileencoding=%s, fileformat=%s, BOM=%s",
+        encoding,
+        fileformat,
+        vim.bo[bufnr].bomb and "yes" or "no"
+      )
+    )
     if fileencoding ~= "" and fileencoding ~= "utf-8" and fileencoding ~= "utf8" then
       health.warn("in-place RoomPlan save requires UTF-8; use Save As for this source")
     elseif fileformat ~= "unix" then
@@ -338,13 +350,15 @@ local function report_sessions(health)
   health.info(string.format("active sessions: %d", #sessions))
   for _, session in ipairs(sessions) do
     local source = type(session.source) == "table" and session.source or {}
-    health.info(string.format(
-      "%s: adapter=%s, source=%s [%s]",
-      tostring(session.id or "<unknown>"),
-      tostring(source.adapter or "unknown"),
-      source_label(source),
-      table.concat(session_flags(session), ",")
-    ))
+    health.info(
+      string.format(
+        "%s: adapter=%s, source=%s [%s]",
+        tostring(session.id or "<unknown>"),
+        tostring(source.adapter or "unknown"),
+        source_label(source),
+        table.concat(session_flags(session), ",")
+      )
+    )
   end
 
   local current = current_session(sessions)
@@ -369,10 +383,15 @@ local function report_window(health, effective)
     + (tonumber(canvas.header_lines) or 1)
     + (tonumber(workspace.footer_height) or 1)
   if width < minimum_width or height < minimum_height then
-    health.warn(string.format(
-      "current window is %dx%d; below the useful canvas hint of %dx%d, so RoomPlan will use a compact/degraded layout",
-      width, height, minimum_width, minimum_height
-    ))
+    health.warn(
+      string.format(
+        "current window is %dx%d; below the useful canvas hint of %dx%d, so RoomPlan will use a compact/degraded layout",
+        width,
+        height,
+        minimum_width,
+        minimum_height
+      )
+    )
   else
     health.ok(string.format("current window %dx%d can host the configured minimum canvas", width, height))
   end

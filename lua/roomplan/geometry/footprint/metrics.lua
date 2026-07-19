@@ -113,9 +113,7 @@ local function boundary_contributions(normalized)
   local lines = { x = {}, y = {} }
   local function add(axis, fixed2, start2, finish2, side, part, part_index)
     local axis_lines = lines[axis]
-    if not axis_lines[fixed2] then
-      axis_lines[fixed2] = { axis = axis, fixed2 = fixed2, contributions = {} }
-    end
+    if not axis_lines[fixed2] then axis_lines[fixed2] = { axis = axis, fixed2 = fixed2, contributions = {} } end
     axis_lines[fixed2].contributions[#axis_lines[fixed2].contributions + 1] = {
       start2 = start2,
       finish2 = finish2,
@@ -132,7 +130,9 @@ local function boundary_contributions(normalized)
   end
   local result = {}
   for _, axis in ipairs({ "x", "y" }) do
-    for _, line in pairs(lines[axis]) do result[#result + 1] = line end
+    for _, line in pairs(lines[axis]) do
+      result[#result + 1] = line
+    end
   end
   table.sort(result, function(left, right)
     if left.axis ~= right.axis then return left.axis < right.axis end
@@ -172,7 +172,10 @@ function M.boundary2(value)
         for _, contribution in ipairs(line.contributions) do
           if contribution.start2 <= start2 and contribution.finish2 >= finish2 then
             local bucket = sides[contribution.side]
-            if not bucket then bucket = {}; sides[contribution.side] = bucket end
+            if not bucket then
+              bucket = {}
+              sides[contribution.side] = bucket
+            end
             bucket[#bucket + 1] = contribution.part_id
           end
         end
@@ -193,8 +196,12 @@ function M.boundary2(value)
             previous.finish2 = finish2
             previous.length2 = length2
             local seen = {}
-            for _, id in ipairs(previous.part_ids) do seen[id] = true end
-            for _, id in ipairs(ids) do append_part_id(previous.part_ids, seen, id) end
+            for _, id in ipairs(previous.part_ids) do
+              seen[id] = true
+            end
+            for _, id in ipairs(ids) do
+              append_part_id(previous.part_ids, seen, id)
+            end
             table.sort(previous.part_ids)
             segment_coordinates(previous)
           else
@@ -215,7 +222,9 @@ function M.boundary2(value)
         end
       end
     end
-    for _, segment in ipairs(line_segments) do result[#result + 1] = segment end
+    for _, segment in ipairs(line_segments) do
+      result[#result + 1] = segment
+    end
   end
   return result
 end
@@ -267,7 +276,10 @@ function M.hit_test2(value, x2, y2, options)
     local part = normalized.parts[index]
     local on_boundary = x2 == part.left2 or x2 == part.right2 or y2 == part.bottom2 or y2 == part.top2
     local inside = include_boundary
-        and x2 >= part.left2 and x2 <= part.right2 and y2 >= part.bottom2 and y2 <= part.top2
+        and x2 >= part.left2
+        and x2 <= part.right2
+        and y2 >= part.bottom2
+        and y2 <= part.top2
       or x2 > part.left2 and x2 < part.right2 and y2 > part.bottom2 and y2 < part.top2
     if inside then
       result[#result + 1] = {
@@ -312,8 +324,10 @@ function M.label_anchor2(value)
     local area, area_error = internal.safe_product(width2, depth2, "label anchor")
     if not area then return nil, area_error end
     local id = core.part_id(part, index)
-    if not best or area > best_area or (area == best_area and (id < best.part_id
-      or (id == best.part_id and index < best.part_index)))
+    if
+      not best
+      or area > best_area
+      or (area == best_area and (id < best.part_id or (id == best.part_id and index < best.part_index)))
     then
       local x2, x_error = internal.checked_midpoint(part.left2, part.right2, "label-anchor X midpoint")
       if x2 == nil then return nil, x_error end

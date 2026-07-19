@@ -68,9 +68,8 @@ local function create_buffer(session, workspace, role)
   configure_buffer(bufnr, role)
   pcall(vim.api.nvim_buf_set_name, bufnr, string.format("roomplan://workspace/%s/%s", session.id, role))
   workspace.buffers[role] = bufnr
-  workspace.namespaces[role] = vim.api.nvim_create_namespace(
-    string.format("roomplan-workspace-%s-%s", tostring(session.id), role)
-  )
+  workspace.namespaces[role] =
+    vim.api.nvim_create_namespace(string.format("roomplan-workspace-%s-%s", tostring(session.id), role))
   state.attach_buffer(session, bufnr, "workspace-" .. role)
   return bufnr
 end
@@ -106,8 +105,10 @@ local function panel_height(workspace, role)
   end
   local panes = workspace.layout and workspace.layout.panes or {}
   if role == "action_bar" then return (panes.footer and panes.footer.height) or 2 end
-  return (panes.left and panes.left.height) or (panes.properties and panes.properties.height)
-    or (panes.drawer and panes.drawer.height) or math.max(8, vim.o.lines - 4)
+  return (panes.left and panes.left.height)
+    or (panes.properties and panes.properties.height)
+    or (panes.drawer and panes.drawer.height)
+    or math.max(8, vim.o.lines - 4)
 end
 
 function M.selected_row(session, role)
@@ -115,7 +116,8 @@ function M.selected_row(session, role)
   if not workspace or not workspace.rendered or not workspace.layout then return nil end
   local rendered = workspace.rendered[role]
   local winid = workspace.layout.kind == "compact" and workspace.windows.drawer
-    or role == "properties" and workspace.windows.properties or workspace.windows.left
+    or role == "properties" and workspace.windows.properties
+    or workspace.windows.left
   if not rendered or not util.valid_window(winid) then return nil end
   local line = vim.api.nvim_win_get_cursor(winid)[1]
   return rendered.row_map and rendered.row_map[line]
@@ -138,9 +140,7 @@ function M.context(session, workspace)
   ctx.marked_move_unsupported = #unsupported
   ctx.marked_duplicate_unsupported = 0
   for _, reference in ipairs(ctx.marked) do
-    if reference.kind == "door" then
-      ctx.marked_duplicate_unsupported = ctx.marked_duplicate_unsupported + 1
-    end
+    if reference.kind == "door" then ctx.marked_duplicate_unsupported = ctx.marked_duplicate_unsupported + 1 end
   end
   ctx.keymaps = require("roomplan.config").get().keymaps
   ctx.form = workspace and workspace.state.form or nil
@@ -188,9 +188,7 @@ local function render_one(session, workspace, role)
     local view = presenter.properties(session)
     view.context_title = action_registry.context_title(control_ctx)
     view.controls = action_registry.context_controls(control_ctx)
-    view.controls_note = ctx.focus == "properties"
-      and "Press 2 to use canvas controls · Enter toggles sections"
-      or nil
+    view.controls_note = ctx.focus == "properties" and "Press 2 to use canvas controls · Enter toggles sections" or nil
     rendered = properties_panel.render(view, width, height, {
       collapsed_sections = workspace.state.collapsed_sections,
       ascii = workspace.opts.ascii,
@@ -210,7 +208,9 @@ function M.refresh(session, requested_roles)
   if not workspace or workspace.closed then return false end
   requested_roles = requested_roles or roles
   if type(requested_roles) == "string" then requested_roles = { requested_roles } end
-  for _, role in ipairs(requested_roles) do render_one(session, workspace, role) end
+  for _, role in ipairs(requested_roles) do
+    render_one(session, workspace, role)
+  end
   return true
 end
 

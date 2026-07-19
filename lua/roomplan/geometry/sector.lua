@@ -5,13 +5,9 @@ local M = {}
 local pi = math.pi
 local two_pi = 2 * pi
 
-local function point(x, y)
-  return { x = x, y = y, [1] = x, [2] = y }
-end
+local function point(x, y) return { x = x, y = y, [1] = x, [2] = y } end
 
-local function xy(value)
-  return value.x or value[1], value.y or value[2]
-end
+local function xy(value) return value.x or value[1], value.y or value[2] end
 
 local function atan2(y, x)
   if x > 0 then return math.atan(y / x) end
@@ -57,7 +53,6 @@ local function vector_from_hinge(sector, endpoint, stored)
   return ex - hx, ey - hy
 end
 
-
 -- Translate a sector to a small local coordinate frame. Collision predicates
 -- use this instead of subtracting already-rounded world-space trig endpoints,
 -- which keeps results stable near the schema's large-coordinate ceiling.
@@ -90,7 +85,9 @@ end
 local function translated_options(options, origin_x, origin_y)
   local result = {}
   local key, value
-  for key, value in pairs(options or {}) do result[key] = value end
+  for key, value in pairs(options or {}) do
+    result[key] = value
+  end
   if options and options.exclude_points then
     result.exclude_points = {}
     local i
@@ -187,9 +184,7 @@ function M.circle_segment_intersections(center, radius, a, b)
   local i
   for i = 1, #values do
     local t = values[i]
-    if t >= -epsilon and t <= 1 + epsilon then
-      result[#result + 1] = point(cx + ax + t * dx, cy + ay + t * dy)
-    end
+    if t >= -epsilon and t <= 1 + epsilon then result[#result + 1] = point(cx + ax + t * dx, cy + ay + t * dy) end
   end
   return result
 end
@@ -200,25 +195,35 @@ function M.intersects_segment(sector, a, b, options)
   options = options or {}
   if not sector._local then
     local hx, hy = xy(sector.hinge)
-    return M.intersects_segment(M.localize(sector, hx, hy), translated_point(a, hx, hy),
-      translated_point(b, hx, hy), translated_options(options, hx, hy))
+    return M.intersects_segment(
+      M.localize(sector, hx, hy),
+      translated_point(a, hx, hy),
+      translated_point(b, hx, hy),
+      translated_options(options, hx, hy)
+    )
   end
   local epsilon = number.local_epsilon(sector.radius)
   local contacts = {}
-  local function add(value, kind)
-    contacts[#contacts + 1] = { point = value, kind = kind }
-  end
+  local function add(value, kind) contacts[#contacts + 1] = { point = value, kind = kind } end
   if M.contains_point(sector, a, true) then add(a, "endpoint") end
   if M.contains_point(sector, b, true) then add(b, "endpoint") end
   local hit, kind, value = segment.intersection(a, b, sector.hinge, sector.closed_endpoint, epsilon)
   if hit then
-    if kind == "overlap" then add(value[1], "closed-radial"); add(value[2], "closed-radial")
-    else add(value, "closed-radial") end
+    if kind == "overlap" then
+      add(value[1], "closed-radial")
+      add(value[2], "closed-radial")
+    else
+      add(value, "closed-radial")
+    end
   end
   hit, kind, value = segment.intersection(a, b, sector.hinge, sector.open_endpoint, epsilon)
   if hit then
-    if kind == "overlap" then add(value[1], "open-radial"); add(value[2], "open-radial")
-    else add(value, "open-radial") end
+    if kind == "overlap" then
+      add(value[1], "open-radial")
+      add(value[2], "open-radial")
+    else
+      add(value, "open-radial")
+    end
   end
   local circle_hits = M.circle_segment_intersections(sector.hinge, sector.radius, a, b)
   local i
@@ -247,19 +252,29 @@ function M.intersects_rect(sector, rectangle)
     })
   end
   local box = M.aabb(sector)
-  local epsilon = number.local_epsilon(sector.radius, rectangle.right - rectangle.left, rectangle.top - rectangle.bottom)
-  if box.right < rectangle.left - epsilon or box.left > rectangle.right + epsilon
-    or box.top < rectangle.bottom - epsilon or box.bottom > rectangle.top + epsilon
+  local epsilon =
+    number.local_epsilon(sector.radius, rectangle.right - rectangle.left, rectangle.top - rectangle.bottom)
+  if
+    box.right < rectangle.left - epsilon
+    or box.left > rectangle.right + epsilon
+    or box.top < rectangle.bottom - epsilon
+    or box.bottom > rectangle.top + epsilon
   then
     return false
   end
   local corners = {
-    point(rectangle.left, rectangle.bottom), point(rectangle.right, rectangle.bottom),
-    point(rectangle.right, rectangle.top), point(rectangle.left, rectangle.top),
+    point(rectangle.left, rectangle.bottom),
+    point(rectangle.right, rectangle.bottom),
+    point(rectangle.right, rectangle.top),
+    point(rectangle.left, rectangle.top),
   }
   local hx, hy = xy(sector.hinge)
-  if hx >= rectangle.left - epsilon and hx <= rectangle.right + epsilon
-    and hy >= rectangle.bottom - epsilon and hy <= rectangle.top + epsilon then
+  if
+    hx >= rectangle.left - epsilon
+    and hx <= rectangle.right + epsilon
+    and hy >= rectangle.bottom - epsilon
+    and hy <= rectangle.top + epsilon
+  then
     return true, { kind = "hinge-inside" }
   end
   local i
@@ -281,9 +296,7 @@ local function circle_circle_intersections(c0, r0, c1, r1)
   local dx, dy = x1 - x0, y1 - y0
   local distance = math.sqrt(dx * dx + dy * dy)
   local epsilon = number.local_epsilon(r0, r1, distance)
-  if distance > r0 + r1 + epsilon or distance < math.abs(r0 - r1) - epsilon or distance <= epsilon then
-    return {}
-  end
+  if distance > r0 + r1 + epsilon or distance < math.abs(r0 - r1) - epsilon or distance <= epsilon then return {} end
   local a = (r0 * r0 - r1 * r1 + distance * distance) / (2 * distance)
   local h2 = math.max(0, r0 * r0 - a * a)
   local h = math.sqrt(h2)
@@ -297,13 +310,22 @@ function M.intersects_sector(a, b, options)
   options = options or {}
   if not a._local or not b._local then
     local origin_x, origin_y = xy(a.hinge)
-    return M.intersects_sector(M.localize(a, origin_x, origin_y), M.localize(b, origin_x, origin_y),
-      translated_options(options, origin_x, origin_y))
+    return M.intersects_sector(
+      M.localize(a, origin_x, origin_y),
+      M.localize(b, origin_x, origin_y),
+      translated_options(options, origin_x, origin_y)
+    )
   end
   local abox, bbox = M.aabb(a), M.aabb(b)
   local epsilon = number.local_epsilon(a.radius, b.radius)
-  if abox.right < bbox.left - epsilon or bbox.right < abox.left - epsilon
-    or abox.top < bbox.bottom - epsilon or bbox.top < abox.bottom - epsilon then return false end
+  if
+    abox.right < bbox.left - epsilon
+    or bbox.right < abox.left - epsilon
+    or abox.top < bbox.bottom - epsilon
+    or bbox.top < abox.bottom - epsilon
+  then
+    return false
+  end
   local points_a = { a.hinge, a.closed_endpoint, a.open_endpoint }
   local points_b = { b.hinge, b.closed_endpoint, b.open_endpoint }
   local i
@@ -332,8 +354,11 @@ function M.intersects_sector(a, b, options)
     local px, py = xy(circle_hits[i])
     local ahx, ahy = xy(a.hinge)
     local bhx, bhy = xy(b.hinge)
-    if M.vector_in_sweep(a, px - ahx, py - ahy) and M.vector_in_sweep(b, px - bhx, py - bhy)
-      and not excluded(circle_hits[i], options.exclude_points, epsilon) then
+    if
+      M.vector_in_sweep(a, px - ahx, py - ahy)
+      and M.vector_in_sweep(b, px - bhx, py - bhy)
+      and not excluded(circle_hits[i], options.exclude_points, epsilon)
+    then
       return true, { kind = "arc-arc", point = circle_hits[i] }
     end
   end

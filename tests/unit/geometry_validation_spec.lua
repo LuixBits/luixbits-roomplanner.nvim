@@ -22,9 +22,7 @@ local model = setmetatable({
   new_custom_template = function(fields) return current_model.new_custom_template(fields, V1) end,
 }, { __index = current_model })
 
-local function base_model()
-  return assert(model.new({ name = "Geometry test" }))
-end
+local function base_model() return assert(model.new({ name = "Geometry test" })) end
 
 local function room(id, x, y, width, depth)
   return model.new_room({ id = id, name = id, origin_mm = { x, y }, size_mm = { width, depth } })
@@ -37,7 +35,9 @@ end
 
 local function codes(diagnostics)
   local result = {}
-  for _, value in ipairs(diagnostics) do result[value.code] = (result[value.code] or 0) + 1 end
+  for _, value in ipairs(diagnostics) do
+    result[value.code] = (result[value.code] or 0) + 1
+  end
   return result
 end
 
@@ -54,7 +54,11 @@ describe("pure geometry", function()
     assert_equal("rect_union", room_shape.kind)
     assert_equal(1, #room_shape.parts)
     assert_equal({
-      id = "part-main", left2 = -200, bottom2 = 50, right2 = 402, top2 = 448,
+      id = "part-main",
+      left2 = -200,
+      bottom2 = 50,
+      right2 = 402,
+      top2 = 448,
     }, room_shape.parts[1])
     assert_equal({
       left2 = -200,
@@ -145,8 +149,13 @@ describe("pure geometry", function()
   it("keeps odd furniture edges exact in doubled coordinates", function()
     local owner = room("room-owner", -10, -20, 100, 100)
     local item = model.new_furniture({
-      id = "furniture-odd", room_id = owner.id, name = "Odd", category = "test",
-      center_mm = { 10, 11 }, size_mm = { 5, 7, 10 }, rotation_deg = 0,
+      id = "furniture-odd",
+      room_id = owner.id,
+      name = "Odd",
+      category = "test",
+      center_mm = { 10, 11 },
+      size_mm = { 5, 7, 10 },
+      rotation_deg = 0,
     })
     local bounds = geometry.rect.furniture_rect2(owner, item)
     assert_equal(bounds.left2, -5)
@@ -205,10 +214,14 @@ describe("pure geometry", function()
     local moving = room("room-moving", 20, 30, 40, 20)
     local reference = room("room-reference", 100, 200, 80, 60)
     local cases = {
-      align_min_x = { 100, 30 }, align_max_x = { 140, 30 },
-      align_min_y = { 20, 200 }, align_max_y = { 20, 240 },
-      place_east = { 185, 200 }, place_west = { 55, 200 },
-      place_north = { 100, 265 }, place_south = { 100, 175 },
+      align_min_x = { 100, 30 },
+      align_max_x = { 140, 30 },
+      align_min_y = { 20, 200 },
+      align_max_y = { 20, 240 },
+      place_east = { 185, 200 },
+      place_west = { 55, 200 },
+      place_north = { 100, 265 },
+      place_south = { 100, 175 },
     }
     for operation, expected in pairs(cases) do
       local result = assert(geometry.alignment.propose(moving, reference, operation, { gap_mm = 5 }))
@@ -232,15 +245,10 @@ describe("pure geometry", function()
   it("ranks snapping deterministically and rounds negative grids", function()
     assert_equal(geometry.number.round_to_grid(-149, 100), -100)
     assert_equal(geometry.number.round_to_grid(-150, 100), -200)
-    local best = geometry.snapping.choose_axis(
-      { geometry.snapping.feature("x", 0, "room_edge", "moving", "west") },
-      {
-        geometry.snapping.feature("x", 10, "grid", "grid", "5"),
-        geometry.snapping.feature("x", -10, "door", "door-a", "start"),
-      },
-      5,
-      { axis = "x", priority = { "door", "grid" } }
-    )
+    local best = geometry.snapping.choose_axis({ geometry.snapping.feature("x", 0, "room_edge", "moving", "west") }, {
+      geometry.snapping.feature("x", 10, "grid", "grid", "5"),
+      geometry.snapping.feature("x", -10, "door", "door-a", "start"),
+    }, 5, { axis = "x", priority = { "door", "grid" } })
     assert_equal(best.target.kind, "door")
     assert_equal(best.delta2, -10)
     local bypass = geometry.snapping.resolve({ bypass = true })
@@ -263,15 +271,20 @@ describe("pure geometry", function()
     assert_equal("near", best.target.id)
     assert_equal(-70, best.delta_mm)
 
-    local away = geometry.snapping.choose_axis({
-      geometry.snapping.feature("x", 3800, "room_edge", "moving", "east", { 0, 2000 }),
-    }, {
-      geometry.snapping.feature("x", 4000, "room_edge", "touching", "west", { 0, 2000 }),
-    }, 10, {
-      axis = "x",
-      sweep_mm = -100,
-      require_overlap = true,
-    })
+    local away = geometry.snapping.choose_axis(
+      {
+        geometry.snapping.feature("x", 3800, "room_edge", "moving", "east", { 0, 2000 }),
+      },
+      {
+        geometry.snapping.feature("x", 4000, "room_edge", "touching", "west", { 0, 2000 }),
+      },
+      10,
+      {
+        axis = "x",
+        sweep_mm = -100,
+        require_overlap = true,
+      }
+    )
     assert_equal(nil, away)
   end)
 
@@ -290,17 +303,13 @@ describe("pure geometry", function()
     assert_equal({ 1500, 2000 }, { guides[2].overlap_start_mm, guides[2].overlap_finish_mm })
     assert_true(guides[1].target_label ~= guides[2].target_label)
 
-    local vertical = geometry.snapping.snap_room(
-      room("room-moving-y", 1000, 993, 1000, 1000),
-      {
-        room("room-left", 1000, 2000, 500, 500),
-        room("room-right", 1500, 2000, 500, 500),
-      },
-      {
-        tolerance_mm = { x = 0, y = 10 },
-        priority = { "room_edge", "grid" },
-      }
-    )
+    local vertical = geometry.snapping.snap_room(room("room-moving-y", 1000, 993, 1000, 1000), {
+      room("room-left", 1000, 2000, 500, 500),
+      room("room-right", 1500, 2000, 500, 500),
+    }, {
+      tolerance_mm = { x = 0, y = 10 },
+      priority = { "room_edge", "grid" },
+    })
     assert_equal({ 1000, 1000 }, vertical.origin_mm)
     local vertical_guides = geometry.snapping.guides(vertical)
     assert_equal(2, #vertical_guides)
@@ -341,8 +350,14 @@ describe("pure geometry", function()
       for _, hinge in ipairs(hinges) do
         for _, target in ipairs(targets) do
           local door = model.new_door({
-            id = "door-test", room_id = owner.id, side = side, offset_mm = 100,
-            width_mm = 300, hinge = hinge, opens_into = target, open_angle_deg = 90,
+            id = "door-test",
+            room_id = owner.id,
+            side = side,
+            offset_mm = 100,
+            width_mm = 300,
+            hinge = hinge,
+            opens_into = target,
+            open_angle_deg = 90,
           })
           local swing = assert(geometry.door.swing(owner, door))
           local normal = geometry.adjacency.normal(side, target ~= "owner")
@@ -368,11 +383,16 @@ describe("pure geometry", function()
     local near = geometry.sector.new({ origin, -origin }, { origin + 900, -origin }, math.pi / 2)
     local local_sector = geometry.sector.new({ 0, 0 }, { 900, 0 }, math.pi / 2)
     local huge_hit = geometry.sector.intersects_rect(near, {
-      left = origin + 400.5, right = origin + 500.5,
-      bottom = -origin + 400.5, top = -origin + 500.5,
+      left = origin + 400.5,
+      right = origin + 500.5,
+      bottom = -origin + 400.5,
+      top = -origin + 500.5,
     })
     local local_hit = geometry.sector.intersects_rect(local_sector, {
-      left = 400.5, right = 500.5, bottom = 400.5, top = 500.5,
+      left = 400.5,
+      right = 500.5,
+      bottom = 400.5,
+      top = 500.5,
     })
     assert_equal(huge_hit, local_hit)
     assert_true(huge_hit)
@@ -395,18 +415,48 @@ describe("structured validation", function()
   it("reports furniture containment, overlap, references, and template warnings", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 100, 100))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-a", room_id = "room-a", template_id = "builtin:sofa",
-      name = "A", category = "test", center_mm = { 5, 5 }, size_mm = { 20, 20, 10 }, rotation_deg = 0,
-    }))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-b", room_id = "room-a", template_id = "custom:missing",
-      name = "B", category = "test", center_mm = { 10, 10 }, size_mm = { 20, 20, 10 }, rotation_deg = 0,
-    }))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-orphan", room_id = "room-missing", template_id = "builtin:chair",
-      name = "Orphan", category = "test", center_mm = { 0, 0 }, size_mm = { 20, 20, 10 }, rotation_deg = 0,
-    }))
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-a",
+        room_id = "room-a",
+        template_id = "builtin:sofa",
+        name = "A",
+        category = "test",
+        center_mm = { 5, 5 },
+        size_mm = { 20, 20, 10 },
+        rotation_deg = 0,
+      })
+    )
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-b",
+        room_id = "room-a",
+        template_id = "custom:missing",
+        name = "B",
+        category = "test",
+        center_mm = { 10, 10 },
+        size_mm = { 20, 20, 10 },
+        rotation_deg = 0,
+      })
+    )
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-orphan",
+        room_id = "room-missing",
+        template_id = "builtin:chair",
+        name = "Orphan",
+        category = "test",
+        center_mm = { 0, 0 },
+        size_mm = { 20, 20, 10 },
+        rotation_deg = 0,
+      })
+    )
     local found = codes(validate.run(value))
     -- The orphan has no safe world geometry, so it gets INVALID_REFERENCE but
     -- not an invented containment diagnostic.
@@ -420,14 +470,35 @@ describe("structured validation", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
     add(value, "rooms", room("room-b", 1000, 0, 1000, 1000))
-    add(value, "doors", model.new_door({
-      id = "door-missing", room_id = "room-a", side = "east", offset_mm = 100,
-      width_mm = 300, hinge = "start", opens_into = "owner", open_angle_deg = 90,
-    }))
-    add(value, "doors", model.new_door({
-      id = "door-connected", room_id = "room-b", connects_to_room_id = "room-a", side = "west", offset_mm = 200,
-      width_mm = 300, hinge = "end", opens_into = "connected", open_angle_deg = 90,
-    }))
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-missing",
+        room_id = "room-a",
+        side = "east",
+        offset_mm = 100,
+        width_mm = 300,
+        hinge = "start",
+        opens_into = "owner",
+        open_angle_deg = 90,
+      })
+    )
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-connected",
+        room_id = "room-b",
+        connects_to_room_id = "room-a",
+        side = "west",
+        offset_mm = 200,
+        width_mm = 300,
+        hinge = "end",
+        opens_into = "connected",
+        open_angle_deg = 90,
+      })
+    )
     local found = codes(validate.run(value))
     assert_equal(found.DOOR_CONNECTION_MISSING, 1)
     assert_equal(found.DOOR_OPENING_OVERLAP, 1)
@@ -437,8 +508,14 @@ describe("structured validation", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
     local door = model.new_door({
-      id = "door-outside", room_id = "room-a", side = "south", offset_mm = 100,
-      width_mm = 300, hinge = "start", opens_into = "outside", open_angle_deg = 90,
+      id = "door-outside",
+      room_id = "room-a",
+      side = "south",
+      offset_mm = 100,
+      width_mm = 300,
+      hinge = "start",
+      opens_into = "outside",
+      open_angle_deg = 90,
     })
     assert_true(json.is_null(door.connects_to_room_id))
     add(value, "doors", door)
@@ -450,15 +527,34 @@ describe("structured validation", function()
   it("reports a swept-door furniture collision as a warning", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
-    add(value, "doors", model.new_door({
-      id = "door-a", room_id = "room-a", side = "south", offset_mm = 100,
-      width_mm = 300, hinge = "start", opens_into = "owner", open_angle_deg = 90,
-    }))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-a", room_id = "room-a", template_id = "builtin:chair",
-      name = "Chair", category = "seating", center_mm = { 200, 150 },
-      size_mm = { 100, 100, 100 }, rotation_deg = 0,
-    }))
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-a",
+        room_id = "room-a",
+        side = "south",
+        offset_mm = 100,
+        width_mm = 300,
+        hinge = "start",
+        opens_into = "owner",
+        open_angle_deg = 90,
+      })
+    )
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-a",
+        room_id = "room-a",
+        template_id = "builtin:chair",
+        name = "Chair",
+        category = "seating",
+        center_mm = { 200, 150 },
+        size_mm = { 100, 100, 100 },
+        rotation_deg = 0,
+      })
+    )
     local found = codes(validate.run(value))
     assert_equal(found.DOOR_SWING_FURNITURE, 1)
   end)
@@ -467,10 +563,20 @@ describe("structured validation", function()
     local value = base_model()
     add(value, "rooms", room("room-duplicate", 0, 0, 100, 100))
     add(value, "rooms", room("room-duplicate", 100, 0, 100, 100))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-bad", room_id = "room-duplicate", template_id = "builtin:chair",
-      name = "Bad", category = "test", center_mm = { 10, 10 }, size_mm = { 10, 10, 10 }, rotation_deg = 0,
-    }))
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-bad",
+        room_id = "room-duplicate",
+        template_id = "builtin:chair",
+        name = "Bad",
+        category = "test",
+        center_mm = { 10, 10 },
+        size_mm = { 10, 10, 10 },
+        rotation_deg = 0,
+      })
+    )
     value.furniture[1].rotation_deg = 45
     local diagnostics, summary = validate.run(value)
     local found = codes(diagnostics)
@@ -483,19 +589,49 @@ describe("structured validation", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
     add(value, "rooms", room("room-partial", 1000, 200, 500, 200))
-    add(value, "doors", model.new_door({
-      id = "door-obstructed", room_id = "room-a", side = "east", offset_mm = 100,
-      width_mm = 500, hinge = "start", opens_into = "outside", open_angle_deg = 90,
-    }))
-    add(value, "doors", model.new_door({
-      id = "door-outside", room_id = "room-a", side = "north", offset_mm = 900,
-      width_mm = 200, hinge = "start", opens_into = "outside", open_angle_deg = 90,
-    }))
-    add(value, "doors", model.new_door({
-      id = "door-invalid-connection", room_id = "room-a", connects_to_room_id = "room-partial",
-      side = "north", offset_mm = 100, width_mm = 200, hinge = "start",
-      opens_into = "outside", open_angle_deg = 90,
-    }))
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-obstructed",
+        room_id = "room-a",
+        side = "east",
+        offset_mm = 100,
+        width_mm = 500,
+        hinge = "start",
+        opens_into = "outside",
+        open_angle_deg = 90,
+      })
+    )
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-outside",
+        room_id = "room-a",
+        side = "north",
+        offset_mm = 900,
+        width_mm = 200,
+        hinge = "start",
+        opens_into = "outside",
+        open_angle_deg = 90,
+      })
+    )
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-invalid-connection",
+        room_id = "room-a",
+        connects_to_room_id = "room-partial",
+        side = "north",
+        offset_mm = 100,
+        width_mm = 200,
+        hinge = "start",
+        opens_into = "outside",
+        open_angle_deg = 90,
+      })
+    )
     local found = codes(validate.run(value))
     assert_equal(found.DOOR_EXTERIOR_OBSTRUCTED, 1)
     assert_equal(found.DOOR_OUTSIDE_EDGE, 1)
@@ -506,14 +642,34 @@ describe("structured validation", function()
   it("warns for wall tangency and pairwise door sweep interference", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
-    add(value, "doors", model.new_door({
-      id = "door-south", room_id = "room-a", side = "south", offset_mm = 0,
-      width_mm = 1000, hinge = "start", opens_into = "owner", open_angle_deg = 90,
-    }))
-    add(value, "doors", model.new_door({
-      id = "door-west", room_id = "room-a", side = "west", offset_mm = 0,
-      width_mm = 300, hinge = "start", opens_into = "owner", open_angle_deg = 90,
-    }))
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-south",
+        room_id = "room-a",
+        side = "south",
+        offset_mm = 0,
+        width_mm = 1000,
+        hinge = "start",
+        opens_into = "owner",
+        open_angle_deg = 90,
+      })
+    )
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-west",
+        room_id = "room-a",
+        side = "west",
+        offset_mm = 0,
+        width_mm = 300,
+        hinge = "start",
+        opens_into = "owner",
+        open_angle_deg = 90,
+      })
+    )
     local found = codes(validate.run(value))
     assert_true((found.DOOR_SWING_WALL or 0) >= 1)
     assert_equal(found.DOOR_SWING_DOOR, 1)
@@ -522,11 +678,20 @@ describe("structured validation", function()
   it("enforces configured soft geometry limits separately from hard structure", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 900, 0, 200, 100))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-a", room_id = "room-a", template_id = "builtin:chair",
-      name = "Large", category = "test", center_mm = { 100, 50 },
-      size_mm = { 150, 50, 50 }, rotation_deg = 0,
-    }))
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-a",
+        room_id = "room-a",
+        template_id = "builtin:chair",
+        name = "Large",
+        category = "test",
+        center_mm = { 100, 50 },
+        size_mm = { 150, 50, 50 },
+        rotation_deg = 0,
+      })
+    )
     local diagnostics, summary = validate.run(value, {
       limits = { max_dimension_mm = 100, max_abs_coordinate_mm = 1000, max_plan_span_mm = 100 },
     })
@@ -538,11 +703,20 @@ describe("structured validation", function()
     local limit = 2 ^ 50 - 1
     local value = base_model()
     add(value, "rooms", room("room-a", limit, 0, 100, 100))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-a", room_id = "room-a", template_id = "builtin:chair",
-      name = "Chair", category = "seating", center_mm = { limit, 50 },
-      size_mm = { 100, 100, 100 }, rotation_deg = 0,
-    }))
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-a",
+        room_id = "room-a",
+        template_id = "builtin:chair",
+        name = "Chair",
+        category = "seating",
+        center_mm = { limit, 50 },
+        size_mm = { 100, 100, 100 },
+        rotation_deg = 0,
+      })
+    )
 
     assert_true(schema.validate_versioned(value))
     local diagnostics, summary = validate.run(value)
@@ -578,11 +752,20 @@ describe("atomic actions", function()
 
     local furniture_plan = base_model()
     add(furniture_plan, "rooms", room("room-owner", 0, 0, 2000, 2000))
-    add(furniture_plan, "furniture", model.new_furniture({
-      id = "furniture-moving", room_id = "room-owner", template_id = "builtin:chair",
-      name = "Chair", category = "seating", center_mm = { 1700, 1000 },
-      size_mm = { 500, 500, 800 }, rotation_deg = 0,
-    }))
+    add(
+      furniture_plan,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-moving",
+        room_id = "room-owner",
+        template_id = "builtin:chair",
+        name = "Chair",
+        category = "seating",
+        center_mm = { 1700, 1000 },
+        size_mm = { 500, 500, 800 },
+        rotation_deg = 0,
+      })
+    )
     local moved_furniture = assert(actions.apply(furniture_plan, {
       type = "move_furniture",
       id = "furniture-moving",
@@ -602,12 +785,20 @@ describe("atomic actions", function()
     local changed, result = actions.apply(value, {
       type = "add_furniture",
       furniture = {
-        id = "furniture-desk", room_id = "room-a", template_id = "custom:desk",
-        name = "Desk", category = "work", center_mm = { 500, 500 },
-        size_mm = { 500, 300, 750 }, rotation_deg = 0,
+        id = "furniture-desk",
+        room_id = "room-a",
+        template_id = "custom:desk",
+        name = "Desk",
+        category = "work",
+        center_mm = { 500, 500 },
+        size_mm = { 500, 300, 750 },
+        rotation_deg = 0,
       },
       custom_template = {
-        id = "custom:desk", name = "Desk", category = "work", shape = "rectangle",
+        id = "custom:desk",
+        name = "Desk",
+        category = "work",
+        shape = "rectangle",
         default_size_mm = { 500, 300, 750 },
       },
     })
@@ -632,7 +823,10 @@ describe("atomic actions", function()
     local changed, result = actions.apply(value, {
       type = "add_room",
       room = {
-        id = "room-plain", name = "Plain", origin_mm = { 0, 0 }, size_mm = { 100, 100 },
+        id = "room-plain",
+        name = "Plain",
+        origin_mm = { 0, 0 },
+        size_mm = { 100, 100 },
         vendor = { flags = { "a", "b" }, empty = {} },
       },
     })
@@ -663,18 +857,33 @@ describe("atomic actions", function()
   it("allows invalid furniture drafts and identifies no-op edits", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 100, 100))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-a", room_id = "room-a", template_id = "builtin:chair",
-      name = "Chair", category = "seating", center_mm = { 50, 50 },
-      size_mm = { 50, 50, 50 }, rotation_deg = 0,
-    }))
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-a",
+        room_id = "room-a",
+        template_id = "builtin:chair",
+        name = "Chair",
+        category = "seating",
+        center_mm = { 50, 50 },
+        size_mm = { 50, 50, 50 },
+        rotation_deg = 0,
+      })
+    )
     local changed, result = actions.apply(value, {
-      type = "move_furniture", id = "furniture-a", center_mm = { -100, -100 }, exact = true,
+      type = "move_furniture",
+      id = "furniture-a",
+      center_mm = { -100, -100 },
+      exact = true,
     })
     assert_true(changed ~= nil)
     assert_equal(codes(result.validation).FURNITURE_OUTSIDE_ROOM, 1)
     changed, result = actions.apply(value, {
-      type = "move_furniture", id = "furniture-a", center_mm = { 50, 50 }, exact = true,
+      type = "move_furniture",
+      id = "furniture-a",
+      center_mm = { 50, 50 },
+      exact = true,
     })
     assert_equal(changed, nil)
     assert_equal(result.code, "NO_CHANGE")
@@ -684,14 +893,35 @@ describe("atomic actions", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
     add(value, "rooms", room("room-b", 1000, 0, 1000, 1000))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-a", room_id = "room-a", template_id = "builtin:chair",
-      name = "Chair", category = "seating", center_mm = { 500, 500 }, size_mm = { 100, 100, 100 }, rotation_deg = 0,
-    }))
-    add(value, "doors", model.new_door({
-      id = "door-a", room_id = "room-b", connects_to_room_id = "room-a", side = "west",
-      offset_mm = 100, width_mm = 300, hinge = "start", opens_into = "connected", open_angle_deg = 90,
-    }))
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-a",
+        room_id = "room-a",
+        template_id = "builtin:chair",
+        name = "Chair",
+        category = "seating",
+        center_mm = { 500, 500 },
+        size_mm = { 100, 100, 100 },
+        rotation_deg = 0,
+      })
+    )
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-a",
+        room_id = "room-b",
+        connects_to_room_id = "room-a",
+        side = "west",
+        offset_mm = 100,
+        width_mm = 300,
+        hinge = "start",
+        opens_into = "connected",
+        open_angle_deg = 90,
+      })
+    )
     local changed, result = actions.apply(value, { type = "delete_room_cascade", id = "room-a" })
     assert_true(changed ~= nil)
     assert_equal(#changed.rooms, 1)
@@ -703,14 +933,30 @@ describe("atomic actions", function()
   it("blocks deleting a referenced custom template", function()
     local value = base_model()
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
-    add(value, "custom_templates", model.new_custom_template({
-      id = "custom:chair", name = "Chair", category = "test", default_size_mm = { 100, 100, 100 },
-    }))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-a", room_id = "room-a", template_id = "custom:chair",
-      name = "Chair", category = "test", center_mm = { 500, 500 },
-      size_mm = { 100, 100, 100 }, rotation_deg = 0,
-    }))
+    add(
+      value,
+      "custom_templates",
+      model.new_custom_template({
+        id = "custom:chair",
+        name = "Chair",
+        category = "test",
+        default_size_mm = { 100, 100, 100 },
+      })
+    )
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-a",
+        room_id = "room-a",
+        template_id = "custom:chair",
+        name = "Chair",
+        category = "test",
+        center_mm = { 500, 500 },
+        size_mm = { 100, 100, 100 },
+        rotation_deg = 0,
+      })
+    )
     local changed, err = actions.apply(value, { type = "delete_custom_template", id = "custom:chair" })
     assert_equal(changed, nil)
     assert_equal(err.code, "TEMPLATE_IN_USE")
@@ -722,18 +968,45 @@ describe("atomic actions", function()
     value.settings.default_wall_thickness_mm = json.decimal(1, "120", 0)
     add(value, "rooms", room("room-a", 0, 0, 1000, 1000))
     add(value, "rooms", room("room-b", 1000, 0, 1000, 1000))
-    add(value, "doors", model.new_door({
-      id = "door-a", room_id = "room-a", connects_to_room_id = "room-b", side = "east",
-      offset_mm = 100, width_mm = 300, hinge = "start", opens_into = "connected", open_angle_deg = 90,
-    }))
-    add(value, "furniture", model.new_furniture({
-      id = "furniture-a", room_id = "room-a", template_id = "builtin:chair",
-      name = "Chair", category = "seating", center_mm = { 500, 500 },
-      size_mm = { 100, 100, 100 }, rotation_deg = 0,
-    }))
-    add(value, "custom_templates", model.new_custom_template({
-      id = "custom:desk", name = "Desk", category = "work", default_size_mm = { 100, 100, 100 },
-    }))
+    add(
+      value,
+      "doors",
+      model.new_door({
+        id = "door-a",
+        room_id = "room-a",
+        connects_to_room_id = "room-b",
+        side = "east",
+        offset_mm = 100,
+        width_mm = 300,
+        hinge = "start",
+        opens_into = "connected",
+        open_angle_deg = 90,
+      })
+    )
+    add(
+      value,
+      "furniture",
+      model.new_furniture({
+        id = "furniture-a",
+        room_id = "room-a",
+        template_id = "builtin:chair",
+        name = "Chair",
+        category = "seating",
+        center_mm = { 500, 500 },
+        size_mm = { 100, 100, 100 },
+        rotation_deg = 0,
+      })
+    )
+    add(
+      value,
+      "custom_templates",
+      model.new_custom_template({
+        id = "custom:desk",
+        name = "Desk",
+        category = "work",
+        default_size_mm = { 100, 100, 100 },
+      })
+    )
 
     local result
     value, result = actions.apply(value, { type = "toggle_door_hinge", id = "door-a" })
@@ -743,12 +1016,17 @@ describe("atomic actions", function()
     value, result = actions.apply(value, { type = "rotate_furniture", id = "furniture-a" })
     assert_equal(value.furniture[1].rotation_deg, 90)
     value, result = actions.apply(value, {
-      type = "change_furniture_template", id = "furniture-a", template_id = "custom:desk", category = "work",
+      type = "change_furniture_template",
+      id = "furniture-a",
+      template_id = "custom:desk",
+      category = "work",
     })
     assert_equal(value.furniture[1].size_mm, { 100, 100, 100 })
     assert_equal(value.furniture[1].template_id, "custom:desk")
     value, result = actions.apply(value, {
-      type = "edit_custom_template", id = "custom:desk", patch = { default_size_mm = { 200, 100, 100 } },
+      type = "edit_custom_template",
+      id = "custom:desk",
+      patch = { default_size_mm = { 200, 100, 100 } },
     })
     assert_true(json.is_array(value.custom_templates[1].default_size_mm))
     value, result = actions.apply(value, { type = "edit_metadata", patch = { name = "Edited" } })
@@ -809,5 +1087,5 @@ describe("atomic actions", function()
     assert_equal(nil, rejected)
     assert_equal("NOT_FOUND", err.code)
     assert_equal(500, value.furniture[1].center_mm[1])
-end)
+  end)
 end)

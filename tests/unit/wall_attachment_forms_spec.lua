@@ -81,8 +81,12 @@ describe("window and outlet forms", function()
     h.eq(true, edit_action.exact)
 
     local outside = forms.window.add(session, {
-      room_id = "room-living", part_id = "part-main", side = "south",
-      width_mm = 1200, placement = "exact", offset_mm = 100,
+      room_id = "room-living",
+      part_id = "part-main",
+      side = "south",
+      width_mm = 1200,
+      placement = "exact",
+      offset_mm = 100,
     })
     local outside_action = h.truthy(outside.build(outside.initial, outside.context))
     h.truthy(json.is_null(outside_action.window.connects_to_room_id))
@@ -127,12 +131,17 @@ describe("window and outlet forms", function()
     local session = fixture()
     local outlet = require("roomplan.ui.forms.outlet")
     local values = {}
-    for _, choice in ipairs(outlet.type_choices) do values[#values + 1] = choice.value end
+    for _, choice in ipairs(outlet.type_choices) do
+      values[#values + 1] = choice.value
+    end
     h.eq({ "power", "usb", "ethernet", "coax", "phone", "other" }, values)
 
     local spec = outlet.add(session, {
-      room_id = "room-living", part_id = "part-main", side = "south",
-      placement = "exact", offset_mm = 0,
+      room_id = "room-living",
+      part_id = "part-main",
+      side = "south",
+      placement = "exact",
+      offset_mm = 0,
     })
     local state = form_state.new(spec, spec.context)
     state = form_state.reduce(state, { type = "set_raw", key = "slots", value = "33" })
@@ -142,8 +151,11 @@ describe("window and outlet forms", function()
     h.truthy(checked.errors.offset_mm)
 
     local seam = outlet.add(session, {
-      room_id = "room-living", part_id = "part-main", side = "north",
-      placement = "exact", offset_mm = 1000,
+      room_id = "room-living",
+      part_id = "part-main",
+      side = "north",
+      placement = "exact",
+      offset_mm = 1000,
     })
     local seam_state, seam_valid = form_state.validate_all(form_state.new(seam, seam.context))
     h.falsy(seam_valid)
@@ -177,8 +189,11 @@ describe("window and outlet forms", function()
     h.eq({ 1500, 1500 }, edit_action.patch.position_mm)
 
     local outside = outlets.add(session, {
-      room_id = "room-living", placement = "floor", floor_positioning = "exact",
-      local_x_mm = 7000, local_y_mm = 1000,
+      room_id = "room-living",
+      placement = "floor",
+      floor_positioning = "exact",
+      local_x_mm = 7000,
+      local_y_mm = 1000,
     })
     local outside_state, outside_valid = form_state.validate_all(form_state.new(outside, outside.context))
     h.falsy(outside_valid)

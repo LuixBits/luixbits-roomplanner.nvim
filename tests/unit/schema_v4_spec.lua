@@ -15,7 +15,10 @@ end
 
 local function room()
   return model.new_room({
-    id = "room-main", name = "Living", origin_mm = { 0, 0 }, size_mm = { 4000, 3000 },
+    id = "room-main",
+    name = "Living",
+    origin_mm = { 0, 0 },
+    size_mm = { 4000, 3000 },
   })
 end
 
@@ -30,8 +33,14 @@ describe("schema v4 outlet placement", function()
     })
     plan.rooms[1] = room()
     plan.windows[1] = model.new_window({
-      id = "window-sun", room_id = "room-main", part_id = "part-main", side = "north",
-      offset_mm = 500, width_mm = 1200, sill_height_mm = 850, head_height_mm = 2150,
+      id = "window-sun",
+      room_id = "room-main",
+      part_id = "part-main",
+      side = "north",
+      offset_mm = 500,
+      width_mm = 1200,
+      sill_height_mm = 850,
+      head_height_mm = 2150,
     })
     local normalized, info = schema_v4.normalize(plan)
     h.truthy(normalized, vim.inspect(info))
@@ -73,13 +82,22 @@ describe("schema v4 outlet placement", function()
     local plan = h.truthy(model.new({ name = "Outlet placement" }))
     plan.rooms[1] = room()
     plan.outlets[1] = model.new_outlet({
-      id = "outlet-wall", room_id = "room-main", placement = "wall",
-      part_id = "part-main", side = "west", offset_mm = 1000,
-      outlet_type = "power", slots = 2,
+      id = "outlet-wall",
+      room_id = "room-main",
+      placement = "wall",
+      part_id = "part-main",
+      side = "west",
+      offset_mm = 1000,
+      outlet_type = "power",
+      slots = 2,
     })
     plan.outlets[2] = model.new_outlet({
-      id = "outlet-floor", room_id = "room-main", placement = "floor",
-      position_mm = { 2000, 1500 }, outlet_type = "usb", slots = 3,
+      id = "outlet-floor",
+      room_id = "room-main",
+      placement = "floor",
+      position_mm = { 2000, 1500 },
+      outlet_type = "usb",
+      slots = 3,
     })
     local normalized, info = schema_v4.normalize(plan)
     h.truthy(normalized, vim.inspect(info))

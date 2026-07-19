@@ -27,8 +27,7 @@ function M.attach(controller)
   end
 
   local function load_is_durable(revision, info)
-    return revision.durable_model_matches == true
-      and not (info and (info.normalized or info.migrated))
+    return revision.durable_model_matches == true and not (info and (info.normalized or info.migrated))
   end
 
   local function attach_loaded(context, adapter, loaded_model, revision, locator, info)
@@ -75,7 +74,9 @@ function M.attach(controller)
               filetype = context.filetype,
               interactive = true,
             }, callback)
-          else finish(callback, nil, util.err("OPEN_CANCELLED", "RoomPlan open cancelled")) end
+          else
+            finish(callback, nil, util.err("OPEN_CANCELLED", "RoomPlan open cancelled"))
+          end
         end)
         return nil
       end
@@ -128,16 +129,18 @@ function M.attach(controller)
         if not text then return finish(callback, notify_error(fresh_err)) end
       end
       if text and not text:match("^%s*$") then
-        return finish(callback, notify_error(util.err("SOURCE_NOT_EMPTY", "RoomPlanInit refuses to overwrite a non-empty source")))
+        return finish(
+          callback,
+          notify_error(util.err("SOURCE_NOT_EMPTY", "RoomPlanInit refuses to overwrite a non-empty source"))
+        )
       end
       local revision, init_err, staged = adapter.initialize(context, fresh)
       if not revision then
         if staged and staged.staged and context.bufnr then
           local staged_model, staged_revision, staged_locator, staged_info = adapter.load(context)
           if staged_model then
-            local recovery, recovery_err = attach_loaded(
-              context, adapter, staged_model, staged_revision, staged_locator, staged_info
-            )
+            local recovery, recovery_err =
+              attach_loaded(context, adapter, staged_model, staged_revision, staged_locator, staged_info)
             if recovery then
               recovery.history:clear_savepoint()
               recovery.pending_disk_write = true
@@ -197,9 +200,13 @@ function M.attach(controller)
         opts = vim.tbl_extend("force", opts, { heading_line = headings[1] })
       elseif #headings > 1 then
         if not interactive or opts.noninteractive then
-          return finish(callback, nil, util.err("NORG_MULTIPLE_HEADINGS", "multiple '* Floor plan' headings require an explicit heading_line", {
-            headings = headings,
-          }))
+          return finish(
+            callback,
+            nil,
+            util.err("NORG_MULTIPLE_HEADINGS", "multiple '* Floor plan' headings require an explicit heading_line", {
+              headings = headings,
+            })
+          )
         end
         vim.ui.select(headings, {
           prompt = "Insert RoomPlan under which Floor plan heading?",
@@ -207,10 +214,16 @@ function M.attach(controller)
           format_item = function(line) return "Floor plan heading at line " .. line end,
         }, function(line)
           if line then
-            controller.init_source(nil, vim.tbl_extend("force", opts, {
-              bufnr = context.bufnr, path = context.path, filetype = context.filetype,
-              heading_line = line,
-            }), callback)
+            controller.init_source(
+              nil,
+              vim.tbl_extend("force", opts, {
+                bufnr = context.bufnr,
+                path = context.path,
+                filetype = context.filetype,
+                heading_line = line,
+              }),
+              callback
+            )
           else
             finish(callback, nil, util.err("INIT_CANCELLED", "RoomPlan initialization cancelled"))
           end
@@ -222,27 +235,43 @@ function M.attach(controller)
       if not headings then return finish(callback, notify_error(heading_err)) end
       local still_present = false
       for _, line in ipairs(headings) do
-        if line == opts.heading_line then still_present = true; break end
+        if line == opts.heading_line then
+          still_present = true
+          break
+        end
       end
       if not still_present then
-        return finish(callback, nil, util.err("NORG_HEADING_CHANGED", "selected Floor plan heading changed before initialization"))
+        return finish(
+          callback,
+          nil,
+          util.err("NORG_HEADING_CHANGED", "selected Floor plan heading changed before initialization")
+        )
       end
     end
     local revision, locator_or_err = adapter.initialize(context, fresh, opts)
     if not revision then
-      if locator_or_err and locator_or_err.code == "NORG_MALFORMED_JSON_AMBIGUOUS"
-        and interactive and not opts.noninteractive and not opts.allow_other_malformed_json then
+      if
+        locator_or_err
+        and locator_or_err.code == "NORG_MALFORMED_JSON_AMBIGUOUS"
+        and interactive
+        and not opts.noninteractive
+        and not opts.allow_other_malformed_json
+      then
         vim.ui.select({ "Initialize beside unrelated malformed JSON", "Cancel" }, {
           prompt = "This Norg note has malformed JSON blocks. Initialize RoomPlan anyway?",
           kind = "roomplan_confirmation",
         }, function(choice)
           if choice and choice:match("^Initialize") then
-            controller.init_source(nil, vim.tbl_extend("force", opts, {
-              bufnr = context.bufnr,
-              path = context.path,
-              filetype = context.filetype,
-              allow_other_malformed_json = true,
-            }), callback)
+            controller.init_source(
+              nil,
+              vim.tbl_extend("force", opts, {
+                bufnr = context.bufnr,
+                path = context.path,
+                filetype = context.filetype,
+                allow_other_malformed_json = true,
+              }),
+              callback
+            )
           else
             finish(callback, nil, util.err("INIT_CANCELLED", "RoomPlan initialization cancelled"))
           end
@@ -252,7 +281,9 @@ function M.attach(controller)
       return finish(callback, notify_error(locator_or_err))
     end
     local session, attach_err = require("roomplan.session").new(
-      session_source(context, adapter, revision, locator_or_err), fresh, { durable = false }
+      session_source(context, adapter, revision, locator_or_err),
+      fresh,
+      { durable = false }
     )
     if not session then return finish(callback, notify_error(attach_err)) end
     controller.validate(session)
@@ -274,9 +305,14 @@ function M.attach(controller)
       return nil, revision
     end
     local expected = session.source.revision
-    local disk_unchanged = not expected or not expected.disk or not revision.disk
-      or (expected.disk.exists == revision.disk.exists and expected.disk.type == revision.disk.type
-        and expected.disk.text == revision.disk.text)
+    local disk_unchanged = not expected
+      or not expected.disk
+      or not revision.disk
+      or (
+        expected.disk.exists == revision.disk.exists
+        and expected.disk.type == revision.disk.type
+        and expected.disk.text == revision.disk.text
+      )
     if expected and revision.hash == expected.hash and disk_unchanged then
       session.source.revision = revision
       session.source.locator = locator
@@ -324,8 +360,13 @@ function M.attach(controller)
     local staged_id = session.buffer_payload_revision_id
     local staged_model = staged_id and session.history:model_at_revision(staged_id) or nil
     local expected = session.source.revision
-    if not staged_id and expected and expected.hash == revision.hash
-      and load_is_durable(revision, info) and not session:source_buffer_modified() then
+    if
+      not staged_id
+      and expected
+      and expected.hash == revision.hash
+      and load_is_durable(revision, info)
+      and not session:source_buffer_modified()
+    then
       session.source.revision = revision
       session.source.locator = locator
       session.source_conflicted = false
@@ -337,8 +378,12 @@ function M.attach(controller)
       controller.refresh(session)
       return true
     end
-    if staged_model and model.deep_equal(loaded, staged_model)
-      and load_is_durable(revision, info) and not session:source_buffer_modified() then
+    if
+      staged_model
+      and model.deep_equal(loaded, staged_model)
+      and load_is_durable(revision, info)
+      and not session:source_buffer_modified()
+    then
       local marked = session.history:mark_saved_revision(staged_id)
       session.source.revision = revision
       session.source.locator = locator
@@ -368,22 +413,37 @@ function M.attach(controller)
     end
     if resolved:requires_protection() and not opts.bang and not opts.confirmed then
       if opts.noninteractive then
-        err = util.err("RELOAD_CONFIRM_REQUIRED", "reload would discard protected RoomPlan state; pass bang=true deliberately")
+        err = util.err(
+          "RELOAD_CONFIRM_REQUIRED",
+          "reload would discard protected RoomPlan state; pass bang=true deliberately"
+        )
         return finish(callback, nil, err)
       end
-      local flow, flow_err = require("roomplan.ui.prompts").confirm(resolved, "reload", "Discard protected RoomPlan session state and reload?", {
-        "Reload and discard", "Save first", "Cancel",
-      }, function(choice)
-        if choice == "Reload and discard" then
-          controller.reload(resolved, vim.tbl_extend("force", opts, { confirmed = true }), callback)
-        elseif choice == "Save first" then
-          controller.save(resolved, {}, function(saved, save_err)
-            if saved then controller.reload(resolved, { confirmed = true }, callback) else finish(callback, nil, save_err) end
-          end)
-        else
-          finish(callback, nil, util.err("RELOAD_CANCELLED", "reload cancelled"))
+      local flow, flow_err = require("roomplan.ui.prompts").confirm(
+        resolved,
+        "reload",
+        "Discard protected RoomPlan session state and reload?",
+        {
+          "Reload and discard",
+          "Save first",
+          "Cancel",
+        },
+        function(choice)
+          if choice == "Reload and discard" then
+            controller.reload(resolved, vim.tbl_extend("force", opts, { confirmed = true }), callback)
+          elseif choice == "Save first" then
+            controller.save(resolved, {}, function(saved, save_err)
+              if saved then
+                controller.reload(resolved, { confirmed = true }, callback)
+              else
+                finish(callback, nil, save_err)
+              end
+            end)
+          else
+            finish(callback, nil, util.err("RELOAD_CANCELLED", "reload cancelled"))
+          end
         end
-      end)
+      )
       if not flow then return finish(callback, nil, flow_err) end
       return nil
     end
@@ -403,17 +463,19 @@ function M.attach(controller)
     if not disk_ok and resolved.source.path then
       local bufnr = resolved.source.bufnr
       if bufnr and vim.api.nvim_buf_is_loaded(bufnr) and vim.bo[bufnr].modified then
-        err = util.err("SOURCE_BUFFER_DISK_CONFLICT", "source buffer and disk both changed; review or Save As before reload", {
-          cause = disk_err,
-        })
+        err = util.err(
+          "SOURCE_BUFFER_DISK_CONFLICT",
+          "source buffer and disk both changed; review or Save As before reload",
+          {
+            cause = disk_err,
+          }
+        )
         retain_model_at_risk(err)
         return finish(callback, nil, err)
       end
       if bufnr and vim.api.nvim_buf_is_loaded(bufnr) then
         resolved.internal_source_write = true
-        local reloaded_ok, reload_buffer_err = pcall(vim.api.nvim_buf_call, bufnr, function()
-          vim.cmd("edit!")
-        end)
+        local reloaded_ok, reload_buffer_err = pcall(vim.api.nvim_buf_call, bufnr, function() vim.cmd("edit!") end)
         resolved.internal_source_write = false
         if not reloaded_ok then
           err = util.err("SOURCE_DISK_RELOAD_FAILED", tostring(reload_buffer_err), { cause = disk_err })
@@ -444,28 +506,40 @@ function M.attach(controller)
     if not resolved then return finish(callback, notify_error(err)) end
     if resolved:requires_protection() and not opts.bang and not opts.confirmed then
       if opts.noninteractive then
-        err = util.err("CLOSE_CONFIRM_REQUIRED", "close would discard protected RoomPlan state; save or pass bang=true deliberately")
+        err = util.err(
+          "CLOSE_CONFIRM_REQUIRED",
+          "close would discard protected RoomPlan state; save or pass bang=true deliberately"
+        )
         return finish(callback, nil, err)
       end
       local choices = { "Save", "Discard session", "Cancel" }
-      local flow, flow_err = require("roomplan.ui.prompts").confirm(resolved, "close", "Close " .. resolved:status_text() .. "?", choices, function(choice)
-        if choice == "Save" then
-          controller.save(resolved, {}, function(saved, save_err)
-            if saved then controller.close(resolved, { confirmed = true }, callback) else finish(callback, nil, save_err) end
-          end)
-        elseif choice == "Discard session" then
-          controller.close(resolved, { bang = true }, callback)
-        else
-          finish(callback, nil, util.err("CLOSE_CANCELLED", "close cancelled"))
+      local flow, flow_err = require("roomplan.ui.prompts").confirm(
+        resolved,
+        "close",
+        "Close " .. resolved:status_text() .. "?",
+        choices,
+        function(choice)
+          if choice == "Save" then
+            controller.save(resolved, {}, function(saved, save_err)
+              if saved then
+                controller.close(resolved, { confirmed = true }, callback)
+              else
+                finish(callback, nil, save_err)
+              end
+            end)
+          elseif choice == "Discard session" then
+            controller.close(resolved, { bang = true }, callback)
+          else
+            finish(callback, nil, util.err("CLOSE_CANCELLED", "close cancelled"))
+          end
         end
-      end)
+      )
       if not flow then return finish(callback, nil, flow_err) end
       return nil
     end
     local closed, close_err = resolved:destroy({ force = opts.bang or opts.confirmed })
     return finish(callback, closed, close_err)
   end
-
 end
 
 return M

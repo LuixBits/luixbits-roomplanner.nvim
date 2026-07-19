@@ -15,22 +15,16 @@ local UNIT_POWER = {
   m = 3,
 }
 
-local function failure(code, message, input)
-  return nil, { code = code, message = message, input = input }
-end
+local function failure(code, message, input) return nil, { code = code, message = message, input = input } end
 
-local function trim_ascii(value)
-  return (value:gsub("^[ \t\r\n]+", ""):gsub("[ \t\r\n]+$", ""))
-end
+local function trim_ascii(value) return (value:gsub("^[ \t\r\n]+", ""):gsub("[ \t\r\n]+$", "")) end
 
 local function decimal_digits_to_number(digits, maximum)
   local value = 0
   local index = 1
   while index <= #digits do
     local digit = digits:byte(index) - 48
-    if value > math.floor((maximum - digit) / 10) then
-      return nil
-    end
+    if value > math.floor((maximum - digit) / 10) then return nil end
     value = value * 10 + digit
     index = index + 1
   end
@@ -43,14 +37,10 @@ end
 -- are deliberately rejected.
 function M.parse(input, options)
   options = options or {}
-  if type(input) ~= "string" then
-    return failure("UNIT_INPUT_TYPE", "measurement must be entered as text", input)
-  end
+  if type(input) ~= "string" then return failure("UNIT_INPUT_TYPE", "measurement must be entered as text", input) end
   local original = input
   input = trim_ascii(input)
-  if input == "" then
-    return failure("UNIT_EMPTY", "measurement is empty", original)
-  end
+  if input == "" then return failure("UNIT_EMPTY", "measurement is empty", original) end
   if #input > 1024 then
     return failure("UNIT_INPUT_LIMIT", "measurement exceeds the 1024 byte input limit", original)
   end
@@ -59,18 +49,14 @@ function M.parse(input, options)
   local sign = 1
   local first = input:sub(cursor, cursor)
   if first == "+" or first == "-" then
-    if first == "-" then
-      sign = -1
-    end
+    if first == "-" then sign = -1 end
     cursor = cursor + 1
   end
 
   local integer_start = cursor
   while cursor <= #input do
     local byte = input:byte(cursor)
-    if byte < 48 or byte > 57 then
-      break
-    end
+    if byte < 48 or byte > 57 then break end
     cursor = cursor + 1
   end
   if cursor == integer_start then
@@ -84,9 +70,7 @@ function M.parse(input, options)
     local fraction_start = cursor
     while cursor <= #input do
       local byte = input:byte(cursor)
-      if byte < 48 or byte > 57 then
-        break
-      end
+      if byte < 48 or byte > 57 then break end
       cursor = cursor + 1
     end
     if cursor == fraction_start then
@@ -106,9 +90,7 @@ function M.parse(input, options)
   end
 
   local coefficient = (integer_digits .. fraction_digits):gsub("^0+", "")
-  if coefficient == "" then
-    coefficient = "0"
-  end
+  if coefficient == "" then coefficient = "0" end
   local shift = unit_power - #fraction_digits
   if shift < 0 then
     local discarded = -shift
@@ -136,9 +118,7 @@ function M.parse(input, options)
   end
 
   local maximum = options.max_abs
-  if maximum == nil and type(options.max) == "number" then
-    maximum = math.abs(options.max)
-  end
+  if maximum == nil and type(options.max) == "number" then maximum = math.abs(options.max) end
   if maximum == nil and type(options.min) == "number" then
     maximum = math.abs(options.min)
   elseif type(maximum) == "number" and type(options.min) == "number" then
@@ -180,9 +160,7 @@ function M.parse_coordinate(input, options)
   return M.parse(input, copied)
 end
 
-function M.parse_dimension(input, options)
-  return M.parse(input, options)
-end
+function M.parse_dimension(input, options) return M.parse(input, options) end
 
 function M.format_mm(value)
   if type(value) ~= "number" or value ~= math.floor(value) or math.abs(value) > HARD_MAX_ABS_MM then

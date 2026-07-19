@@ -6,7 +6,10 @@ local room_shape = require("roomplan.room_shape")
 local function fixture()
   local plan = h.truthy(model.new({ name = "Shape edit" }))
   plan.rooms[1] = model.new_room({
-    id = "room-main", name = "Main", origin_mm = { 100, 200 }, size_mm = { 3000, 2000 },
+    id = "room-main",
+    name = "Main",
+    origin_mm = { 100, 200 },
+    size_mm = { 3000, 2000 },
   })
   return plan
 end
@@ -114,9 +117,7 @@ describe("direct room resize drafts", function()
     h.eq("custom:sectional", action.id)
 
     local furniture_edit = h.truthy(room_shape.start(plan, "furniture-section", 9, "furniture"))
-    furniture_edit = h.truthy(room_shape.direction(
-      furniture_edit, 1, 0, 100, { max_dimension_mm = 100000 }
-    ))
+    furniture_edit = h.truthy(room_shape.direction(furniture_edit, 1, 0, 100, { max_dimension_mm = 100000 }))
     local combined = room_shape.action(furniture_edit, "template")
     h.eq("edit_furniture_template_shape", combined.type)
     h.eq("custom:sectional", combined.template_id)
@@ -126,13 +127,22 @@ describe("direct room resize drafts", function()
   it("snaps quarter-turned furniture edges in world space", function()
     local plan = fixture()
     plan.rooms[2] = model.new_room({
-      id = "room-target", name = "Target", origin_mm = { 1375, 0 }, size_mm = { 1000, 2000 },
+      id = "room-target",
+      name = "Target",
+      origin_mm = { 1375, 0 },
+      size_mm = { 1000, 2000 },
     })
     plan.furniture[1] = model.new_furniture({
-      id = "furniture-rotated", room_id = "room-main", template_id = "builtin:custom-rectangle",
-      name = "Rotated", category = "custom", position_mm = { 1000, 1000 },
-      anchor2_mm = { 1000, 500 }, footprint = model.rectangle_footprint({ 1000, 500 }),
-      height_mm = 500, rotation_deg = 90,
+      id = "furniture-rotated",
+      room_id = "room-main",
+      template_id = "builtin:custom-rectangle",
+      name = "Rotated",
+      category = "custom",
+      position_mm = { 1000, 1000 },
+      anchor2_mm = { 1000, 500 },
+      footprint = model.rectangle_footprint({ 1000, 500 }),
+      height_mm = 500,
+      rotation_deg = 90,
     })
     local geometry = require("roomplan.geometry.footprint")
     local edit = h.truthy(room_shape.start(plan, "furniture-rotated", 1, "furniture"))
@@ -181,8 +191,14 @@ describe("direct room resize drafts", function()
     edit = h.truthy(room_shape.add(edit, 1, 0))
     edit = h.truthy(room_shape.cycle(edit, -1))
     plan.doors[1] = model.new_door({
-      id = "door-main", room_id = "room-main", part_id = "part-main", side = "north",
-      offset_mm = 500, width_mm = 900, hinge = "start", opens_into = "owner",
+      id = "door-main",
+      room_id = "room-main",
+      part_id = "part-main",
+      side = "north",
+      offset_mm = 500,
+      width_mm = 900,
+      hinge = "start",
+      opens_into = "owner",
     })
     local removed, remove_err = room_shape.remove(edit, plan)
     h.eq(nil, removed)
@@ -198,7 +214,10 @@ describe("direct room resize drafts", function()
   it("snaps resize previews to another room and describes the overlap", function()
     local plan = fixture()
     plan.rooms[2] = model.new_room({
-      id = "room-east", name = "Kitchen", origin_mm = { 3250, 200 }, size_mm = { 2000, 2000 },
+      id = "room-east",
+      name = "Kitchen",
+      origin_mm = { 3250, 200 },
+      size_mm = { 2000, 2000 },
     })
     local context = {
       model = plan,
@@ -211,10 +230,16 @@ describe("direct room resize drafts", function()
       },
     }
 
-    local resized = h.truthy(room_shape.direction(
-      h.truthy(room_shape.start(plan, "room-main", 1)), 1, 0, 100,
-      { max_dimension_mm = 100000 }, context
-    ))
+    local resized = h.truthy(
+      room_shape.direction(
+        h.truthy(room_shape.start(plan, "room-main", 1)),
+        1,
+        0,
+        100,
+        { max_dimension_mm = 100000 },
+        context
+      )
+    )
     h.eq(3150, resized.footprint.parts[1].size_mm[1])
     h.eq(1, #resized.snap_guides)
     h.eq("x", resized.snap_guides[1].axis)
@@ -223,14 +248,10 @@ describe("direct room resize drafts", function()
     h.eq(2200, resized.snap_guides[1].overlap_finish_mm)
     h.eq("X → Kitchen west wall", room_shape.snap_summary(resized))
 
-    local released = h.truthy(room_shape.direction(
-      resized, -1, 0, 10, { max_dimension_mm = 100000 }, context
-    ))
+    local released = h.truthy(room_shape.direction(resized, -1, 0, 10, { max_dimension_mm = 100000 }, context))
     h.eq(3140, released.footprint.parts[1].size_mm[1])
     h.eq(0, #released.snap_guides)
-    released = h.truthy(room_shape.direction(
-      released, -1, 0, 10, { max_dimension_mm = 100000 }, context
-    ))
+    released = h.truthy(room_shape.direction(released, -1, 0, 10, { max_dimension_mm = 100000 }, context))
     h.eq(3130, released.footprint.parts[1].size_mm[1])
     h.eq(0, #released.snap_guides)
 
@@ -254,11 +275,13 @@ describe("direct room resize drafts", function()
   it("snaps a resized edge when one step crosses a nearby wall", function()
     local plan = fixture()
     plan.rooms[2] = model.new_room({
-      id = "room-east", name = "Kitchen", origin_mm = { 3150, 200 }, size_mm = { 2000, 2000 },
+      id = "room-east",
+      name = "Kitchen",
+      origin_mm = { 3150, 200 },
+      size_mm = { 2000, 2000 },
     })
-    local resized = h.truthy(room_shape.direction(
-      h.truthy(room_shape.start(plan, "room-main", 1)), 1, 0, 100,
-      { max_dimension_mm = 100000 }, {
+    local resized = h.truthy(
+      room_shape.direction(h.truthy(room_shape.start(plan, "room-main", 1)), 1, 0, 100, { max_dimension_mm = 100000 }, {
         model = plan,
         origin_mm = plan.rooms[1].origin_mm,
         options = {
@@ -267,8 +290,8 @@ describe("direct room resize drafts", function()
           priority = { "room_edge", "furniture", "grid" },
           grid_mm = 100,
         },
-      }
-    ))
+      })
+    )
     h.eq(3050, resized.footprint.parts[1].size_mm[1])
     h.eq("X → Kitchen west wall", room_shape.snap_summary(resized))
   end)
@@ -276,29 +299,41 @@ describe("direct room resize drafts", function()
   it("snaps a furniture resize step that crosses its room wall", function()
     local plan = fixture()
     plan.furniture[1] = model.new_furniture({
-      id = "furniture-sofa", room_id = "room-main", template_id = "builtin:custom-rectangle",
-      name = "Sofa", category = "seating", position_mm = { 2450, 1000 },
-      anchor2_mm = { 1000, 500 }, footprint = model.rectangle_footprint({ 1000, 500 }),
-      height_mm = 800, rotation_deg = 0,
+      id = "furniture-sofa",
+      room_id = "room-main",
+      template_id = "builtin:custom-rectangle",
+      name = "Sofa",
+      category = "seating",
+      position_mm = { 2450, 1000 },
+      anchor2_mm = { 1000, 500 },
+      footprint = model.rectangle_footprint({ 1000, 500 }),
+      height_mm = 800,
+      rotation_deg = 0,
     })
     local geometry = require("roomplan.geometry.footprint")
-    local resized = h.truthy(room_shape.direction(
-      h.truthy(room_shape.start(plan, "furniture-sofa", 1, "furniture")), 1, 0, 100,
-      { max_dimension_mm = 100000 }, {
-        model = plan,
-        origin_mm = plan.rooms[1].origin_mm,
-        options = {
-          tolerance_mm = { x = 10, y = 10 },
-          mm_per_screen_unit = { x = 1, y = 1 },
-          priority = { "room_edge", "furniture_edge", "grid" },
-          grid_mm = 100,
-        },
-        world_shape = function(candidate)
-          local preview = h.truthy(room_shape.preview_model(plan, candidate))
-          return geometry.from_furniture(preview.rooms[1], preview.furniture[1])
-        end,
-      }
-    ))
+    local resized = h.truthy(
+      room_shape.direction(
+        h.truthy(room_shape.start(plan, "furniture-sofa", 1, "furniture")),
+        1,
+        0,
+        100,
+        { max_dimension_mm = 100000 },
+        {
+          model = plan,
+          origin_mm = plan.rooms[1].origin_mm,
+          options = {
+            tolerance_mm = { x = 10, y = 10 },
+            mm_per_screen_unit = { x = 1, y = 1 },
+            priority = { "room_edge", "furniture_edge", "grid" },
+            grid_mm = 100,
+          },
+          world_shape = function(candidate)
+            local preview = h.truthy(room_shape.preview_model(plan, candidate))
+            return geometry.from_furniture(preview.rooms[1], preview.furniture[1])
+          end,
+        }
+      )
+    )
     h.eq(1050, resized.footprint.parts[1].size_mm[1])
     h.eq("X → Main east wall", room_shape.snap_summary(resized))
   end)
@@ -306,11 +341,13 @@ describe("direct room resize drafts", function()
   it("draws a visible support tail for north and south snaps", function()
     local plan = fixture()
     plan.rooms[2] = model.new_room({
-      id = "room-north", name = "Bedroom", origin_mm = { 100, 2350 }, size_mm = { 3000, 2000 },
+      id = "room-north",
+      name = "Bedroom",
+      origin_mm = { 100, 2350 },
+      size_mm = { 3000, 2000 },
     })
-    local resized = h.truthy(room_shape.direction(
-      h.truthy(room_shape.start(plan, "room-main", 1)), 0, 1, 100,
-      { max_dimension_mm = 100000 }, {
+    local resized = h.truthy(
+      room_shape.direction(h.truthy(room_shape.start(plan, "room-main", 1)), 0, 1, 100, { max_dimension_mm = 100000 }, {
         model = plan,
         origin_mm = plan.rooms[1].origin_mm,
         options = {
@@ -319,8 +356,8 @@ describe("direct room resize drafts", function()
           priority = { "room_edge", "grid" },
           grid_mm = 100,
         },
-      }
-    ))
+      })
+    )
     h.eq("Y → Bedroom south wall", room_shape.snap_summary(resized))
     local preview = h.truthy(room_shape.preview_model(plan, resized))
     local scene = require("roomplan.scene.build").build(preview, nil, {
@@ -343,16 +380,18 @@ describe("direct room resize drafts", function()
   it("retains north-wall touch highlighting with snapping disabled", function()
     local plan = fixture()
     plan.rooms[2] = model.new_room({
-      id = "room-north", name = "Bedroom", origin_mm = { 100, 2300 }, size_mm = { 3000, 2000 },
+      id = "room-north",
+      name = "Bedroom",
+      origin_mm = { 100, 2300 },
+      size_mm = { 3000, 2000 },
     })
-    local resized = h.truthy(room_shape.direction(
-      h.truthy(room_shape.start(plan, "room-main", 1)), 0, 1, 100,
-      { max_dimension_mm = 100000 }, {
+    local resized = h.truthy(
+      room_shape.direction(h.truthy(room_shape.start(plan, "room-main", 1)), 0, 1, 100, { max_dimension_mm = 100000 }, {
         model = plan,
         origin_mm = plan.rooms[1].origin_mm,
         options = false,
-      }
-    ))
+      })
+    )
     h.eq(2100, resized.footprint.parts[1].size_mm[2])
     h.eq(1, #resized.snap_guides)
     h.eq("y", resized.snap_guides[1].axis)

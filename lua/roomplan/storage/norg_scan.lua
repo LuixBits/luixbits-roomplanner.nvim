@@ -52,12 +52,8 @@ local function parse_params(rest)
       started = true
     end
   end
-  if escaped then
-    current[#current + 1] = "\\"
-  end
-  if started then
-    params[#params + 1] = table.concat(current)
-  end
+  if escaped then current[#current + 1] = "\\" end
+  if started then params[#params + 1] = table.concat(current) end
   return params
 end
 
@@ -112,9 +108,7 @@ function M.scan(text)
   return blocks, lines
 end
 
-local function is_roomplan_document(document)
-  return type(document) == "table" and document.format == "roomplan.nvim"
-end
+local function is_roomplan_document(document) return type(document) == "table" and document.format == "roomplan.nvim" end
 
 function M.discover(text, decode)
   local blocks, scan_err = M.scan(text)
@@ -129,9 +123,10 @@ function M.discover(text, decode)
       if marked then
         marked_count = marked_count + 1
         if not block.closed then
-          return nil, util.err("NORG_MARKED_UNTERMINATED", "marked RoomPlan block has no @end", {
-            line = block.start_line,
-          })
+          return nil,
+            util.err("NORG_MARKED_UNTERMINATED", "marked RoomPlan block has no @end", {
+              line = block.start_line,
+            })
         end
       end
       local ok, document = pcall(decode, block.content)
@@ -140,10 +135,11 @@ function M.discover(text, decode)
         block.marked = marked
         candidates[#candidates + 1] = block
       elseif marked then
-        return nil, util.err("NORG_MARKED_MALFORMED", "marked RoomPlan JSON is malformed", {
-          line = block.start_line,
-          cause = ok and "format marker missing" or tostring(document),
-        })
+        return nil,
+          util.err("NORG_MARKED_MALFORMED", "marked RoomPlan JSON is malformed", {
+            line = block.start_line,
+            cause = ok and "format marker missing" or tostring(document),
+          })
       elseif not ok then
         malformed_json[#malformed_json + 1] = block
       end
@@ -156,15 +152,14 @@ function M.discover(text, decode)
   if #candidates > 1 then
     return nil, util.err("NORG_MULTIPLE_PLANS", "more than one RoomPlan JSON block exists", { count = #candidates })
   end
-  if #candidates == 1 then
-    return { kind = "found", block = candidates[1], blocks = blocks }
-  end
+  if #candidates == 1 then return { kind = "found", block = candidates[1], blocks = blocks } end
 
   for _, block in ipairs(malformed_json) do
     if block.content:find('"roomplan%.nvim"') then
-      return nil, util.err("NORG_SUSPECTED_DAMAGED_PLAN", "malformed JSON block may be a damaged RoomPlan", {
-        line = block.start_line,
-      })
+      return nil,
+        util.err("NORG_SUSPECTED_DAMAGED_PLAN", "malformed JSON block may be a damaged RoomPlan", {
+          line = block.start_line,
+        })
     end
   end
   return { kind = "missing", malformed_json = malformed_json, blocks = blocks }
@@ -211,9 +206,7 @@ function M.initialize(text, payload, heading_line)
     for index = 1, insert_at - 1 do
       output[#output + 1] = lines[index]
     end
-    if output[#output] ~= "" then
-      output[#output + 1] = ""
-    end
+    if output[#output] ~= "" then output[#output + 1] = "" end
     vim.list_extend(output, block_lines)
     output[#output + 1] = ""
     for index = insert_at, #lines do
@@ -225,9 +218,7 @@ function M.initialize(text, payload, heading_line)
   while #lines > 0 and lines[#lines] == "" do
     table.remove(lines)
   end
-  if #lines > 0 then
-    lines[#lines + 1] = ""
-  end
+  if #lines > 0 then lines[#lines + 1] = "" end
   lines[#lines + 1] = "* Floor plan"
   lines[#lines + 1] = ""
   vim.list_extend(lines, block_lines)
@@ -240,9 +231,7 @@ function M.floor_plan_headings(text)
   if not blocks then return nil, lines end
   local result = {}
   for index, line in ipairs(lines) do
-    if line:match("^%*%s+Floor plan%s*$") then
-      result[#result + 1] = index
-    end
+    if line:match("^%*%s+Floor plan%s*$") then result[#result + 1] = index end
   end
   return result
 end

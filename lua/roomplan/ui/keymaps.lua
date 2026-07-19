@@ -1,9 +1,7 @@
 local M = {}
 local mappings = require("roomplan.ui.mappings")
 
-local function map(buf, lhs, rhs, desc, name)
-  return mappings.set(buf, lhs, rhs, desc, name)
-end
+local function map(buf, lhs, rhs, desc, name) return mappings.set(buf, lhs, rhs, desc, name) end
 
 function M.apply(buf, session)
   local function controller(method, ...)
@@ -58,8 +56,13 @@ function M.apply(buf, session)
   map(buf, ".", controller("zoom", "in"), "Zoom RoomPlan in", "zoom_in")
   map(buf, ",", controller("zoom", "out"), "Zoom RoomPlan out", "zoom_out")
   map(buf, "<A-l>", controller("rotate_view", "clockwise"), "Rotate RoomPlan view clockwise", "rotate_view_clockwise")
-  map(buf, "<A-h>", controller("rotate_view", "counterclockwise"),
-    "Rotate RoomPlan view counter-clockwise", "rotate_view_counterclockwise")
+  map(
+    buf,
+    "<A-h>",
+    controller("rotate_view", "counterclockwise"),
+    "Rotate RoomPlan view counter-clockwise",
+    "rotate_view_counterclockwise"
+  )
   map(buf, "g0", controller("rotate_view", "reset"), "Reset RoomPlan plan view/up", "reset_view")
   map(buf, "f", controller("fit"), "Fit RoomPlan", "fit")
   map(buf, "M", controller("toggle_minimap"), "Toggle RoomPlan minimap", "toggle_minimap")

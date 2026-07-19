@@ -217,8 +217,14 @@ describe("compound geometry kernel", function()
       local_shape.parts[2].id,
     })
     assert_equal({
-      left2 = 200, bottom2 = 400, right2 = 216, top2 = 412,
-      width2 = 16, depth2 = 12, center_x2 = 208, center_y2 = 406,
+      left2 = 200,
+      bottom2 = 400,
+      right2 = 216,
+      top2 = 412,
+      width2 = 16,
+      depth2 = 12,
+      center_x2 = 208,
+      center_y2 = 406,
     }, assert(footprint.bounds2(footprint.from_room(room))))
 
     local furniture = {
@@ -232,8 +238,14 @@ describe("compound geometry kernel", function()
     }
     local world = assert(footprint.from_furniture(room, furniture))
     assert_equal({
-      left2 = 210, bottom2 = 436, right2 = 222, top2 = 452,
-      width2 = 12, depth2 = 16, center_x2 = 216, center_y2 = 444,
+      left2 = 210,
+      bottom2 = 436,
+      right2 = 222,
+      top2 = 452,
+      width2 = 12,
+      depth2 = 16,
+      center_x2 = 216,
+      center_y2 = 444,
     }, assert(footprint.bounds2(world)))
     assert_equal({ "part-main", "part-east" }, {
       world.parts[1].id,

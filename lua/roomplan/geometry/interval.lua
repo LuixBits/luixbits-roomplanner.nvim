@@ -1,9 +1,7 @@
 local M = {}
 
 function M.normalize(a, b)
-  if a <= b then
-    return a, b
-  end
+  if a <= b then return a, b end
   return b, a
 end
 
@@ -61,14 +59,10 @@ function M.subtract(a0, a1, cuts)
     c0, c1 = M.normalize(c0, c1)
     c0 = math.max(a0, c0)
     c1 = math.min(a1, c1)
-    if c0 < c1 then
-      normalized[#normalized + 1] = { c0, c1 }
-    end
+    if c0 < c1 then normalized[#normalized + 1] = { c0, c1 } end
   end
   table.sort(normalized, function(left, right)
-    if left[1] ~= right[1] then
-      return left[1] < right[1]
-    end
+    if left[1] ~= right[1] then return left[1] < right[1] end
     return left[2] < right[2]
   end)
 
@@ -87,14 +81,10 @@ function M.subtract(a0, a1, cuts)
   local cursor = a0
   for i = 1, #merged do
     local cut = merged[i]
-    if cursor < cut[1] then
-      pieces[#pieces + 1] = { start = cursor, finish = cut[1] }
-    end
+    if cursor < cut[1] then pieces[#pieces + 1] = { start = cursor, finish = cut[1] } end
     cursor = math.max(cursor, cut[2])
   end
-  if cursor < a1 then
-    pieces[#pieces + 1] = { start = cursor, finish = a1 }
-  end
+  if cursor < a1 then pieces[#pieces + 1] = { start = cursor, finish = a1 } end
   return pieces
 end
 

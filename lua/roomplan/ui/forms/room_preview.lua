@@ -33,7 +33,9 @@ function M.edit(resolve_footprint)
       "Origin " .. common.point_text({ draft.origin_x_mm, draft.origin_y_mm }),
       string.format("%g x %g mm · %.2f m²", bounds.width2 / 2, bounds.depth2 / 2, area / 1000000),
     }
-    for _, line in ipairs(grid(shape, bounds)) do lines[#lines + 1] = line end
+    for _, line in ipairs(grid(shape, bounds)) do
+      lines[#lines + 1] = line
+    end
     return { lines = lines }
   end
 end

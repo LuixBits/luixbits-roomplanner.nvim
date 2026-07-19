@@ -18,15 +18,26 @@ local function fixture()
     },
     doors = {
       {
-        id = "door-shared", room_id = "room-living", connects_to_room_id = "room-bed",
-        side = "east", offset_mm = 500, width_mm = 900, hinge = "start", opens_into = "room-bed",
+        id = "door-shared",
+        room_id = "room-living",
+        connects_to_room_id = "room-bed",
+        side = "east",
+        offset_mm = 500,
+        width_mm = 900,
+        hinge = "start",
+        opens_into = "room-bed",
         open_angle_deg = 90,
       },
     },
     furniture = {
       {
-        id = "sofa-1", room_id = "room-living", name = "Sofa", template_id = "sofa",
-        center_mm = { 1500, 1000 }, size_mm = { 2100, 900, 800 }, rotation_deg = 0,
+        id = "sofa-1",
+        room_id = "room-living",
+        name = "Sofa",
+        template_id = "sofa",
+        center_mm = { 1500, 1000 },
+        size_mm = { 2100, 900, 800 },
+        rotation_deg = 0,
       },
     },
     custom_templates = {},
@@ -49,19 +60,26 @@ describe("workspace UI", function()
     assert_equal("medium", workspace_state.calculate_layout(90, 24).kind)
     assert_equal("compact", workspace_state.calculate_layout(89, 24).kind)
     assert_equal("compact", workspace_state.calculate_layout(160, 21).kind)
-    assert_equal("compact", workspace_state.calculate_layout(160, 13, {
-      compact_min_rows = 5, min_canvas_height = 12, footer_height = 2,
-    }).kind)
+    assert_equal(
+      "compact",
+      workspace_state.calculate_layout(160, 13, {
+        compact_min_rows = 5,
+        min_canvas_height = 12,
+        footer_height = 2,
+      }).kind
+    )
     assert_true(workspace_state.calculate_layout(80, 24).compact_reason:match("width") ~= nil)
 
     local forced_wide = workspace_state.calculate_layout(40, 12, {
-      layout = "wide", min_canvas_width = 55,
+      layout = "wide",
+      min_canvas_width = 55,
     })
     assert_equal(false, forced_wide.panes.left.persistent)
     assert_equal(false, forced_wide.panes.properties.persistent)
     assert_equal(40, forced_wide.panes.canvas.width)
     local forced_medium = workspace_state.calculate_layout(40, 12, {
-      layout = "medium", min_canvas_width = 55,
+      layout = "medium",
+      min_canvas_width = 55,
     })
     assert_equal(false, forced_medium.panes.left.persistent)
     assert_equal(40, forced_medium.panes.canvas.width)
@@ -78,14 +96,16 @@ describe("workspace UI", function()
     assert_equal(120, navigator.panes.left.width + navigator.panes.canvas.width + 1)
 
     local canvas_only = workspace_state.calculate_layout(120, 40, nil, {
-      navigator = false, details = false,
+      navigator = false,
+      details = false,
     })
     assert_equal(120, canvas_only.panes.canvas.width)
     assert_equal(0, canvas_only.panes.left.width)
     assert_equal(0, canvas_only.panes.properties.width)
 
     local details = workspace_state.calculate_layout(119, 35, nil, {
-      navigator = false, details = true,
+      navigator = false,
+      details = true,
     })
     assert_equal("medium", details.kind)
     assert_equal(false, details.panes.left.visible)
@@ -148,7 +168,9 @@ describe("workspace UI", function()
     assert_equal(true, medium_layout.panes.properties.visible)
     assert_equal(false, medium_layout.panes.left.visible)
     local navigator = workspace_state.reduce(medium, {
-      type = "set_pane_visible", pane = "details", visible = false,
+      type = "set_pane_visible",
+      pane = "details",
+      visible = false,
     })
     assert_equal(true, navigator.visibility.navigator)
     assert_equal(false, navigator.visibility.details)
@@ -171,11 +193,15 @@ describe("workspace UI", function()
     assert_equal(true, initial.collapsed_sections.advanced)
 
     local collapsed = workspace_state.reduce(toggled, {
-      type = "set_section", key = "geometry", expanded = false,
+      type = "set_section",
+      key = "geometry",
+      expanded = false,
     })
     assert_equal(true, collapsed.collapsed_sections.geometry)
     local expanded = workspace_state.reduce(collapsed, {
-      type = "set_section", key = "geometry", expanded = true,
+      type = "set_section",
+      key = "geometry",
+      expanded = true,
     })
     assert_equal(false, expanded.collapsed_sections.geometry)
   end)
@@ -186,7 +212,9 @@ describe("workspace UI", function()
       selection = { kind = "furniture", id = "sofa-1" },
       diagnostics = {
         {
-          severity = "warning", code = "DOOR_SWING_COLLISION", message = "Sofa intersects swing",
+          severity = "warning",
+          code = "DOOR_SWING_COLLISION",
+          message = "Sofa intersects swing",
           object = { kind = "furniture", id = "sofa-1" },
         },
       },
@@ -217,7 +245,9 @@ describe("workspace UI", function()
     assert_true(marked_panel.lines[5]:find("●", 1, true) ~= nil)
 
     model.custom_templates[1] = {
-      id = "custom:desk", name = "My desk", category = "work",
+      id = "custom:desk",
+      name = "My desk",
+      category = "work",
       default_size_mm = { 1600, 800, 740 },
     }
     local with_template = presenter.objects(model, { selection = { kind = "template", id = "custom:desk" } })
@@ -245,7 +275,9 @@ describe("workspace UI", function()
     assert_equal("1.234 m", presenter.compact_mm(1234))
 
     local ctx = presenter.context({
-      model = fixture(), selection = nil, viewport = { mm_per_column = 50 },
+      model = fixture(),
+      selection = nil,
+      viewport = { mm_per_column = 50 },
       canvas = { handle = { opts = { mm_per_column = 100 } } },
     }, { focused_pane = "properties" })
     assert_equal("plan", ctx.selection.kind)
@@ -263,10 +295,19 @@ describe("workspace UI", function()
     local sun_session = { model = fixture(), selection = { kind = "room", id = "room-living" }, validation = {} }
     sun_session.model.site = { utc_offset_minutes = 120 }
     sun_session.sun_study = {
-      viewing = true, playing = false, overlay = "daily", date = "2026-06-21", time = "14:00", step_minutes = 60,
+      viewing = true,
+      playing = false,
+      overlay = "daily",
+      date = "2026-06-21",
+      time = "14:00",
+      step_minutes = 60,
       calculation = {
-        minutes = 840, sunrise_minutes = 300, sunset_minutes = 1260,
-        daylight_state = "normal", azimuth_deg = 210, elevation_deg = 55,
+        minutes = 840,
+        sunrise_minutes = 300,
+        sunset_minutes = 1260,
+        daylight_state = "normal",
+        azimuth_deg = 210,
+        elevation_deg = 55,
       },
       daily_exposure = { room_minutes = { ["room-living"] = 360 }, window_minutes = {}, total_minutes = 960 },
     }
@@ -283,8 +324,12 @@ describe("workspace UI", function()
     plan.windows = {}
     plan.outlets = {
       {
-        id = "outlet-floor", room_id = "room-living", placement = "floor",
-        position_mm = { 500, 500 }, outlet_type = "power", slots = 2,
+        id = "outlet-floor",
+        room_id = "room-living",
+        placement = "floor",
+        position_mm = { 500, 500 },
+        outlet_type = "power",
+        slots = 2,
       },
     }
     plan.furniture[1].category = "seating"
@@ -297,29 +342,44 @@ describe("workspace UI", function()
     assert_equal("Living › Floor outlet · Power · 2 slots", outlet.breadcrumb.text)
     assert_equal("RoomPlanWorkspaceOutlet", outlet.breadcrumb.hl_group)
 
-    assert_equal("Living › Door · Right → Bedroom", presenter.context({
-      model = plan,
-      selection = { kind = "door", id = "door-shared" },
-      mode = "NAV",
-    }).breadcrumb.text)
+    assert_equal(
+      "Living › Door · Right → Bedroom",
+      presenter.context({
+        model = plan,
+        selection = { kind = "door", id = "door-shared" },
+        mode = "NAV",
+      }).breadcrumb.text
+    )
     plan.windows[1] = {
-      id = "window-north", room_id = "room-living", side = "north",
-      connects_to_room_id = nil, offset_mm = 500, width_mm = 1200,
+      id = "window-north",
+      room_id = "room-living",
+      side = "north",
+      connects_to_room_id = nil,
+      offset_mm = 500,
+      width_mm = 1200,
     }
-    assert_equal("Living › Window · Top → outside", presenter.context({
-      model = plan,
-      selection = { kind = "window", id = "window-north" },
-      mode = "NAV",
-    }).breadcrumb.text)
+    assert_equal(
+      "Living › Window · Top → outside",
+      presenter.context({
+        model = plan,
+        selection = { kind = "window", id = "window-north" },
+        mode = "NAV",
+      }).breadcrumb.text
+    )
     plan.custom_templates[1] = {
-      id = "custom:desk", name = "My desk", category = "work",
+      id = "custom:desk",
+      name = "My desk",
+      category = "work",
       default_size_mm = { 1600, 800, 740 },
     }
-    assert_equal("Project template › My desk · work", presenter.context({
-      model = plan,
-      selection = { kind = "template", id = "custom:desk" },
-      mode = "NAV",
-    }).breadcrumb.text)
+    assert_equal(
+      "Project template › My desk · work",
+      presenter.context({
+        model = plan,
+        selection = { kind = "template", id = "custom:desk" },
+        mode = "NAV",
+      }).breadcrumb.text
+    )
 
     local furniture = presenter.context({
       model = plan,
@@ -347,11 +407,14 @@ describe("workspace UI", function()
       "Living · RESIZE section 2/3 · west edge · left 10 mm · snap: X → Bedroom west wall",
       resize.text
     )
-    assert_equal(nil, presenter.context({
-      model = plan,
-      selection = { kind = "plan" },
-      mode = "NAV",
-    }).breadcrumb)
+    assert_equal(
+      nil,
+      presenter.context({
+        model = plan,
+        selection = { kind = "plan" },
+        mode = "NAV",
+      }).breadcrumb
+    )
   end)
 
   it("reports contextual actions, disabled reasons, and explicit interaction modes", function()
@@ -363,8 +426,11 @@ describe("workspace UI", function()
     assert_equal("Add a room first", actions[2].reason)
 
     local room = {
-      model = fixture(), selection = { kind = "room", id = "room-living" }, mode = "NAV",
-      focus = "canvas", snap_enabled = true,
+      model = fixture(),
+      selection = { kind = "room", id = "room-living" },
+      mode = "NAV",
+      focus = "canvas",
+      snap_enabled = true,
     }
     local room_actions = registry.contextual(room)
     assert_equal("edit", room_actions[1].id)
@@ -506,8 +572,10 @@ describe("workspace UI", function()
       assert_equal("/shape", handle.query)
       vim.api.nvim_buf_set_lines(handle.search_bufnr, 0, -1, false, { "/ shape" })
       vim.api.nvim_exec_autocmds("TextChangedI", { buffer = handle.search_bufnr, modeline = false })
-      assert_true(table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
-        :find("Edit furniture shape", 1, true) ~= nil)
+      assert_true(
+        table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n"):find("Edit furniture shape", 1, true)
+          ~= nil
+      )
       local search_bufnr = handle.search_bufnr
       assert_true(palette.finish_search(handle))
       assert_equal(false, handle.searching)
@@ -530,9 +598,13 @@ describe("workspace UI", function()
     assert_true(#panel.highlights > 0)
 
     local ctx = {
-      model = fixture(), selection = { kind = "furniture", id = "sofa-1" },
-      mode = "FURNITURE_EDIT", form = { kind = "furniture" }, focus = "properties",
-      dirty = true, snap_enabled = true,
+      model = fixture(),
+      selection = { kind = "furniture", id = "sofa-1" },
+      mode = "FURNITURE_EDIT",
+      form = { kind = "furniture" },
+      focus = "properties",
+      dirty = true,
+      snap_enabled = true,
     }
     local bar = action_bar.render(ctx, 72, { height = 2 })
     assert_equal(2, #bar.lines)
@@ -554,9 +626,14 @@ describe("workspace UI", function()
 
   it("renders dynamic canvas controls in Details and leaves only status in the footer", function()
     local ctx = {
-      model = fixture(), selection = { kind = "furniture", id = "sofa-1" },
-      mode = "SUN STUDY", focus = "properties", dirty = false, snap_enabled = true,
-      detail_level = "middle", sun_study = { time = "14:00", playing = true },
+      model = fixture(),
+      selection = { kind = "furniture", id = "sofa-1" },
+      mode = "SUN STUDY",
+      focus = "properties",
+      dirty = false,
+      snap_enabled = true,
+      detail_level = "middle",
+      sun_study = { time = "14:00", playing = true },
     }
     local view = presenter.properties({ model = fixture(), selection = ctx.selection, validation = {} })
     view.context_title = registry.context_title(ctx)
@@ -620,12 +697,34 @@ describe("workspace UI", function()
   it("keeps the workspace facade API stable", function()
     local workspace = require("roomplan.ui.workspace")
     for _, name in ipairs({
-      "action_context", "apply_canvas_keymaps", "attach", "close", "collapse_focused",
-      "cycle_focus", "escape", "expand_focused", "filter_focused", "filter_prompt",
-      "focus", "hide", "invoke", "invoke_key", "is_visible", "layout", "mount",
-      "owns_window", "reflow", "refresh", "select_focused", "set_details_section",
-      "set_filter", "set_interaction", "toggle", "toggle_details_section",
-      "toggle_mark_focused", "update_cursor",
+      "action_context",
+      "apply_canvas_keymaps",
+      "attach",
+      "close",
+      "collapse_focused",
+      "cycle_focus",
+      "escape",
+      "expand_focused",
+      "filter_focused",
+      "filter_prompt",
+      "focus",
+      "hide",
+      "invoke",
+      "invoke_key",
+      "is_visible",
+      "layout",
+      "mount",
+      "owns_window",
+      "reflow",
+      "refresh",
+      "select_focused",
+      "set_details_section",
+      "set_filter",
+      "set_interaction",
+      "toggle",
+      "toggle_details_section",
+      "toggle_mark_focused",
+      "update_cursor",
     }) do
       assert_equal("function", type(workspace[name]), "missing workspace method " .. name)
     end
@@ -653,7 +752,10 @@ describe("workspace UI", function()
       history = { can_undo = function() return false end, can_redo = function() return false end },
     }
     local shell = workspace.mount(session, {
-      layout = "wide", columns = 120, lines = 40, cycle_tabs = false,
+      layout = "wide",
+      columns = 120,
+      lines = 40,
+      cycle_tabs = false,
     })
     assert_equal(true, shell.owns_footer)
     assert_equal("wide", shell.layout.kind)
@@ -661,28 +763,26 @@ describe("workspace UI", function()
     assert_true(vim.api.nvim_win_is_valid(canvas_window))
     assert_true(vim.api.nvim_win_is_valid(shell.windows.left))
     assert_equal(1, vim.api.nvim_win_get_height(shell.windows.action_bar))
-    assert_true(#vim.api.nvim_buf_get_extmarks(
-      shell.buffers.objects,
-      shell.namespaces.objects,
-      0,
-      -1,
-      {}
-    ) > 0)
+    assert_true(#vim.api.nvim_buf_get_extmarks(shell.buffers.objects, shell.namespaces.objects, 0, -1, {}) > 0)
     assert_equal(nil, shell.windows.properties)
     assert_equal(false, shell.state.visibility.details)
-    local side_tab = vim.api.nvim_buf_call(shell.buffers.objects, function()
-      return vim.fn.maparg("<Tab>", "n", false, true)
-    end)
+    local side_tab = vim.api.nvim_buf_call(
+      shell.buffers.objects,
+      function() return vim.fn.maparg("<Tab>", "n", false, true) end
+    )
     assert_equal(nil, next(side_tab))
-    local issue_next = vim.api.nvim_buf_call(shell.buffers.issues, function()
-      return vim.fn.maparg("<A-j>", "n", false, true)
-    end)
-    local issue_previous = vim.api.nvim_buf_call(shell.buffers.issues, function()
-      return vim.fn.maparg("<A-k>", "n", false, true)
-    end)
-    local detail = vim.api.nvim_buf_call(shell.buffers.issues, function()
-      return vim.fn.maparg("t", "n", false, true)
-    end)
+    local issue_next = vim.api.nvim_buf_call(
+      shell.buffers.issues,
+      function() return vim.fn.maparg("<A-j>", "n", false, true) end
+    )
+    local issue_previous = vim.api.nvim_buf_call(
+      shell.buffers.issues,
+      function() return vim.fn.maparg("<A-k>", "n", false, true) end
+    )
+    local detail = vim.api.nvim_buf_call(
+      shell.buffers.issues,
+      function() return vim.fn.maparg("t", "n", false, true) end
+    )
     assert_equal("RoomPlan next_issue", issue_next.desc)
     assert_equal("RoomPlan previous_issue", issue_previous.desc)
     assert_equal("RoomPlan cycle_detail_level", detail.desc)
@@ -695,8 +795,13 @@ describe("workspace UI", function()
     assert_equal(shell.buffers.objects, vim.api.nvim_win_get_buf(shell.windows.left))
     local overlay_buffer = vim.api.nvim_create_buf(false, true)
     local overlay_window = vim.api.nvim_open_win(overlay_buffer, true, {
-      relative = "editor", style = "minimal", border = "rounded",
-      width = 30, height = 6, col = 4, row = 3,
+      relative = "editor",
+      style = "minimal",
+      border = "rounded",
+      width = 30,
+      height = 6,
+      col = 4,
+      row = 3,
     })
     workspace.reflow(session, true)
     assert_equal(overlay_window, vim.api.nvim_get_current_win())
@@ -709,12 +814,19 @@ describe("workspace UI", function()
     assert_true(vim.api.nvim_win_is_valid(shell.windows.properties))
     local old_properties_buffer = shell.buffers.properties
     vim.api.nvim_buf_delete(old_properties_buffer, { force = true })
-    assert_true(vim.wait(200, function()
-      return type(shell.buffers.properties) == "number"
-        and shell.buffers.properties ~= old_properties_buffer
-        and vim.api.nvim_buf_is_valid(shell.buffers.properties)
-        and shell.reflowing == false
-    end, 5), "wiped workspace buffers should be repaired")
+    assert_true(
+      vim.wait(
+        200,
+        function()
+          return type(shell.buffers.properties) == "number"
+            and shell.buffers.properties ~= old_properties_buffer
+            and vim.api.nvim_buf_is_valid(shell.buffers.properties)
+            and shell.reflowing == false
+        end,
+        5
+      ),
+      "wiped workspace buffers should be repaired"
+    )
     workspace.focus(session, "canvas")
 
     -- Native window commands and mouse focus do not pass through
@@ -723,7 +835,10 @@ describe("workspace UI", function()
     assert_true(vim.wait(100, function() return shell.state.focused_pane == "objects" end, 5))
     local room_row
     for line, row in pairs(shell.rendered.objects.row_map) do
-      if row.kind == "room" then room_row = line; break end
+      if row.kind == "room" then
+        room_row = line
+        break
+      end
     end
     assert_true(room_row ~= nil)
     vim.api.nvim_win_set_cursor(shell.windows.left, { room_row, 0 })
@@ -741,7 +856,10 @@ describe("workspace UI", function()
     assert_equal(0, #shell.rendered.action_bar.shown_actions)
     local geometry_row
     for line, row in pairs(shell.rendered.properties.row_map) do
-      if row.kind == "section" and row.section == "geometry" then geometry_row = line; break end
+      if row.kind == "section" and row.section == "geometry" then
+        geometry_row = line
+        break
+      end
     end
     assert_true(geometry_row ~= nil)
     assert_equal(true, shell.rendered.properties.row_map[geometry_row].expanded)

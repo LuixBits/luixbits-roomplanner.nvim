@@ -5,9 +5,7 @@ local common = require("roomplan.ui.forms.common")
 local M = {}
 local separator = "\31"
 
-local function encode(kind, id)
-  return tostring(kind) .. separator .. tostring(id)
-end
+local function encode(kind, id) return tostring(kind) .. separator .. tostring(id) end
 
 local function decode(value)
   local kind, id = tostring(value or ""):match("^([^" .. separator .. "]+)" .. separator .. "(.+)$")
@@ -43,9 +41,7 @@ end
 
 local function result(draft, context)
   local left, right = decode(draft.from_ref), decode(draft.to_ref)
-  if not left or not right then
-    return nil, { code = "MEASUREMENT_REFERENCE", message = "choose two objects" }
-  end
+  if not left or not right then return nil, { code = "MEASUREMENT_REFERENCE", message = "choose two objects" } end
   return measurement.between(common.model(context), left, right)
 end
 
@@ -128,17 +124,13 @@ function M.new(session)
     on_change = function(key, value, _, draft, ctx)
       if (key == "from_ref" and value == draft.to_ref) or (key == "to_ref" and value == draft.from_ref) then
         for _, choice in ipairs(choices(ctx)) do
-          if choice.value ~= value then
-            return { [key == "from_ref" and "to_ref" or "from_ref"] = choice.value }
-          end
+          if choice.value ~= value then return { [key == "from_ref" and "to_ref" or "from_ref"] = choice.value } end
         end
       end
     end,
     preview = function(draft, ctx)
       local value, err = result(draft, ctx)
-      if not value then
-        return nil, err
-      end
+      if not value then return nil, err end
       return {
         lines = {
           string.format("%s → %s", point(value.closest.from), point(value.closest.to)),
@@ -148,9 +140,7 @@ function M.new(session)
     end,
   }
   function spec.validate(draft)
-    if draft.from_ref == draft.to_ref then
-      return { to_ref = "must differ from the first object" }
-    end
+    if draft.from_ref == draft.to_ref then return { to_ref = "must differ from the first object" } end
     return {}
   end
   spec.result = result

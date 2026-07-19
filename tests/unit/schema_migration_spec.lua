@@ -46,19 +46,13 @@ local function v2_furniture_footprint(room, item)
     }
   end
   local local_shape = h.truthy(footprint.compound(parts, { require_ids = true }))
-  local rotated = h.truthy(footprint.rotate_quarter(
-    local_shape,
-    item.rotation_deg,
-    item.anchor2_mm[1],
-    item.anchor2_mm[2]
-  ))
+  local rotated =
+    h.truthy(footprint.rotate_quarter(local_shape, item.rotation_deg, item.anchor2_mm[1], item.anchor2_mm[2]))
   local anchor_world_x2 = 2 * (room.origin_mm[1] + item.position_mm[1])
   local anchor_world_y2 = 2 * (room.origin_mm[2] + item.position_mm[2])
-  return h.truthy(footprint.translate2(
-    rotated,
-    anchor_world_x2 - item.anchor2_mm[1],
-    anchor_world_y2 - item.anchor2_mm[2]
-  ))
+  return h.truthy(
+    footprint.translate2(rotated, anchor_world_x2 - item.anchor2_mm[1], anchor_world_y2 - item.anchor2_mm[2])
+  )
 end
 
 describe("schema v1 to v2 migration", function()
@@ -157,9 +151,7 @@ describe("schema v1 to v2 migration", function()
       local document = fixture("migration-v1.roomplan.json")
       document[case.collection][1][case.key] = json.null
       local original = json.deep_copy(document)
-      expect_failure(function()
-        return schema.migrate(document, 2)
-      end, "SCHEMA_MIGRATION_COLLISION", case.path)
+      expect_failure(function() return schema.migrate(document, 2) end, "SCHEMA_MIGRATION_COLLISION", case.path)
       h.truthy(json.deep_equal(original, document), case.path .. " collision mutated its input")
     end
   end)
@@ -171,9 +163,11 @@ describe("schema v1 to v2 migration", function()
       parts = json.array({ part("part-main", 0, 0, 3001, 1999) }),
     })
     local original = json.deep_copy(document)
-    expect_failure(function()
-      return schema.migrate(document, 2)
-    end, "SCHEMA_MIGRATION_COLLISION", "$.rooms[1].footprint")
+    expect_failure(
+      function() return schema.migrate(document, 2) end,
+      "SCHEMA_MIGRATION_COLLISION",
+      "$.rooms[1].footprint"
+    )
     h.truthy(json.deep_equal(original, document))
   end)
 
@@ -200,9 +194,7 @@ describe("schema v1 to v2 migration", function()
     local malformed = fixture("migration-v1.roomplan.json")
     malformed.rooms[1].size_mm[1] = 0
     local original = json.deep_copy(malformed)
-    expect_failure(function()
-      return schema.migrate(malformed, 2)
-    end, "SCHEMA_INTEGER_MIN", "$.rooms[1].size_mm[1]")
+    expect_failure(function() return schema.migrate(malformed, 2) end, "SCHEMA_INTEGER_MIN", "$.rooms[1].size_mm[1]")
     h.truthy(json.deep_equal(original, malformed))
   end)
 
@@ -210,16 +202,12 @@ describe("schema v1 to v2 migration", function()
     local future = fixture("migration-v1.expected-v2.roomplan.json")
     future.schema_version = 5
     local future_original = json.deep_copy(future)
-    expect_failure(function()
-      return schema.migrate(future, 2)
-    end, "SCHEMA_FUTURE_VERSION", "$.schema_version")
+    expect_failure(function() return schema.migrate(future, 2) end, "SCHEMA_FUTURE_VERSION", "$.schema_version")
     h.truthy(json.deep_equal(future_original, future))
 
     local current = fixture("compound-v2.roomplan.json")
     local current_original = json.deep_copy(current)
-    expect_failure(function()
-      return schema.migrate(current, 1)
-    end, "SCHEMA_DOWNGRADE_UNSUPPORTED", "$.schema_version")
+    expect_failure(function() return schema.migrate(current, 1) end, "SCHEMA_DOWNGRADE_UNSUPPORTED", "$.schema_version")
     h.truthy(json.deep_equal(current_original, current))
   end)
 
@@ -235,14 +223,10 @@ describe("schema v1 to v2 migration", function()
     h.truthy(json.deep_equal(normalized, decoded))
 
     local v2 = fixture("compound-v2.roomplan.json")
-    expect_failure(function()
-      return schema.encode(v2)
-    end, "SCHEMA_VERSION", "$.schema_version")
+    expect_failure(function() return schema.encode(v2) end, "SCHEMA_VERSION", "$.schema_version")
 
     local legacy = fixture("migration-v1.roomplan.json")
-    expect_failure(function()
-      return schema.encode(legacy)
-    end, "SCHEMA_VERSION", "$.schema_version")
+    expect_failure(function() return schema.encode(legacy) end, "SCHEMA_VERSION", "$.schema_version")
   end)
 end)
 
@@ -303,9 +287,7 @@ describe("schema v2 normalization", function()
     for _, case in ipairs(cases) do
       local document = fixture("compound-v2.roomplan.json")
       document[case.collection][1][case.key] = case.value
-      expect_failure(function()
-        return schema_v2.normalize(document)
-      end, "SCHEMA_STALE_FIELD", case.path)
+      expect_failure(function() return schema_v2.normalize(document) end, "SCHEMA_STALE_FIELD", case.path)
     end
   end)
 
@@ -346,32 +328,32 @@ describe("schema v2 normalization", function()
     for _, case in ipairs(cases) do
       local document = fixture("compound-v2.roomplan.json")
       document.rooms[1].footprint.parts = case.parts
-      expect_failure(function()
-        return schema_v2.normalize(document)
-      end, "SCHEMA_FOOTPRINT_TOPOLOGY", "$.rooms[1].footprint")
+      expect_failure(
+        function() return schema_v2.normalize(document) end,
+        "SCHEMA_FOOTPRINT_TOPOLOGY",
+        "$.rooms[1].footprint"
+      )
     end
   end)
 
   it("keeps malformed footprint scalar paths precise", function()
     local document = fixture("compound-v2.roomplan.json")
     document.rooms[1].footprint.parts[2].size_mm[1] = 0
-    expect_failure(function()
-      return schema_v2.normalize(document)
-    end, "SCHEMA_INTEGER_MIN", "$.rooms[1].footprint.parts[2].size_mm[1]")
+    expect_failure(
+      function() return schema_v2.normalize(document) end,
+      "SCHEMA_INTEGER_MIN",
+      "$.rooms[1].footprint.parts[2].size_mm[1]"
+    )
   end)
 
   it("requires a real referenced part but keeps aperture repair drafts loadable", function()
     local missing = fixture("compound-v2.roomplan.json")
     missing.doors[1].part_id = "part-missing"
-    expect_failure(function()
-      return schema_v2.normalize(missing)
-    end, "SCHEMA_DOOR_PART", "$.doors[1].part_id")
+    expect_failure(function() return schema_v2.normalize(missing) end, "SCHEMA_DOOR_PART", "$.doors[1].part_id")
 
     local absent = fixture("compound-v2.roomplan.json")
     absent.doors[1].part_id = nil
-    expect_failure(function()
-      return schema_v2.normalize(absent)
-    end, "SCHEMA_REQUIRED", "$.doors[1].part_id")
+    expect_failure(function() return schema_v2.normalize(absent) end, "SCHEMA_REQUIRED", "$.doors[1].part_id")
 
     local internal = fixture("compound-v2.roomplan.json")
     internal.doors[1].part_id = "part-main"
@@ -398,14 +380,18 @@ describe("schema v2 normalization", function()
 
     local outside = fixture("compound-v2.roomplan.json")
     outside.furniture[1].anchor2_mm = json.array({ -1, 0 })
-    expect_failure(function()
-      return schema_v2.normalize(outside)
-    end, "SCHEMA_ANCHOR_OUTSIDE", "$.furniture[1].anchor2_mm")
+    expect_failure(
+      function() return schema_v2.normalize(outside) end,
+      "SCHEMA_ANCHOR_OUTSIDE",
+      "$.furniture[1].anchor2_mm"
+    )
 
     local template = fixture("compound-v2.roomplan.json")
     template.custom_templates[1].default_anchor2_mm = json.array({ 3000, 3000 })
-    expect_failure(function()
-      return schema_v2.normalize(template)
-    end, "SCHEMA_ANCHOR_OUTSIDE", "$.custom_templates[1].default_anchor2_mm")
+    expect_failure(
+      function() return schema_v2.normalize(template) end,
+      "SCHEMA_ANCHOR_OUTSIDE",
+      "$.custom_templates[1].default_anchor2_mm"
+    )
   end)
 end)

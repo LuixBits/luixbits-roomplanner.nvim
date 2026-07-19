@@ -36,9 +36,7 @@ local function add_candidate(candidates, x, y)
   candidates[#candidates + 1] = { x, y }
 end
 
-function M.at(text, x, y, options)
-  return label(text, x, y, options)
-end
+function M.at(text, x, y, options) return label(text, x, y, options) end
 
 function M.room(room, ref, order, geometry)
   if geometry then
@@ -50,8 +48,7 @@ function M.room(room, ref, order, geometry)
     add_candidate(candidates, cx, cy)
     add_candidate(candidates, bounds.center_x, bounds.center_y)
     for _, rectangle in ipairs(geometry.rectangles or {}) do
-      add_candidate(candidates, (rectangle.left + rectangle.right) / 2,
-        (rectangle.bottom + rectangle.top) / 2)
+      add_candidate(candidates, (rectangle.left + rectangle.right) / 2, (rectangle.bottom + rectangle.top) / 2)
     end
     return label(room.name or room.id, cx, cy, {
       ref = ref,
@@ -95,9 +92,11 @@ function M.furniture(item, bounds, ref, order, anchor)
   add_candidate(candidates, (bounds.left + bounds.right) / 2, (bounds.bottom + bounds.top) / 2)
   for _, x_ratio in ipairs({ 0.35, 0.65 }) do
     for _, y_ratio in ipairs({ 0.35, 0.65 }) do
-      add_candidate(candidates,
+      add_candidate(
+        candidates,
         bounds.left + (bounds.right - bounds.left) * x_ratio,
-        bounds.bottom + (bounds.top - bounds.bottom) * y_ratio)
+        bounds.bottom + (bounds.top - bounds.bottom) * y_ratio
+      )
     end
   end
   return label(item.name or item.id, x, y, {
@@ -112,55 +111,55 @@ function M.furniture(item, bounds, ref, order, anchor)
 end
 
 local function decimal(value)
-  if value == math.floor(value) then
-    return string.format("%d", value)
-  end
+  if value == math.floor(value) then return string.format("%d", value) end
   return string.format("%.1f", value):gsub("%.0$", "")
 end
 
 function M.format_length(mm)
-  if math.abs(mm) >= 1000 then
-    return decimal(mm / 1000) .. "m"
-  end
+  if math.abs(mm) >= 1000 then return decimal(mm / 1000) .. "m" end
   return decimal(mm) .. "mm"
 end
 
 function M.edge_dimension(edge, ref, order, priority)
   local horizontal = edge.orientation == "horizontal"
   local midpoint = edge.start + (edge.finish - edge.start) / 2
-  return label(M.format_length(edge.finish - edge.start),
+  return label(
+    M.format_length(edge.finish - edge.start),
     horizontal and midpoint or edge.fixed,
-    horizontal and edge.fixed or midpoint, {
+    horizontal and edge.fixed or midpoint,
+    {
       kind = "dimension",
       ref = ref or edge.ref,
       role = "dimension",
-      fit_span = horizontal
-          and { x1 = edge.start, y1 = edge.fixed, x2 = edge.finish, y2 = edge.fixed }
+      fit_span = horizontal and { x1 = edge.start, y1 = edge.fixed, x2 = edge.finish, y2 = edge.fixed }
         or { x1 = edge.fixed, y1 = edge.start, x2 = edge.fixed, y2 = edge.finish },
       scale_policy = "dimension",
       placement = horizontal and "horizontal_edge" or "vertical_edge",
       allow_truncate = false,
       priority = priority or 0,
       order = order,
-    })
+    }
+  )
 end
 
 function M.furniture_dimensions(bounds, ref, order)
   return {
     M.edge_dimension({
-      orientation = "horizontal", fixed = bounds.bottom,
-      start = bounds.left, finish = bounds.right,
+      orientation = "horizontal",
+      fixed = bounds.bottom,
+      start = bounds.left,
+      finish = bounds.right,
     }, ref, order, 20),
     M.edge_dimension({
-      orientation = "vertical", fixed = bounds.left,
-      start = bounds.bottom, finish = bounds.top,
+      orientation = "vertical",
+      fixed = bounds.left,
+      start = bounds.bottom,
+      finish = bounds.top,
     }, ref, order, 20),
   }
 end
 
-function M.door_dimension(aperture, ref, order)
-  return M.opening_dimension(aperture, ref, order)
-end
+function M.door_dimension(aperture, ref, order) return M.opening_dimension(aperture, ref, order) end
 
 function M.opening_dimension(aperture, ref, order)
   return M.edge_dimension({
@@ -174,8 +173,7 @@ end
 function M.outlet(outlet, marker, ref, order)
   local slots = outlet.slots or 0
   local type_label = outlet_types.label(outlet.outlet_type) or tostring(outlet.outlet_type or "Outlet")
-  local text = string.format("%s · %d slot%s", type_label,
-    slots, slots == 1 and "" or "s")
+  local text = string.format("%s · %d slot%s", type_label, slots, slots == 1 and "" or "s")
   local x, y = marker.p[1], marker.p[2]
   local candidates
   if marker.placement == "floor" then

@@ -9,14 +9,8 @@ describe("config", function()
     assert_equal(config.defaults().canvas.open, "tab")
     assert_equal(config.defaults().canvas.detail_level, "middle")
     assert_equal(config.defaults().ui.workspace.left_width, 26)
-    assert_equal(
-      config.defaults().ui.workspace,
-      require("roomplan.ui.workspace_state").defaults()
-    )
-    assert_equal(
-      config.defaults().plan_defaults.settings,
-      require("roomplan.schema").defaults.settings
-    )
+    assert_equal(config.defaults().ui.workspace, require("roomplan.ui.workspace_state").defaults())
+    assert_equal(config.defaults().plan_defaults.settings, require("roomplan.schema").defaults.settings)
   end)
 
   it("rejects removed UI and canvas options", function()
@@ -63,10 +57,12 @@ describe("config", function()
     assert_equal(2100, defaults.window_defaults.head_height_mm)
     assert_equal(60, defaults.playback.step_minutes)
     assert_equal(700, defaults.playback.frame_duration_ms)
-    local effective = config.setup({ sun_study = {
-      window_defaults = { sill_height_mm = 800, head_height_mm = 2200 },
-      playback = { step_minutes = 30, frame_duration_ms = 400 },
-    } }).sun_study
+    local effective = config.setup({
+      sun_study = {
+        window_defaults = { sill_height_mm = 800, head_height_mm = 2200 },
+        playback = { step_minutes = 30, frame_duration_ms = 400 },
+      },
+    }).sun_study
     assert_equal(800, effective.window_defaults.sill_height_mm)
     assert_equal(30, effective.playback.step_minutes)
     for _, value in ipairs({
