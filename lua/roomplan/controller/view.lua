@@ -89,7 +89,7 @@ function M.attach(controller)
     resolved.validation_index = ((resolved.validation_index or (direction < 0 and 1 or 0)) - 1 + direction) % #diagnostics + 1
     local diagnostic = diagnostics[resolved.validation_index]
     if diagnostic.object then resolved.selection = { kind = diagnostic.object.kind, id = diagnostic.object.id } end
-    controller.focus_canvas(resolved)
+    controller.reveal_selection(resolved)
     compat.notify(string.format("%s: %s", diagnostic.code, diagnostic.message),
       diagnostic.severity == "error" and vim.log.levels.ERROR or vim.log.levels.WARN)
     return diagnostic
@@ -103,6 +103,60 @@ function M.attach(controller)
     local local_footer = session.workspace and session.workspace.owns_footer and 0 or 1
     return vim.api.nvim_win_get_width(winid),
       math.max(1, vim.api.nvim_win_get_height(winid) - config.get().canvas.header_lines - local_footer)
+  end
+
+  -- Centre the selected object without changing zoom or view rotation. Issue
+  -- navigation uses this instead of fitting the complete plan, so inspecting a
+  -- distant diagnostic does not destroy the user's working scale.
+  function controller.reveal_selection(session, selection)
+    local resolved, err = resolve(session)
+    if not resolved then return notify_error(err) end
+    if type(selection) == "table" then
+      resolved.selection = { kind = selection.kind, id = selection.id }
+    end
+    local focused, focus_err = controller.focus_canvas(resolved)
+    if not focused then return nil, focus_err end
+    local selected = resolved.selection
+    if not selected or type(selected.id) ~= "string" then return selected or true end
+
+    local handle = resolved.canvas and resolved.canvas.handle
+    local scene
+    if handle and handle.opts and type(handle.opts.get_scene) == "function" then
+      scene = handle.opts.get_scene(handle)
+    else
+      local options = config.get()
+      scene = require("roomplan.scene.build").build(resolved:current_model(), resolved.validation, {
+        selected = selected,
+        shape_edit = resolved.shape_edit,
+        snap_guides = resolved.shape_edit and resolved.shape_edit.snap_guides or resolved.snap_guides,
+        measurement = resolved.measurement,
+        form_preview = resolved.form_preview,
+        show_grid = options.canvas.show_grid,
+        detail_level = resolved.canvas_detail_level or options.canvas.detail_level,
+        sun_study = resolved.sun_study,
+        sun_config = options.sun_study,
+      })
+    end
+    local point = scene and scene.focus_points and scene.focus_points[selected.id] or nil
+    if not point then return selected end
+
+    local width, height = canvas_size(resolved)
+    local viewport_module = require("roomplan.render.viewport")
+    local current = ensure_viewport(resolved)
+    local centre_x, centre_y = viewport_module.screen_to_world(
+      current, math.max(0, (width - 1) / 2), math.max(0, (height - 1) / 2)
+    )
+    resolved.viewport = viewport_module.pan(current, point[1] - centre_x, point[2] - centre_y)
+    local canvas_ok, canvas = pcall(require, "roomplan.render.canvas")
+    if canvas_ok and handle and canvas.redraw then
+      canvas.redraw(handle, scene, resolved.viewport, {
+        focus_selection = true,
+        reason = "reveal-selection",
+      })
+    else
+      controller.refresh(resolved)
+    end
+    return selected
   end
 
   function controller.fit(session, opts)

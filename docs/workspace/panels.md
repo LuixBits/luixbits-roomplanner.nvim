@@ -27,8 +27,10 @@ duplicated.
 
 Issues shows the latest validation result with severity, code, object, and
 message. `v` refreshes validation and focuses this view; `Alt-k` and `Alt-j` move
-between diagnostics. `Enter` selects the affected object, and `/` filters the
-list. Errors block a normal save, while warnings do not. See
+between diagnostics. `Enter` selects the affected object, recentres it on the
+canvas without changing zoom or rotation, and returns focus to the canvas;
+previous/next issue uses the same reveal behaviour. `/` filters the list.
+Errors block a normal save, while warnings do not. See
 [Validation](../data/validation.md).
 
 Objects and Issues share the Navigator slot. `1` opens Objects and `!` opens

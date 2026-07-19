@@ -22,6 +22,8 @@ function M.select_focused(api, session)
   if canvas_ok and canvas.schedule_redraw then canvas.schedule_redraw(session, "workspace-selection") end
   if workspace.opts.on_selection then
     workspace.opts.on_selection(session, selection, row)
+  elseif role == "issues" and selection then
+    require("roomplan.controller").reveal_selection(session, selection)
   else
     api.focus(session, "canvas")
   end

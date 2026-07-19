@@ -118,7 +118,7 @@ describe("structured forms", function()
   end)
 
   it("builds room, furniture, door, and alignment actions from detached drafts", function()
-    local session = plan_session()
+    local session, plan = plan_session()
     local forms = require("roomplan.ui.forms")
 
     local room_spec = forms.room.add(session, {
@@ -147,6 +147,13 @@ describe("structured forms", function()
     h.eq({ 2500, 2000 }, furniture_action.furniture.position_mm)
     h.eq("builtin:sofa", furniture_action.furniture.template_id)
     h.eq("#C678DD", furniture_action.furniture.color)
+    local furniture_preview = h.truthy(furniture_spec.canvas_preview(
+      furniture_state.draft, furniture_spec.context
+    ))
+    h.eq("furniture-preview", furniture_preview.id)
+    h.eq(furniture_action.furniture.position_mm, furniture_preview.position_mm)
+    h.eq(furniture_action.furniture.footprint, furniture_preview.footprint)
+    h.eq(1, #plan.furniture, "building a canvas preview must not mutate the plan")
 
     local door_spec = forms.door.add(session, {
       room_id = "room-living", side = "east", width_mm = 900,

@@ -63,8 +63,8 @@ transient circulation and clearance overlay built on reusable analysis
 controls.
 
 Related UX candidates are layer toggles, recent furniture and colors,
-duplicate-and-place-again actions, live placement previews, diagnostic object
-focus, and reusable analysis overlays. Longer-term candidates already on the roadmap
+duplicate-and-place-again actions, and reusable analysis overlays. Longer-term
+candidates already on the roadmap
 remain additional opening types, stable physical wall construction, vertical
 wall-feature data, multiple floors, richer annotations, and a stable tagged
 LuaRock release.

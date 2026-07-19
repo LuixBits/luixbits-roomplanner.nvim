@@ -15,6 +15,12 @@ origin; the persisted doubled-mm anchor preserves exact odd-size centres. An
 item must remain inside its owning room and must not overlap another furniture
 footprint.
 
+While Add furniture is open, every valid template, size, rotation, and
+placement draft appears as a colorscheme-linked ghost on the real canvas.
+Invalid field input hides the stale ghost. The preview is not selectable and
+never enters the plan, ID reservations, validation, history, undo, or saved
+bytes; Apply replaces it with the real item and Cancel removes it.
+
 Select furniture and use:
 
 - `e` to edit room, template, label, geometry where available, position, and

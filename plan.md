@@ -56,6 +56,11 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   emphasis, elevation-aware floor gradients, reliable whole-day playback,
   three-month comparison controls, and fixed-band daily exposure. Study
   date/time/playback/analysis remains transient and closes with its timer.
+- Valid Add furniture drafts render as a non-selectable real-canvas ghost and
+  are cleared by invalid input, Apply, Cancel, staleness, or reload without
+  entering model state, IDs, history, validation, or persistence. Issues rows
+  and previous/next issue select, reveal, and centre their owner while
+  preserving zoom and rotation.
 
 Schema v1, v2, and v3 stay readable compatibility formats; schema v4 is the only
 writer. Compound footprints are connected, hole-free unions of at most 256
@@ -103,13 +108,8 @@ outside the current model.
 - Generalize the shipped exact measurement and sunlight paths into reusable
   overlay controls before a third analysis is introduced.
 
-## Focused editing UX after circulation
+## Focused editing follow-ups
 
-- Preview furniture placement on the real canvas while its popup draft is
-  valid, without mutating history until Apply.
-- Let an issue immediately select, focus, and reveal its owning object. Keep
-  the existing issue list and selection authority instead of creating another
-  diagnostic browser.
 - Consider recent furniture and colour choices or duplicate-and-place-again
   only after real workflows show that they remove repeated popup work. These
   remain transient and should not add global mappings.

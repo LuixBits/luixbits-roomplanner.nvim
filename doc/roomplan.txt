@@ -242,8 +242,9 @@ Compact layouts open bordered drawers. Manually closing a pane keeps it closed
 until explicitly toggled again.
 
 Navigator shows rooms with nested doors, windows, outlets, and furniture.
-Issues filters and selects diagnostics. Details presents compact, collapsible
-sections whose contents change with the selection. `?` always exposes the full
+Issues filters diagnostics; Enter and previous/next issue select, centre, and
+reveal the owner without changing zoom or rotation. Details presents compact,
+collapsible sections whose contents change with the selection. `?` always exposes the full
 action set, including disabled actions, their reasons, literal current-mode
 controls, and the command that leaves the mode. In Navigator, Space
 marks an object; atomic move, duplicate, delete, and clear actions for the
@@ -254,6 +255,9 @@ if the plan changes elsewhere, the stale form cannot apply over newer data.
 Room and furniture forms include a dependency-free color palette. Stored
 #RRGGBB colors accent labels and furniture outlines; selection, warning, and
 error highlights always take priority. Theme default follows the colorscheme.
+Valid Add furniture drafts also appear as a non-selectable RoomPlanPreview
+ghost on the real canvas; invalid input, Apply, Cancel, or reload clears it
+without changing IDs, history, validation, or saved data.
 
 ==============================================================================
 6. KEYMAPS                                                 *roomplan-keymaps*

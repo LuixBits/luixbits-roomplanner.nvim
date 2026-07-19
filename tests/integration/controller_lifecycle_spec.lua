@@ -91,6 +91,10 @@ describe("controller lifecycle", function()
       }),
     }))
     local furniture_form = h.truthy(controller.add_furniture(session))
+    h.truthy(session.form_preview)
+    h.eq("furniture", session.form_preview.kind)
+    h.eq(0, #session:model().furniture, "the live draft must not enter the durable model")
+    h.eq(nil, session.reserved_ids["furniture-preview"])
     h.eq("room-living-room", h.truthy(form.set_value(
       furniture_form, "room_id", "room-living-room", { raw = false }
     )))
@@ -98,12 +102,27 @@ describe("controller lifecycle", function()
       furniture_form, "template_id", "builtin:sofa", { raw = false }
     )))
     h.eq(2100, h.truthy(form.set_value(furniture_form, "width_mm", "2100")))
+    h.eq(2100, session.form_preview.entity.footprint.parts[1].size_mm[1])
     h.eq(900, h.truthy(form.set_value(furniture_form, "depth_mm", "900")))
     h.eq(800, h.truthy(form.set_value(furniture_form, "height_mm", "800")))
     h.eq("Sofa", h.truthy(form.set_value(furniture_form, "name", "Sofa")))
     h.eq("centre", h.truthy(form.set_value(furniture_form, "placement", "centre", { raw = false })))
+    h.truthy(vim.wait(200, function()
+      return session.canvas.handle and session.canvas.handle.scene and session.canvas.handle.scene.preview ~= nil
+    end, 5), "the live draft should reach the real canvas")
+    local invalid_width = form.set_value(furniture_form, "width_mm", "invalid")
+    h.eq(nil, invalid_width)
+    h.eq(nil, session.form_preview, "an invalid field must remove the stale ghost")
+    h.eq(2100, h.truthy(form.set_value(furniture_form, "width_mm", "2100")))
+    h.truthy(session.form_preview)
     h.truthy(form.apply(furniture_form))
+    h.eq(nil, session.form_preview)
     h.eq("builtin:sofa", session:model().furniture[1].template_id)
+    local cancelled_furniture = h.truthy(controller.add_furniture(session))
+    h.truthy(session.form_preview)
+    h.truthy(form.cancel(cancelled_furniture, "test cancellation"))
+    h.eq(nil, session.form_preview)
+    h.eq(1, #session:model().furniture)
     session.selection = { kind = "room", id = "room-living-room" }
     local door_form = h.truthy(controller.add_door(session))
     h.eq("room-living-room", h.truthy(form.set_value(
@@ -670,6 +689,36 @@ describe("controller lifecycle", function()
     h.falsy(saved)
     h.eq("SAVE_CANCELLED", h.truthy(save_err).code)
     h.eq("issues", session.workspace.state.focused_pane)
+
+    local workspace = require("roomplan.ui.workspace")
+    local issue_row
+    for row, item in pairs(session.workspace.rendered.issues.row_map) do
+      if item.id then issue_row = row; break end
+    end
+    h.truthy(issue_row)
+    local issues_window = session.workspace.windows.left or session.workspace.windows.drawer
+    h.truthy(issues_window)
+    vim.api.nvim_win_set_cursor(issues_window, { issue_row, 0 })
+    local viewport = require("roomplan.render.viewport")
+    local previous_scale = session.viewport.mm_per_column
+    session.viewport = viewport.new({
+      world_left_mm = 100000,
+      world_top_mm = 100000,
+      mm_per_column = previous_scale,
+      cell_aspect = session.viewport.cell_aspect,
+      rotation_quarters = 1,
+    })
+    local selected = h.truthy(workspace.select_focused(session))
+    h.eq("room", selected.kind)
+    h.eq("canvas", session.workspace.state.focused_pane)
+    h.eq(session.canvas.handle.win, vim.api.nvim_get_current_win())
+    local point = h.truthy(session.canvas.handle.scene.focus_points[selected.id])
+    local column, row = viewport.world_to_screen(session.viewport, point[1], point[2])
+    local output = h.truthy(session.canvas.handle.last_raster)
+    h.eq(previous_scale, session.viewport.mm_per_column)
+    h.eq(1, session.viewport.rotation_quarters)
+    h.truthy(math.abs(column - (output.width - 1) / 2) < 0.01)
+    h.truthy(math.abs(row - (output.height - 1) / 2) < 0.01)
 
     controller.close(session, { bang = true })
     cleanup()
