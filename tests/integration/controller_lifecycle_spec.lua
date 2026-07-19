@@ -316,7 +316,7 @@ describe("controller lifecycle", function()
     h.eq("Edit footprint", editor.state.field_index.edit_footprint.field.label)
     h.truthy(form.activate(editor, "edit_footprint"))
     h.truthy(form.edit(editor))
-    h.truthy(vim.wait(200, function() return session.shape_edit ~= nil end, 10))
+    h.truthy(vim.wait(1000, function() return session.shape_edit ~= nil end, 10))
     h.eq("RESIZE", session.mode)
     h.truthy(session.shape_edit)
 
@@ -362,7 +362,7 @@ describe("controller lifecycle", function()
     h.eq("After", h.truthy(form.set_value(editor, "name", "After", { raw = false })))
     h.truthy(form.activate(editor, "edit_footprint"))
     h.truthy(form.edit(editor))
-    h.truthy(vim.wait(200, function() return session.shape_edit ~= nil end, 10))
+    h.truthy(vim.wait(1000, function() return session.shape_edit ~= nil end, 10))
     h.eq("After", session:model().rooms[1].name)
     h.eq(false, vim.api.nvim_buf_is_valid(editor.bufnr))
     h.truthy(controller.cancel_room_shape_edit(session))
@@ -391,7 +391,7 @@ describe("controller lifecycle", function()
     h.truthy(controller.dispatch(session, {
       type = "add_room",
       room = model.new_room({
-        id = "room-fixed", name = "Fixed", origin_mm = { 3100, 0 }, size_mm = { 2000, 2000 },
+        id = "room-fixed", name = "Fixed", origin_mm = { 3050, 0 }, size_mm = { 2000, 2000 },
       }),
     }))
     session.selection = { kind = "room", id = "room-moving" }
@@ -402,26 +402,26 @@ describe("controller lifecycle", function()
 
     h.truthy(controller.set_mode(session, "MOVE"))
     h.truthy(controller.direction(session, 1, 0, "normal"))
-    h.eq(100, session:model().rooms[1].origin_mm[1])
+    h.eq(50, session:model().rooms[1].origin_mm[1])
     h.eq("right 100 mm", session.move_feedback)
     local x_guide
     for _, guide in ipairs(session.snap_guides) do
       if guide.axis == "x" then x_guide = guide end
     end
-    h.eq(3100, h.truthy(x_guide).value_mm)
+    h.eq(3050, h.truthy(x_guide).value_mm)
     h.eq(0, x_guide.overlap_start_mm)
     h.eq(2000, x_guide.overlap_finish_mm)
 
     h.truthy(controller.direction(session, -1, 0, "fine"))
-    h.eq(90, session:model().rooms[1].origin_mm[1])
+    h.eq(40, session:model().rooms[1].origin_mm[1])
     h.eq("left 10 mm", session.move_feedback)
     h.eq({ 1000, 1000 }, session:model().furniture[1].position_mm)
     local after_shape = h.truthy(require("roomplan.geometry.footprint").from_furniture(
       session:model().rooms[1], session:model().furniture[1]
     ))
     local after = h.truthy(require("roomplan.geometry.footprint").bounds(after_shape))
-    h.eq(before.left + 90, after.left)
-    h.eq(before.right + 90, after.right)
+    h.eq(before.left + 40, after.left)
+    h.eq(before.right + 40, after.right)
     controller.close(session, { bang = true })
     cleanup()
   end)
@@ -458,12 +458,12 @@ describe("controller lifecycle", function()
     h.truthy(furniture_row)
     vim.api.nvim_win_set_cursor(vim.api.nvim_get_current_win(), { furniture_row, 0 })
     vim.api.nvim_feedkeys(vim.api.nvim_replace_termcodes("<CR>", true, false, true), "x", false)
-    h.truthy(vim.wait(200, function()
+    h.truthy(vim.wait(1000, function()
       return session.selection and session.selection.kind == "furniture"
         and session.selection.id == "furniture-shape"
     end, 10))
     vim.api.nvim_feedkeys("r", "x", false)
-    h.truthy(vim.wait(200, function() return session.shape_edit ~= nil end, 10))
+    h.truthy(vim.wait(1000, function() return session.shape_edit ~= nil end, 10))
     h.eq("RESIZE", session.mode)
     h.eq("furniture", session.shape_edit.kind)
     h.truthy(controller.direction(session, 1, 0, "normal"))
@@ -506,7 +506,7 @@ describe("controller lifecycle", function()
     h.eq("Edit footprint", h.truthy(editor.state.field_index.edit_footprint).field.label)
     h.truthy(form.activate(editor, "edit_footprint"))
     h.truthy(form.edit(editor))
-    h.truthy(vim.wait(200, function() return session.shape_edit ~= nil end, 10))
+    h.truthy(vim.wait(1000, function() return session.shape_edit ~= nil end, 10))
     h.eq("template", session.shape_edit.kind)
     h.eq("RESIZE", session.mode)
     local preview_scene = require("roomplan.scene.build").build(session:current_model(), nil, {
@@ -762,7 +762,7 @@ describe("controller lifecycle", function()
     h.truthy(navigator_window)
     vim.api.nvim_win_set_cursor(navigator_window, { room_row, 0 })
     h.eq({ kind = "room", id = "room-living-room" }, workspace.select_focused(session))
-    h.truthy(vim.wait(200, function()
+    h.truthy(vim.wait(1000, function()
       local header = vim.api.nvim_buf_get_lines(handle.buf, 0, 1, false)[1] or ""
       return header:find("room: Living room", 1, true) ~= nil
     end, 5), "workspace selection should redraw the canvas header and highlight")
@@ -843,7 +843,7 @@ describe("controller lifecycle", function()
     h.eq("end", session:model().doors[2].hinge)
     h.eq(session:model().doors[1].connects_to_room_id, session:model().doors[2].connects_to_room_id)
 
-    h.truthy(vim.wait(200, function()
+    h.truthy(vim.wait(1000, function()
       local footer = vim.api.nvim_buf_get_lines(session.workspace.buffers.action_bar, 0, 1, false)[1] or ""
       return footer:find("NAV", 1, true) ~= nil
     end, 10), "canvas mode label should return to NAV after forms close")

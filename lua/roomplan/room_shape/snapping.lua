@@ -152,7 +152,7 @@ local function world_delta(edit, dx, dy)
   return dx, dy
 end
 
-function M.apply(edit, part, dx, dy, context)
+function M.apply(edit, part, dx, dy, step_mm, context)
   local options = context and context.options
   local model = context and context.model
   if type(model) ~= "table" then return edit end
@@ -163,6 +163,7 @@ function M.apply(edit, part, dx, dy, context)
 
   local moving = moving_features(edit, context, dx, dy)
   local targets = target_features(edit, model, context)
+  local sweep_x, sweep_y = world_delta(edit, dx, dy)
   local function resolve()
     return snapping.resolve({
       moving_x = moving.x,
@@ -172,6 +173,7 @@ function M.apply(edit, part, dx, dy, context)
       tolerance_mm = options.tolerance_mm,
       mm_per_screen_unit = options.mm_per_screen_unit,
       priority = options.priority,
+      sweep_mm = { x = sweep_x * step_mm, y = sweep_y * step_mm },
       bypass = options.bypass,
       require_overlap = true,
       exclude_targets = edit.snap_exclusions,

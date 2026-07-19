@@ -200,7 +200,7 @@ function M.direction(edit, dx, dy, step_mm, limits, snap_context)
   if not size_ok then return chose_edge and handle_only or nil, size_err end
 
   local unsnapped = util.deepcopy(result)
-  result = shape_snapping.apply(result, part, dx, dy, snap_context)
+  result = shape_snapping.apply(result, part, dx, dy, step_mm, snap_context)
   local snapped_part = selected(result)
   size_ok, size_err = valid_size(snapped_part, limits)
   if size_ok then
