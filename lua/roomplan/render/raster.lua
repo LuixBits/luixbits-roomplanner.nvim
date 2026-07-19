@@ -436,6 +436,11 @@ local function point_in_polygon(x, y, vertices)
   return sign ~= nil
 end
 
+local function point_in_sun_patch(x, y, patch)
+  return point_in_rectangles(x, y, patch.clip_rects)
+    and point_in_polygon(x, y, patch.vertices or {})
+end
+
 local function draw_sun_patch(context, primitive)
   local vertices = primitive.vertices or {}
   if #vertices < 3 or #(primitive.clip_rects or {}) == 0 then return end
@@ -453,13 +458,66 @@ local function draw_sun_patch(context, primitive)
   for row = top, bottom do
     for column = left, right do
       local x, y = viewport_module.screen_to_world(context.viewport, column - 1, row - 1)
-      if point_in_rectangles(x, y, primitive.clip_rects) and point_in_polygon(x, y, vertices) then
+      if point_in_sun_patch(x, y, primitive) then
         local distance = (x - primitive.midpoint[1]) * primitive.incoming[1]
           + (y - primitive.midpoint[2]) * primitive.incoming[2]
         local progress = clamp((distance - primitive.near_distance) / span, 0, 1)
-        local level = clamp(math.floor(progress * 5) + 1, 1, 5)
+        local warmth = clamp(math.ceil(math.max(0, 35 - (primitive.elevation_deg or 35)) / 15), 0, 2)
+        local level = clamp(math.floor(progress * 5) + 1 + warmth, 1, 5)
         add_visual(context, row, column, {
           char = " ", layer = primitive.layer, role = "sunlight_" .. level,
+          order = primitive.order,
+        })
+      end
+    end
+  end
+end
+
+
+local function draw_sun_exposure(context, primitive)
+  local exposure = primitive.exposure or {}
+  local left, right, top, bottom
+  for _, sample in ipairs(exposure.samples or {}) do
+    for _, patch in ipairs(sample.patches or {}) do
+      for _, vertex in ipairs(patch.vertices or {}) do
+        local column, row = project(context.viewport, vertex[1], vertex[2])
+        left = left and math.min(left, column) or column
+        right = right and math.max(right, column) or column
+        top = top and math.min(top, row) or row
+        bottom = bottom and math.max(bottom, row) or row
+      end
+    end
+  end
+  if not left then return end
+  left = clamp(math.floor(left) + 1, 1, context.width)
+  right = clamp(math.ceil(right) + 1, 1, context.width)
+  top = clamp(math.floor(top) + 1, 1, context.height)
+  bottom = clamp(math.ceil(bottom) + 1, 1, context.height)
+  local thresholds = exposure.thresholds_minutes or { 60, 120, 240, 360 }
+  for row = top, bottom do
+    for column = left, right do
+      local x, y = viewport_module.screen_to_world(context.viewport, column - 1, row - 1)
+      local minutes = 0
+      for _, sample in ipairs(exposure.samples or {}) do
+        local exposed = false
+        for _, patch in ipairs(sample.patches or {}) do
+          if point_in_sun_patch(x, y, patch) then
+            exposed = true
+            break
+          end
+        end
+        if exposed then minutes = minutes + (sample.minutes or 0) end
+      end
+      if minutes > 0 then
+        local level = #thresholds + 1
+        for index, threshold in ipairs(thresholds) do
+          if minutes <= threshold then
+            level = index
+            break
+          end
+        end
+        add_visual(context, row, column, {
+          char = " ", layer = primitive.layer, role = "sunlight_" .. clamp(level, 1, 5),
           order = primitive.order,
         })
       end
@@ -1249,6 +1307,8 @@ function M.rasterize(scene, viewport, opts)
         draw_interior(context, primitive, "interior")
       elseif primitive.kind == "sun_patch" then
         draw_sun_patch(context, primitive)
+      elseif primitive.kind == "sun_exposure" then
+        draw_sun_exposure(context, primitive)
       elseif primitive.kind == "furniture_interior" then
         draw_interior(context, primitive, "interior")
       elseif primitive.kind == "furniture_outline" then

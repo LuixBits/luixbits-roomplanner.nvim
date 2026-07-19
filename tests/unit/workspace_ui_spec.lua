@@ -259,6 +259,22 @@ describe("workspace UI", function()
     assert_equal("14:00", sun_context.sun_study.time)
     assert_equal(true, sun_context.sun_study.playing)
     assert_equal(true, registry.get("sun_study", { mode = "SUN STUDY" }).enabled)
+
+    local sun_session = { model = fixture(), selection = { kind = "room", id = "room-living" }, validation = {} }
+    sun_session.model.site = { utc_offset_minutes = 120 }
+    sun_session.sun_study = {
+      viewing = true, playing = false, overlay = "daily", date = "2026-06-21", time = "14:00", step_minutes = 60,
+      calculation = {
+        minutes = 840, sunrise_minutes = 300, sunset_minutes = 1260,
+        daylight_state = "normal", azimuth_deg = 210, elevation_deg = 55,
+      },
+      daily_exposure = { room_minutes = { ["room-living"] = 360 }, window_minutes = {}, total_minutes = 960 },
+    }
+    local sun_view = presenter.properties(sun_session)
+    assert_equal("Sun study", sun_view.groups[1].title)
+    assert_equal("05:00 → 14:00 → 21:00", sun_view.groups[1].fields[3].value)
+    assert_equal("Daily direct-sun exposure", sun_view.groups[1].fields[6].value)
+    assert_equal("≤1h · ≤2h · ≤4h · ≤6h · >6h", sun_view.groups[1].fields[7].value)
   end)
 
   it("builds concise selection and interaction breadcrumbs from presenter data", function()
@@ -544,7 +560,8 @@ describe("workspace UI", function()
     local text = table.concat(panel.lines, "\n")
     assert_true(text:find("SUN STUDY · 14:00 · PLAYING", 1, true) ~= nil)
     assert_true(text:find("Canvas controls", 1, true) ~= nil)
-    assert_true(text:find("Previous step", 1, true) ~= nil)
+    assert_true(text:find("Earlier time", 1, true) ~= nil)
+    assert_true(text:find("Next season", 1, true) ~= nil)
     assert_true(text:find("Close study", 1, true) ~= nil)
     assert_equal("Details · SUN STUDY · 14:00 · PLAYING", panel.pane_title)
 
@@ -552,7 +569,7 @@ describe("workspace UI", function()
     local footer = action_bar.render(ctx, 100, { height = 1 })
     assert_equal(0, #footer.shown_actions)
     assert_true(footer.lines[1]:find("SUN STUDY · 14:00 · PLAYING", 1, true) ~= nil)
-    assert_true(footer.lines[1]:find("Previous step", 1, true) == nil)
+    assert_true(footer.lines[1]:find("Earlier time", 1, true) == nil)
     assert_equal(true, footer.details_visible)
   end)
 

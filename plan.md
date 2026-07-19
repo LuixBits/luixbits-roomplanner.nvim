@@ -53,8 +53,9 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
 - Offline sunlight study with one exact persisted site/north authority,
   top/right/bottom/left screen labels, optional per-window sill/head pairs,
   configurable assumed heights, clear-sky solar angles, exposed-wall/window
-  emphasis, clipped floor gradients, and popup playback from sunrise to sunset.
-  Study date/time/playback remains transient and closes with its timer.
+  emphasis, elevation-aware floor gradients, reliable whole-day playback,
+  four-month comparison controls, and fixed-band daily exposure. Study
+  date/time/playback/analysis remains transient and closes with its timer.
 
 Schema v1, v2, and v3 stay readable compatibility formats; schema v4 is the only
 writer. Compound footprints are connected, hole-free unions of at most 256
@@ -87,8 +88,9 @@ outside the current model.
 ### Sun study
 
 - Extend the shipped deterministic offline study only where the main canvas
-  benefits: legends, reusable overlay controls, wall thickness/overhangs, and
-  furniture-height or explicit-obstacle shadows.
+  benefits: reusable overlay controls, wall thickness/overhangs, and
+  furniture-height or explicit-obstacle shadows. The first fixed-band daily
+  exposure legend and seasonal comparison controls are shipped.
 - Keep view rotation as projection only and retain one exact persisted
   geographic-north/site authority.
 - Label results as approximate 2D exposure, not illuminance, thermal,

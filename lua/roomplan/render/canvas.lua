@@ -179,8 +179,10 @@ local function session_header(session, canvas_config)
   local sun_status = ""
   if session.sun_study and session.sun_study.calculation then
     local sun = session.sun_study.calculation
-    sun_status = string.format(" · SUN %s %s · az %.1f° el %.1f°",
-      session.sun_study.date or "", session.sun_study.time or "", sun.azimuth_deg, sun.elevation_deg)
+    local arrow = require("roomplan.directions").arrow(sun.incoming_dx, sun.incoming_dy, session, false)
+    local display = session.sun_study.overlay == "daily" and "DAY EXPOSURE" or (session.sun_study.time or "")
+    sun_status = string.format(" · SUN%s %s %s · az %.1f° el %.1f°",
+      arrow, session.sun_study.date or "", display, sun.azimuth_deg, sun.elevation_deg)
   end
   return {
     string.format("RoomPlan · %s%s%s%s%s", subject, shape_notice, sun_status, context_status, issues),
@@ -225,8 +227,8 @@ local function session_footer(session)
     )
   end
   if session.sun_study and session.sun_study.viewing then
-    local playback = session.sun_study.playing and "Pause" or "Play"
-    return " SUN STUDY | [h/l] Previous/next  [Space] " .. playback
+    local playback = session.sun_study.playing and "Pause" or "Play day"
+    return " SUN STUDY | [h/l] Time  [j/k] Next/previous season  [Space] " .. playback
       .. "  [L] Settings  [Esc] Close "
   end
   if #rooms == 0 then

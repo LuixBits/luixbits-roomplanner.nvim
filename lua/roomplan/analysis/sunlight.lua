@@ -3,6 +3,8 @@
 
 local M = {}
 
+local EXPOSURE_THRESHOLDS_MINUTES = { 60, 120, 240, 360 }
+
 local OUTWARD = {
   north = { 0, 1 }, east = { 1, 0 }, south = { 0, -1 }, west = { -1, 0 },
 }
@@ -76,11 +78,84 @@ function M.build(model, wall_scene, calculation, defaults)
           far_distance = far_distance,
           clip_rects = room_rectangles(wall_scene.rooms_by_id[aperture.owner_room_id]),
           estimated = not explicit,
+          elevation_deg = calculation.elevation_deg,
         }
       end
     end
   end
   return result
+end
+
+---Calculate a viewport-independent set of direct-sun samples for one local
+---day. Rasterization accumulates these polygons at the current terminal-cell
+---scale, keeping the authored plan and its schema free of derived data.
+function M.build_day(model, wall_scene, site, date, step_minutes, defaults)
+  local solar = require("roomplan.solar")
+  step_minutes = math.max(1, math.floor(tonumber(step_minutes) or 60))
+  local noon, reason = solar.position(site, date, "12:00")
+  if not noon then return nil, reason end
+  local result = {
+    date = date,
+    samples = {},
+    total_minutes = 0,
+    room_minutes = {},
+    window_minutes = {},
+    wall_sides = {},
+    windows = {},
+    assumed_count = 0,
+    thresholds_minutes = EXPOSURE_THRESHOLDS_MINUTES,
+    daylight_state = noon.daylight_state,
+    sunrise_minutes = noon.sunrise_minutes,
+    sunset_minutes = noon.sunset_minutes,
+  }
+  if noon.daylight_state == "polar_night" then return result end
+
+  local first = noon.daylight_state == "polar_day" and 0 or noon.sunrise_minutes
+  local last = noon.daylight_state == "polar_day" and (24 * 60) or noon.sunset_minutes
+  local cursor = first
+  local assumed = {}
+  while cursor < last - 1e-7 do
+    local finish = math.min(last, cursor + step_minutes)
+    local duration = finish - cursor
+    local calculation = assert(solar.position(site, date, solar.format_time(cursor + duration / 2)))
+    local frame = M.build(model, wall_scene, calculation, defaults)
+    local rooms = {}
+    local windows = {}
+    for _, patch in ipairs(frame.patches) do
+      rooms[patch.room_id] = true
+      windows[patch.window_id] = true
+      if patch.estimated then assumed[patch.window_id] = true end
+    end
+    for room_id in pairs(rooms) do
+      result.room_minutes[room_id] = (result.room_minutes[room_id] or 0) + duration
+    end
+    for window_id in pairs(windows) do
+      result.window_minutes[window_id] = (result.window_minutes[window_id] or 0) + duration
+    end
+    for segment in pairs(frame.walls) do
+      local contributor = segment.contributors and segment.contributors[1]
+      if contributor and contributor.side then result.wall_sides[contributor.side] = true end
+    end
+    for window_id in pairs(frame.windows) do result.windows[window_id] = true end
+    result.samples[#result.samples + 1] = {
+      minutes = duration,
+      calculation = calculation,
+      patches = frame.patches,
+    }
+    result.total_minutes = result.total_minutes + duration
+    cursor = finish
+  end
+  for _ in pairs(assumed) do result.assumed_count = result.assumed_count + 1 end
+  return result
+end
+
+function M.exposure_level(minutes, thresholds)
+  if type(minutes) ~= "number" or minutes <= 0 then return nil end
+  thresholds = thresholds or EXPOSURE_THRESHOLDS_MINUTES
+  for index, threshold in ipairs(thresholds) do
+    if minutes <= threshold then return index end
+  end
+  return #thresholds + 1
 end
 
 M.faces_sun = faces_sun

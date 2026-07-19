@@ -487,12 +487,33 @@ function M.build(model, validation, opts)
   local template_edit = opts.shape_edit and opts.shape_edit.kind == "template"
   local wall_scene = template_edit and walls.build({}, {}, {}, {})
     or walls.build(rooms, doors, windows, outlets)
-  local sunlight = opts.sun_study and opts.sun_study.active
-      and require("roomplan.analysis.sunlight").build(
-        model, wall_scene, opts.sun_study.calculation,
-        opts.sun_config and opts.sun_config.window_defaults
-      )
-    or { patches = {}, walls = {}, windows = {}, assumed_count = 0 }
+  local sunlight
+  if opts.sun_study and opts.sun_study.active
+    and opts.sun_study.overlay == "daily" and opts.sun_study.daily_exposure
+  then
+    local exposure = opts.sun_study.daily_exposure
+    local exposed_walls = {}
+    for _, segment in ipairs(wall_scene.segments or {}) do
+      local contributor = #segment.contributors == 1 and segment.contributors[1] or nil
+      if contributor and exposure.wall_sides and exposure.wall_sides[contributor.side] then
+        exposed_walls[segment] = true
+      end
+    end
+    sunlight = {
+      patches = {},
+      walls = exposed_walls,
+      windows = exposure.windows or {},
+      assumed_count = exposure.assumed_count or 0,
+      exposure = exposure,
+    }
+  elseif opts.sun_study and opts.sun_study.active then
+    sunlight = require("roomplan.analysis.sunlight").build(
+      model, wall_scene, opts.sun_study.calculation,
+      opts.sun_config and opts.sun_config.window_defaults
+    )
+  else
+    sunlight = { patches = {}, walls = {}, windows = {}, assumed_count = 0 }
+  end
   local scene = {
     primitives = {},
     bounds = bbox_new(),
@@ -652,11 +673,21 @@ function M.build(model, validation, opts)
     end
   end
 
-  for index, patch in ipairs(sunlight.patches) do
-    patch.layer = M.layers.sunlight
-    patch.role = "sunlight_1"
-    patch.order = index
-    add_primitive(scene, patch, roles)
+  if sunlight.exposure then
+    add_primitive(scene, {
+      kind = "sun_exposure",
+      layer = M.layers.sunlight,
+      role = "sunlight_1",
+      order = 1,
+      exposure = sunlight.exposure,
+    }, roles)
+  else
+    for index, patch in ipairs(sunlight.patches) do
+      patch.layer = M.layers.sunlight
+      patch.role = "sunlight_1"
+      patch.order = index
+      add_primitive(scene, patch, roles)
+    end
   end
 
   for i = 1, #furniture do

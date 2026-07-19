@@ -101,11 +101,12 @@ describe("action registry", function()
     sun.mode = "SUN STUDY"
     sun.sun_study = { time = "14:00", playing = true }
     assert_equal({
-      "sun_previous", "sun_next", "sun_toggle_playback", "sun_study", "sun_close",
+      "sun_previous", "sun_next", "sun_previous_season", "sun_next_season",
+      "sun_toggle_playback", "sun_study", "sun_close",
     }, ids(registry.context_controls(sun)))
     assert_equal("Pause", registry.get("sun_toggle_playback", sun).label)
     assert_equal("SUN STUDY · 14:00 · PLAYING", registry.context_title(sun))
-    assert_equal("Close study", registry.context_controls(sun)[5].label)
+    assert_equal("Close study", registry.context_controls(sun)[7].label)
 
     sun.keymaps = {
       enabled = true,

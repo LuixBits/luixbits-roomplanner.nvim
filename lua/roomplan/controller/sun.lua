@@ -5,6 +5,22 @@ local util = require("roomplan.util")
 
 local M = {}
 
+local DATE_PRESETS = {
+  { value = "custom", label = "Custom date" },
+  { value = "today", label = "Today" },
+  { value = "march", label = "March equinox" },
+  { value = "june", label = "June solstice" },
+  { value = "september", label = "September equinox" },
+  { value = "december", label = "December solstice" },
+}
+
+local PRESET_MONTH_DAY = {
+  march = { 3, 20 },
+  june = { 6, 21 },
+  september = { 9, 22 },
+  december = { 12, 21 },
+}
+
 local function stop_timer(session)
   local study = session and session.sun_study
   if not study then return end
@@ -16,13 +32,36 @@ local function stop_timer(session)
   end
 end
 
+local function reset_playback(study)
+  if not study then return end
+  study.playback_state = "idle"
+  study.overlay = "instant"
+end
+
+local function build_daily_exposure(session)
+  local study = session and session.sun_study
+  if not study then return nil, "the sunlight study is not active" end
+  local model = session:model()
+  local wall_scene = require("roomplan.scene.walls").build(
+    model.rooms or {}, model.doors or {}, model.windows or {}, model.outlets or {})
+  local exposure, reason = require("roomplan.analysis.sunlight").build_day(
+    model, wall_scene, model.site, study.date, study.step_minutes,
+    config.get().sun_study.window_defaults)
+  if not exposure then return nil, reason end
+  study.daily_exposure = exposure
+  study.overlay = "daily"
+  study.assumed_count = exposure.assumed_count or 0
+  return exposure
+end
+
 local function clear_study(controller, session)
   stop_timer(session)
   session.sun_study = nil
   if not session.closed then controller.refresh(session) end
 end
 
-local function publish(controller, session, values)
+local function publish(controller, session, values, opts)
+  opts = opts or {}
   local study = session and session.sun_study
   if not study then return nil, util.err("SUN_INACTIVE", "the sunlight study is not active") end
   local calculation, reason = solar.position(session:model().site, values.date, values.time)
@@ -32,11 +71,16 @@ local function publish(controller, session, values)
   study.time = values.time
   study.step_minutes = values.step_minutes
   study.frame_duration_ms = values.frame_duration_ms
+  if not opts.preserve_overlay then
+    study.daily_exposure = nil
+    reset_playback(study)
+  end
   controller.refresh(session)
   return calculation
 end
 
-local function advance(controller, session, delta)
+local function advance(controller, session, delta, opts)
+  opts = opts or {}
   local study = session and session.sun_study
   if not study then return nil, util.err("SUN_INACTIVE", "the sunlight study is not active") end
   local calculation, reason = solar.position(session:model().site, study.date, study.time)
@@ -47,10 +91,23 @@ local function advance(controller, session, delta)
   else
     next_time = math.max(0, math.min(24 * 60 - 1, next_time))
   end
-  if next_time == calculation.minutes then return false end
-  study.time = solar.format_time(next_time)
-  local updated, update_error = publish(controller, session, study)
+  local next_text = solar.format_time(next_time)
+  if next_text == study.time then return false end
+  study.time = next_text
+  local updated, update_error = publish(controller, session, study, { preserve_overlay = opts.playback == true })
   if not updated then return nil, update_error end
+  return true
+end
+
+local function advance_season(controller, session, delta)
+  local study = session and session.sun_study
+  if not study then return nil, util.err("SUN_INACTIVE", "the sunlight study is not active") end
+  local date, reason = solar.shift_months(study.date, (delta < 0 and -1 or 1) * 4)
+  if not date then return nil, util.err("SUN_INVALID_DATE", reason) end
+  stop_timer(session)
+  study.date = date
+  local calculation, publish_error = publish(controller, session, study)
+  if not calculation then return nil, publish_error end
   return true
 end
 
@@ -62,6 +119,7 @@ local function toggle_playback(controller, session)
   end
   if study.playing then
     stop_timer(session)
+    study.playback_state = "paused"
     controller.refresh(session)
     return false
   end
@@ -72,18 +130,36 @@ local function toggle_playback(controller, session)
   if not uv or not uv.new_timer then
     return nil, util.err("SUN_TIMER", "this Neovim build does not provide timers")
   end
+  if study.playback_state ~= "paused" then
+    local calculation = study.calculation
+    if calculation and calculation.daylight_state ~= "polar_night" then
+      local first = calculation.daylight_state == "polar_day" and 0 or calculation.sunrise_minutes
+      study.time = solar.format_time(first)
+      local updated, update_error = publish(controller, session, study, { preserve_overlay = true })
+      if not updated then return nil, update_error end
+    end
+  end
+  study.overlay = "instant"
   local timer = uv.new_timer()
   study.timer = timer
   study.playing = true
+  study.playback_state = "playing"
   timer:start(study.frame_duration_ms, study.frame_duration_ms, vim.schedule_wrap(function()
     local current = session.sun_study
     if session.closed or not current or not current.viewing then
       stop_timer(session)
       return
     end
-    local changed = advance(controller, session, 1)
-    if not changed then
+    local changed = advance(controller, session, 1, { playback = true })
+    if changed == nil then
       stop_timer(session)
+      current.playback_state = "idle"
+      current.overlay = "instant"
+      controller.refresh(session)
+    elseif not changed then
+      stop_timer(session)
+      current.playback_state = "finished"
+      build_daily_exposure(session)
       controller.refresh(session)
     end
   end))
@@ -100,17 +176,25 @@ local function form_focus(controller, session)
   end)
 end
 
-local function study_spec(session, initial)
+local function study_spec(session, initial, local_today)
   local spec = {
     id = "sun-study",
     title = "Sun study",
     mode = "SUN STUDY",
-    description = "Set the study, then view it on the canvas. h/l step; Space starts playback.",
+    description = "h/l change time; j/k compare four-month seasons; Space plays the whole day.",
     apply_label = "View on canvas",
     context = { session = session },
     initial = initial,
     fields = {
+      {
+        key = "date_preset", label = "Date preset", type = "enum", required = true,
+        choices = DATE_PRESETS,
+      },
       { key = "date", label = "Date", type = "text", required = true, trim = true },
+      { key = "utc_offset", label = "UTC offset", type = "readonly", value = function()
+        local offset = solar.number(session:model().site and session:model().site.utc_offset_minutes)
+        return offset and (solar.format_utc_offset(offset) .. " · fixed; must match this date") or "Unavailable"
+      end },
       { key = "time", label = "Local time", type = "text", required = true, trim = true },
       { key = "step_minutes", label = "Step size (minutes)", type = "integer", required = true, min = 1, max = 720 },
       { key = "frame_duration_ms", label = "Time per step (ms)", type = "integer", required = true, min = 50, max = 60000 },
@@ -127,15 +211,27 @@ local function study_spec(session, initial)
         return string.format("azimuth %.1f° · elevation %.1f°", value.azimuth_deg, value.elevation_deg)
       end },
       { key = "playback", label = "Playback", type = "readonly", value = function()
-        return session.sun_study and session.sun_study.playing and "Running · Space pauses" or "Paused · Space plays"
+        return session.sun_study and session.sun_study.playing and "Running · Space pauses"
+          or "Paused · Space plays whole day"
       end },
-      { key = "previous", label = "Previous step", type = "action", action = "previous" },
+      { key = "previous", label = "Earlier time", type = "action", action = "previous" },
       { key = "view", label = "View current time on canvas", type = "action", action = "view" },
-      { key = "play", label = "Play on canvas", type = "action", action = "play" },
-      { key = "next", label = "Next step", type = "action", action = "next" },
+      { key = "play", label = "Play whole day on canvas", type = "action", action = "play" },
+      { key = "exposure", label = "View daily exposure", type = "action", action = "exposure" },
+      { key = "next", label = "Later time", type = "action", action = "next" },
       { key = "edit_site", label = "Edit location and plan north", type = "action", action = "edit_site" },
     },
   }
+  function spec.on_change(key, value, _, draft)
+    if key == "date" then return { date_preset = "custom" } end
+    if key ~= "date_preset" or value == "custom" then return nil end
+    if value == "today" then return { date = local_today } end
+    local date = solar.parse_date(draft.date)
+    local month_day = PRESET_MONTH_DAY[value]
+    if date and month_day then
+      return { date = string.format("%04d-%02d-%02d", date.year, month_day[1], month_day[2]) }
+    end
+  end
   function spec.validate(draft)
     local errors = {}
     local date, date_error = solar.parse_date(draft.date)
@@ -208,21 +304,24 @@ function M.attach(controller)
       return controller.configure_sun_site(resolved, { open_study = true })
     end
     local runtime = config.get().sun_study.playback
+    local offset_minutes = solar.number(resolved:model().site.utc_offset_minutes) or 0
+    local now = os.date("!*t", os.time() + offset_minutes * 60)
+    local local_today = string.format("%04d-%02d-%02d", now.year, now.month, now.day)
     local initial
     if resolved.sun_study then
       stop_timer(resolved)
       resolved.sun_study.viewing = false
       initial = {
+        date_preset = "custom",
         date = resolved.sun_study.date,
         time = resolved.sun_study.time,
         step_minutes = resolved.sun_study.step_minutes,
         frame_duration_ms = resolved.sun_study.frame_duration_ms,
       }
     else
-      local offset_minutes = solar.number(resolved:model().site.utc_offset_minutes) or 0
-      local now = os.date("!*t", os.time() + offset_minutes * 60)
       initial = {
-        date = string.format("%04d-%02d-%02d", now.year, now.month, now.day),
+        date_preset = "custom",
+        date = local_today,
         time = string.format("%02d:%02d", now.hour, now.min),
         step_minutes = runtime.step_minutes,
         frame_duration_ms = runtime.frame_duration_ms,
@@ -233,11 +332,15 @@ function M.attach(controller)
       then
         initial.time = solar.format_time(first.sunrise_minutes)
       end
-      resolved.sun_study = { active = true, viewing = false, playing = false, assumed_count = 0 }
+      resolved.sun_study = {
+        active = true, viewing = false, playing = false, playback_state = "idle",
+        overlay = "instant", assumed_count = 0,
+      }
     end
     local form = require("roomplan.ui.form")
     local handle
     local play_after_submit = false
+    local overlay_after_submit = "instant"
 
     local function advance_form(delta)
       if not handle or not form.is_current(handle) then return false end
@@ -250,23 +353,40 @@ function M.attach(controller)
       else
         next_time = math.max(0, math.min(24 * 60 - 1, next_time))
       end
-      form.set_value(handle, "time", solar.format_time(next_time), { raw = false, trusted = true })
-      return next_time ~= calculation.minutes
+      local next_text = solar.format_time(next_time)
+      if next_text == draft.time then return false end
+      form.set_value(handle, "time", next_text, { raw = false, trusted = true })
+      return true
     end
 
-    local function view_on_canvas(play)
+    local function advance_form_season(delta)
+      if not handle or not form.is_current(handle) then return false end
+      local date = solar.shift_months(handle.state.draft.date, (delta < 0 and -1 or 1) * 4)
+      if not date then return false end
+      form.set_value(handle, "date", date, { raw = false, trusted = true })
+      return true
+    end
+
+    local function view_on_canvas(play, overlay)
       play_after_submit = play == true
+      overlay_after_submit = overlay or "instant"
       return form.apply(handle)
     end
 
-    local spec = study_spec(resolved, initial)
+    local spec = study_spec(resolved, initial, local_today)
     handle, err = form.open(resolved, spec, {
       on_submit = function(draft)
         local calculation, publish_error = publish(controller, resolved, draft)
         if not calculation then return nil, publish_error end
+        resolved.sun_study.overlay = overlay_after_submit
+        if overlay_after_submit == "daily" then
+          local exposure, exposure_error = build_daily_exposure(resolved)
+          if not exposure then return nil, util.err("SUN_EXPOSURE", exposure_error) end
+        end
         resolved.sun_study.viewing = true
         local start_playback = play_after_submit
         play_after_submit = false
+        overlay_after_submit = "instant"
         vim.schedule(function()
           if resolved.closed or not resolved.sun_study then return end
           controller.focus_canvas(resolved)
@@ -283,14 +403,17 @@ function M.attach(controller)
         local mappings = require("roomplan.ui.mappings")
         mappings.set(active.bufnr, "h", function() advance_form(-1) end, "Previous sunlight step")
         mappings.set(active.bufnr, "l", function() advance_form(1) end, "Next sunlight step")
+        mappings.set(active.bufnr, "j", function() advance_form_season(1) end, "Next four-month season")
+        mappings.set(active.bufnr, "k", function() advance_form_season(-1) end, "Previous four-month season")
         mappings.set(active.bufnr, "<Space>", function() view_on_canvas(true) end,
-          "Start sunlight playback on the canvas")
+          "Play the whole sunlight day on the canvas")
       end,
       on_action = function(action)
         if action == "previous" then return advance_form(-1) end
         if action == "next" then return advance_form(1) end
         if action == "view" then return view_on_canvas(false) end
         if action == "play" then return view_on_canvas(true) end
+        if action == "exposure" then return view_on_canvas(false, "daily") end
         if action == "edit_site" then
           stop_timer(resolved)
           if not form.transition(handle, "edit-sun-site") then return false end
@@ -316,8 +439,22 @@ function M.attach(controller)
     if not resolved.sun_study or not resolved.sun_study.viewing then
       return notify_error(util.err("SUN_NOT_VIEWING", "open the sunlight study with L first"))
     end
+    stop_timer(resolved)
+    reset_playback(resolved.sun_study)
     local changed, step_error = advance(controller, resolved, delta and delta < 0 and -1 or 1)
     if changed == nil then return notify_error(step_error) end
+    return changed
+  end
+
+
+  function controller.sun_season(session, delta)
+    local resolved, err = resolve(session)
+    if not resolved then return notify_error(err) end
+    if not resolved.sun_study or not resolved.sun_study.viewing then
+      return notify_error(util.err("SUN_NOT_VIEWING", "open the sunlight study with L first"))
+    end
+    local changed, season_error = advance_season(controller, resolved, delta and delta < 0 and -1 or 1)
+    if changed == nil then return notify_error(season_error) end
     return changed
   end
 
@@ -338,10 +475,9 @@ function M.attach(controller)
   end
 
   controller.direction = function(session, dx, dy, scale)
-    if session and session.sun_study and session.sun_study.viewing
-      and scale == "normal" and dy == 0 and dx ~= 0
-    then
-      return controller.sun_step(session, dx)
+    if session and session.sun_study and session.sun_study.viewing and scale == "normal" then
+      if dy == 0 and dx ~= 0 then return controller.sun_step(session, dx) end
+      if dx == 0 and dy ~= 0 then return controller.sun_season(session, dy > 0 and -1 or 1) end
     end
     return base_direction(session, dx, dy, scale)
   end
