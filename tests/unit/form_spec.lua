@@ -248,6 +248,7 @@ describe("structured forms", function()
 
   it("opens a complete float, anchors editors, applies, and cancels", function()
     local session = plan_session()
+    local background_winid = vim.api.nvim_get_current_win()
     local submitted, cancelled, opened_action
     local spec = {
       id = "engine-test",
@@ -289,8 +290,10 @@ describe("structured forms", function()
     h.truthy(form.edit(handle))
     h.eq("window", input_options.scope)
     h.truthy(form.move(handle, 1))
+    vim.api.nvim_set_current_win(background_winid)
     pending("Anchored name")
     vim.ui.input = original_input
+    h.eq(handle.winid, vim.api.nvim_get_current_win())
     h.eq("Anchored name", handle.state.draft.name)
     -- The delayed editor remains anchored to Name even though focus moved in
     -- the meantime; it must never overwrite the newly active Size field.
@@ -305,8 +308,10 @@ describe("structured forms", function()
     h.truthy(form.edit(handle))
     h.eq("roomplan_form_choice", select_options.kind)
     h.truthy(form.move(handle, 1))
+    vim.api.nvim_set_current_win(background_winid)
     pending_select(pending_choices[2])
     vim.ui.select = original_select
+    h.eq(handle.winid, vim.api.nvim_get_current_win())
     h.eq("two", handle.state.draft.choice)
     h.eq("choice", handle.state.active_key)
     h.truthy(form.activate(handle, "shape"))
@@ -353,6 +358,13 @@ describe("structured forms", function()
     vim.o.columns = 100
     local handle = h.truthy(form.open(session, spec, {}))
     h.truthy(handle.preview_winid and vim.api.nvim_win_is_valid(handle.preview_winid))
+    h.eq(handle.winid, vim.api.nvim_get_current_win())
+    local next_choice = vim.api.nvim_buf_call(handle.bufnr, function()
+      return vim.fn.maparg("l", "n", false, true)
+    end)
+    h.eq("Next RoomPlan form choice", next_choice.desc)
+    vim.api.nvim_feedkeys("l", "x", false)
+    h.eq(handle.winid, vim.api.nvim_get_current_win())
     local side_lines = vim.api.nvim_buf_get_lines(handle.preview_bufnr, 0, -1, false)
     h.truthy(line_contains(side_lines, "Furniture preview"))
     h.truthy(line_contains(side_lines, "################"))

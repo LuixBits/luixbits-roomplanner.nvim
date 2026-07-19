@@ -693,6 +693,15 @@ describe("workspace UI", function()
     workspace.reflow(session, true)
     assert_equal(shell.windows.properties, vim.api.nvim_get_current_win())
     assert_equal(shell.buffers.objects, vim.api.nvim_win_get_buf(shell.windows.left))
+    local overlay_buffer = vim.api.nvim_create_buf(false, true)
+    local overlay_window = vim.api.nvim_open_win(overlay_buffer, true, {
+      relative = "editor", style = "minimal", border = "rounded",
+      width = 30, height = 6, col = 4, row = 3,
+    })
+    workspace.reflow(session, true)
+    assert_equal(overlay_window, vim.api.nvim_get_current_win())
+    vim.api.nvim_win_close(overlay_window, true)
+    vim.api.nvim_buf_delete(overlay_buffer, { force = true })
     assert_true(workspace.toggle(session, "properties"))
     assert_equal(nil, shell.windows.properties)
     assert_equal(false, shell.state.visibility.details)

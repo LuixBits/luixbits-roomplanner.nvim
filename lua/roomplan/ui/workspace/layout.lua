@@ -173,6 +173,15 @@ function M.restore_focus(workspace, pane)
   return winid
 end
 
+local function restore_reflow_focus(workspace, pane, preserved_winid)
+  if util.valid_window(preserved_winid) then
+    vim.api.nvim_set_current_win(preserved_winid)
+    M.refresh_window_chrome(workspace)
+    return preserved_winid
+  end
+  return M.restore_focus(workspace, pane)
+end
+
 function M.pane_for_window(workspace, winid)
   if winid == workspace.canvas_winid then return "canvas" end
   if winid == workspace.windows.properties then return "properties" end
@@ -194,9 +203,17 @@ function M.reflow(api, session, force)
   for _, role in ipairs(render.ensure_buffers(session, workspace)) do
     interaction.map_common(api, session, workspace.buffers[role], role)
   end
-  local restore_pane = workspace.pending_focus
-    or M.pane_for_window(workspace, vim.api.nvim_get_current_win())
-    or workspace.state.focused_pane
+  local current_winid = vim.api.nvim_get_current_win()
+  local current_pane = M.pane_for_window(workspace, current_winid)
+  local pending_focus = workspace.pending_focus
+  -- Forms, palettes, vim.ui providers, and unrelated editor windows are not
+  -- workspace panes. A resize/reflow must never replace their native focus
+  -- with the workspace's last remembered pane unless a pane focus was
+  -- explicitly requested through pending_focus.
+  local preserved_winid = pending_focus == nil and current_pane == nil
+      and util.valid_window(current_winid) and current_winid
+    or nil
+  local restore_pane = pending_focus or current_pane or workspace.state.focused_pane
   local columns, lines = dimensions(workspace)
   local next_layout = workspace_state.calculate_layout(columns, lines, workspace.opts, workspace.state)
   if not force and workspace.layout and workspace.layout.kind == next_layout.kind
@@ -204,7 +221,7 @@ function M.reflow(api, session, force)
     and layout_windows_valid(workspace, next_layout) then
     workspace.pending_focus = nil
     render.refresh(session)
-    M.restore_focus(workspace, restore_pane)
+    restore_reflow_focus(workspace, restore_pane, preserved_winid)
     return next_layout
   end
   workspace.reflowing = true
@@ -241,7 +258,7 @@ function M.reflow(api, session, force)
     M.show_left_buffer(workspace)
     render.refresh(session)
     workspace.pending_focus = nil
-    M.restore_focus(workspace, restore_pane)
+    restore_reflow_focus(workspace, restore_pane, preserved_winid)
     if workspace.opts.on_layout then workspace.opts.on_layout(session, next_layout) end
     return next_layout
   end, debug.traceback)

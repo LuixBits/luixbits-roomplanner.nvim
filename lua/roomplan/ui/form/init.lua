@@ -48,6 +48,12 @@ function M.is_current(handle)
     and workflow_current(handle)
 end
 
+function M.focus(handle)
+  if not M.is_current(handle) or not valid_window(handle.winid) then return false end
+  if vim.api.nvim_get_current_win() ~= handle.winid then vim.api.nvim_set_current_win(handle.winid) end
+  return true
+end
+
 local function revision_current(handle)
   local base = handle.state.base_revision_id
   return base == nil or revision_id(handle) == base
@@ -130,6 +136,7 @@ end
 
 function M.render(handle)
   if not M.is_current(handle) or not valid_buffer(handle.bufnr) then return nil end
+  local restore_focus = valid_window(handle.winid) and vim.api.nvim_get_current_win() == handle.winid
   local width = valid_window(handle.winid) and vim.api.nvim_win_get_width(handle.winid) or handle.width
   if side_preview.visible(handle) then width = side_preview.width(handle) end
   local output = renderer.build(handle.state, {
@@ -144,6 +151,7 @@ function M.render(handle)
     pcall(vim.api.nvim_win_set_cursor, handle.winid, { output.meta.active_row, 0 })
   end
   side_preview.sync(handle)
+  if restore_focus then M.focus(handle) end
   publish_workspace(handle)
   return output
 end
@@ -352,6 +360,7 @@ function M.edit(handle)
       if not anchored() or choice == nil then return end
       local current = guarded(handle)
       if not current then return end
+      M.focus(handle)
       M.set_value(handle, key, choice.value, { raw = false })
     end)
     return true
@@ -367,6 +376,7 @@ function M.edit(handle)
     if not anchored() or raw == nil then return end
     local current = guarded(handle)
     if not current then return end
+    M.focus(handle)
     M.set_value(handle, key, raw, { raw = true })
   end)
   return true
