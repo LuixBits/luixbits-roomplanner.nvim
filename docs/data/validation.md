@@ -29,8 +29,9 @@ Broken layout invariants are errors. An unavailable imported template and door
 swing interference are warnings; warnings do not block saving.
 
 Run `:RoomPlanValidate` or press `v` to recompute diagnostics and focus Issues.
-Use `Alt-k` / `Alt-j` to move through them, or select an Issues row to focus its
-object. Details shows diagnostics for the current selection.
+Use `Alt-k` / `Alt-j` to move through them, or activate an Issues row to select,
+reveal, and centre its object without changing the working zoom or rotation.
+Details shows diagnostics for the current selection.
 
 ## Invalid repair drafts
 

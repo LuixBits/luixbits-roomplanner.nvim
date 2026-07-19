@@ -121,6 +121,42 @@ describe("compound scene extraction", function()
       end
     end
     assert_equal(2, selected_parts)
+    assert_true(scene.focus_points["furniture-l"] ~= nil)
+  end)
+
+  it("renders a form furniture preview without making it selectable", function()
+    local preview = {
+      id = "furniture-preview",
+      room_id = "room-l",
+      name = "Draft sofa",
+      position_mm = { 1000, 500 },
+      anchor2_mm = { 1000, 500 },
+      footprint = {
+        kind = "rect_union",
+        parts = { part("part-main", 0, 0, 1000, 500) },
+      },
+      height_mm = 800,
+      rotation_deg = 0,
+    }
+    local scene = scene_builder.build({
+      rooms = { compound_room() },
+      doors = {}, windows = {}, outlets = {}, furniture = {},
+    }, nil, {
+      detail_level = "high",
+      form_preview = { kind = "furniture", entity = preview },
+    })
+
+    assert_equal("furniture", scene.preview.kind)
+    assert_equal(1, #scene.objects, "the draft must not join selectable scene objects")
+    assert_equal(nil, scene.focus_points["furniture-preview"])
+    local preview_primitives = 0
+    for _, primitive in ipairs(scene.primitives) do
+      if primitive.role == "preview" then
+        preview_primitives = preview_primitives + 1
+        assert_equal(nil, primitive.ref)
+      end
+    end
+    assert_true(preview_primitives >= 5, "interior, outline, label, and dimensions should share the preview role")
   end)
 
   it("renders project-template edits as an isolated local preview", function()

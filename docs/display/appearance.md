@@ -54,7 +54,7 @@ The main canvas groups are:
 
 `RoomPlanWall`, `RoomPlanDoor`, `RoomPlanWindow`, `RoomPlanOutlet`,
 `RoomPlanFurniture`, `RoomPlanRoomLabel`, `RoomPlanFurnitureLabel`,
-`RoomPlanSelected`, `RoomPlanSnap`, `RoomPlanSnapOverlap`, `RoomPlanError`,
+`RoomPlanPreview`, `RoomPlanSelected`, `RoomPlanSnap`, `RoomPlanSnapOverlap`, `RoomPlanError`,
 `RoomPlanWarning`, `RoomPlanGrid`, `RoomPlanStatus`, `RoomPlanMuted`, and
 `RoomPlanCompass`. Sun studies additionally use `RoomPlanSunWall`,
 `RoomPlanSunWindow`, and `RoomPlanSunlight1` through `RoomPlanSunlight5`.
@@ -74,6 +74,7 @@ Override groups after your colorscheme loads:
 ```lua
 vim.api.nvim_set_hl(0, "RoomPlanWall", { link = "Function" })
 vim.api.nvim_set_hl(0, "RoomPlanFurniture", { link = "Identifier" })
+vim.api.nvim_set_hl(0, "RoomPlanPreview", { link = "DiffAdd" })
 vim.api.nvim_set_hl(0, "RoomPlanSnap", { link = "DiagnosticInfo" })
 vim.api.nvim_set_hl(0, "RoomPlanSnapOverlap", { link = "IncSearch" })
 vim.api.nvim_set_hl(0, "RoomPlanWorkspaceActiveBorder", { link = "FloatBorder" })

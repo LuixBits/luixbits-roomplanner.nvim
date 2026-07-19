@@ -21,7 +21,8 @@ rounding can never corrupt the saved plan.
 - Structured forms for rooms, furniture, doors, windows, outlets, alignment,
   plan settings, project furniture templates, exact two-object measurement,
   and furniture-to-wall placement, including palette-based room and furniture
-  colors.
+  colors. Add furniture shows each valid draft as a transient, non-selectable
+  ghost on the real canvas before Apply.
 - Compound footprints for L-, T-, and U-shaped rooms and furniture, with
   seam-free walls and one logical selection per object. The room form creates
   configurable L shapes; direct canvas editing can add, resize, and remove
@@ -43,7 +44,8 @@ rounding can never corrupt the saved plan.
   magnetic snapping is disabled. Canvas text progressively abbreviates or
   disappears as its object shrinks on screen, keeping fitted overviews legible.
   Validation, bounded resources, multiple concurrent plans, and dirty-session
-  protection remain part of the same workflow.
+  protection remain part of the same workflow. Activating a validation issue
+  selects and recentres its owner without changing the current zoom.
 - Dependency-free furniture catalogues from inline Lua definitions or JSON
   files.
 - No mandatory runtime dependency beyond Neovim 0.10 or newer. Standard

@@ -10,6 +10,7 @@ local links = {
   RoomPlanFurniture = "Identifier",
   RoomPlanRoomLabel = "Title",
   RoomPlanFurnitureLabel = "Normal",
+  RoomPlanPreview = "DiffAdd",
   RoomPlanSelected = "Visual",
   RoomPlanSnap = "DiagnosticInfo",
   RoomPlanSnapOverlap = "IncSearch",

@@ -523,6 +523,7 @@ function M.build(model, validation, opts)
     sunlight = sunlight,
   }
   local object_points = {}
+  scene.focus_points = object_points
   local dimension_edges = {}
 
   -- Project templates have no plan position. During direct shape editing they
@@ -761,6 +762,56 @@ function M.build(model, validation, opts)
         object_id = type(item) == "table" and item.id or nil,
         message = "Furniture geometry or owner cannot be rendered safely",
       }
+    end
+  end
+
+  local form_preview = opts.form_preview
+  local preview_item = type(form_preview) == "table" and form_preview.kind == "furniture"
+      and form_preview.entity
+    or nil
+  local preview_room = type(preview_item) == "table" and wall_scene.rooms_by_id[preview_item.room_id] or nil
+  if valid_furniture(preview_item, preview_room) then
+    local bounds, shape = furniture_geometry(preview_item, preview_room)
+    if bounds then
+      local rectangles = preview_item.footprint ~= nil and shape_rectangles(shape) or { bounds }
+      scene.preview = { kind = "furniture", bounds = bounds }
+      bbox_rect(scene.bounds, bounds.left, bounds.bottom, bounds.right, bounds.top)
+      for part_index, rectangle in ipairs(rectangles) do
+        add_primitive(scene, {
+          kind = "furniture_interior",
+          layer = M.layers.furniture + 2,
+          left = rectangle.left,
+          bottom = rectangle.bottom,
+          right = rectangle.right,
+          top = rectangle.top,
+          part_id = rectangle.part_id,
+          part_index = preview_item.footprint ~= nil and part_index or nil,
+          role = "preview",
+        }, roles)
+        add_primitive(scene, {
+          kind = "furniture_outline",
+          layer = M.layers.furniture + 3,
+          left = rectangle.left,
+          bottom = rectangle.bottom,
+          right = rectangle.right,
+          top = rectangle.top,
+          part_id = rectangle.part_id,
+          part_index = preview_item.footprint ~= nil and part_index or nil,
+          role = "preview",
+        }, roles)
+      end
+      if show_labels then
+        local anchor = shape and footprint.label_anchor(shape) or nil
+        local preview_label = labels.furniture(preview_item, bounds, nil, #furniture + 1, anchor)
+        preview_label.role = "preview"
+        add_primitive(scene, preview_label, roles)
+      end
+      if high_detail then
+        for _, dimension in ipairs(labels.furniture_dimensions(bounds, nil, #furniture + 1)) do
+          dimension.role = "preview"
+          add_primitive(scene, dimension, roles)
+        end
+      end
     end
   end
 

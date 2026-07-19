@@ -4,6 +4,13 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Added two pre-release workspace refinements without mappings or saved-plan
+  keys. Valid Add furniture drafts now render as a colorscheme-linked,
+  non-selectable ghost on the real canvas and disappear on invalid input,
+  Apply, Cancel, stale forms, or reload without entering IDs, validation,
+  history, or persistence. Activating an Issues row or using previous/next
+  issue now selects, reveals, and centres its owning object while preserving
+  the current zoom and view rotation.
 - Restored the in-popup action search on Neovim 0.10 and 0.11 by reading its
   native prompt buffer through the stable buffer API instead of the
   Neovim-0.12-only `prompt_getinput()` function. The required CI matrix keeps

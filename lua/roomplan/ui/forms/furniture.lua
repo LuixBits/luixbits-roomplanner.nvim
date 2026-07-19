@@ -123,6 +123,47 @@ function M.add(session, opts)
   local room = room_id and common.find(context, "room", room_id) or nil
   local template_size = assert(template_dimensions(template), "RoomPlan furniture template has no usable dimensions")
   local initial_position = room and room_centre(room) or { 0, 0 }
+  local function resolve_draft(draft, ctx)
+    ctx = ctx or context
+    local position, position_err = centre(draft, ctx)
+    if not position then return nil, position_err end
+    local selected = resolved_template(ctx, draft.template_id)
+    if not selected then
+      return nil, { code = "TEMPLATE_REQUIRED", message = "the furniture template no longer exists" }
+    end
+    local version = schema_version(ctx)
+    local selected_simple = template_is_simple(selected)
+    return {
+      position = position,
+      selected = selected,
+      version = version,
+      footprint = selected_simple and model_helpers.rectangle_footprint({ draft.width_mm, draft.depth_mm })
+        or model_helpers.deep_copy(selected.default_footprint),
+      anchor2_mm = selected_simple and { draft.width_mm, draft.depth_mm }
+        or model_helpers.deep_copy(selected.default_anchor2_mm),
+    }
+  end
+  local function furniture_from_draft(draft, resolved, id, template_id, category)
+    local fields = {
+      id = id,
+      room_id = draft.room_id,
+      template_id = template_id or draft.template_id,
+      name = draft.name,
+      color = color.resolve(draft.color),
+      category = category or resolved.selected.category,
+      rotation_deg = draft.rotation_deg,
+    }
+    if resolved.version >= 2 then
+      fields.position_mm = resolved.position
+      fields.footprint = resolved.footprint
+      fields.anchor2_mm = resolved.anchor2_mm
+      fields.height_mm = draft.height_mm
+    else
+      fields.center_mm = resolved.position
+      fields.size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm }
+    end
+    return model_helpers.new_furniture(fields, { schema_version = resolved.version })
+  end
   local spec = {
     id = "add-furniture",
     title = "Add furniture",
@@ -254,22 +295,21 @@ function M.add(session, opts)
     if not common.find(ctx, "room", draft.room_id) then errors.room_id = "room no longer exists" end
     return errors
   end
+  -- Canvas-only furniture drafts deliberately use a fixed, valid ID and never
+  -- enter the model, ID reservations, validation, history, or persistence.
+  function spec.canvas_preview(draft, ctx)
+    local resolved, err = resolve_draft(draft, ctx)
+    if not resolved then return nil, err end
+    return furniture_from_draft(draft, resolved, "furniture-preview")
+  end
   function spec.build(draft, ctx)
     ctx = ctx or context
-    local position, err = centre(draft, ctx)
-    if not position then return nil, err end
-    local selected = resolved_template(ctx, draft.template_id)
-    if not selected then return nil, { code = "TEMPLATE_REQUIRED", message = "the furniture template no longer exists" } end
+    local resolved, err = resolve_draft(draft, ctx)
+    if not resolved then return nil, err end
     local id, id_err = common.generate_id(ctx, "furniture", draft.name)
     if not id then return nil, id_err end
     local template_id = draft.template_id
-    local category = selected.category
-    local version = schema_version(ctx)
-    local selected_simple = template_is_simple(selected)
-    local selected_footprint = selected_simple and model_helpers.rectangle_footprint({ draft.width_mm, draft.depth_mm })
-      or model_helpers.deep_copy(selected.default_footprint)
-    local selected_anchor = selected_simple and { draft.width_mm, draft.depth_mm }
-      or model_helpers.deep_copy(selected.default_anchor2_mm)
+    local category = resolved.selected.category
     local custom_template
     if draft.save_template then
       local custom_id, custom_err = common.generate_id(ctx, "custom_template", draft.custom_template_name)
@@ -281,37 +321,19 @@ function M.add(session, opts)
         name = draft.custom_template_name,
         category = draft.custom_template_category,
       }
-      if version >= 2 then
-        custom_fields.default_footprint = selected_footprint
-        custom_fields.default_anchor2_mm = selected_anchor
+      if resolved.version >= 2 then
+        custom_fields.default_footprint = resolved.footprint
+        custom_fields.default_anchor2_mm = resolved.anchor2_mm
         custom_fields.default_height_mm = draft.height_mm
       else
         custom_fields.shape = "rectangle"
         custom_fields.default_size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm }
       end
-      custom_template = model_helpers.new_custom_template(custom_fields, { schema_version = version })
-    end
-    local furniture_fields = {
-      id = id,
-      room_id = draft.room_id,
-      template_id = template_id,
-      name = draft.name,
-      color = color.resolve(draft.color),
-      category = category,
-      rotation_deg = draft.rotation_deg,
-    }
-    if version >= 2 then
-      furniture_fields.position_mm = position
-      furniture_fields.footprint = selected_footprint
-      furniture_fields.anchor2_mm = selected_anchor
-      furniture_fields.height_mm = draft.height_mm
-    else
-      furniture_fields.center_mm = position
-      furniture_fields.size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm }
+      custom_template = model_helpers.new_custom_template(custom_fields, { schema_version = resolved.version })
     end
     return {
       type = "add_furniture",
-      furniture = model_helpers.new_furniture(furniture_fields, { schema_version = version }),
+      furniture = furniture_from_draft(draft, resolved, id, template_id, category),
       custom_template = custom_template,
     }
   end
