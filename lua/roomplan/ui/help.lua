@@ -23,7 +23,7 @@ local reference_lines = {
   "d delete, y duplicate",
   "v validate, Alt-k/Alt-j previous/next issue",
   "<C-h/j/k/l> fine move; u undo, <C-r>/U redo",
-  ",/. zoom out/in, f fit, zh/zj/zk/zl pan",
+  ",/. zoom out/in, f fit, M minimap, zh/zj/zk/zl pan",
   "t cycles canvas detail: high / middle / none",
   "L sunlight study; Alt-l/Alt-h rotate view; g0 restore plan view/up",
   "gs toggle snapping, g! bypass next snap, s save, S Save As",

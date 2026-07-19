@@ -331,6 +331,7 @@ function Session:destroy(opts)
   end
   self.tearing_down = true
   pcall(function() require("roomplan.controller.sun").close(self) end)
+  pcall(function() require("roomplan.ui.minimap").close(self) end)
   if self.form then pcall(function() require("roomplan.ui.form").cancel(self.form, "session closed") end) end
   require("roomplan.ui.flow").cancel(self, "session closed")
   if self.workspace then pcall(function() require("roomplan.ui.workspace").close(self) end) end
@@ -378,6 +379,7 @@ function M.new(source, model, opts)
     snap_exclusions = {},
     move_feedback = nil,
     canvas = { bufnr = nil, winid = nil },
+    minimap = { enabled = false },
     workflow = { generation = 0, kind = nil },
     source_conflicted = false,
     retained_model_at_risk = false,

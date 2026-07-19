@@ -45,6 +45,7 @@ bypass structural validation or source-conflict checks.
 | `:RoomPlanValidate` | Revalidate and focus Issues |
 | `:RoomPlanNextIssue` / `:RoomPlanPrevIssue` | Select the next/previous diagnostic |
 | `:RoomPlanFit` | Fit scene geometry to the canvas |
+| `:RoomPlanMinimap` | Toggle the transient whole-plan minimap |
 | `:RoomPlanCanvasDetail [high\|middle\|none\|cycle]` | Set canvas detail, or cycle when omitted |
 | `:RoomPlanAspect [ratio]` | Prompt for or set terminal cell height/width calibration |
 | `:RoomPlanRotateView [clockwise\|counterclockwise\|reset]` | Rotate only the viewport projection |

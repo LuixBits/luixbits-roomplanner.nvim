@@ -48,6 +48,7 @@ end
 | `set_canvas_detail(level)` | Set resolved session detail to `high`, `middle`, or `none`; omit level to cycle |
 | `rotate_view(direction)` | Rotate resolved viewport; accepts `clockwise`, `counterclockwise`, or `reset` |
 | `sun_study()` | Open site setup or the transient sunlight study for the resolved session |
+| `toggle_minimap()` | Show or hide the transient whole-plan minimap |
 
 `set_aspect` also accepts one options table containing `ratio`. Canvas detail,
 rotation, and aspect are display operations and do not add model history. Sun

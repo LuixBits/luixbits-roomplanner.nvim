@@ -46,6 +46,7 @@ local definitions = {
   RoomPlanUndo = { method = "undo", desc = "Undo RoomPlan action" },
   RoomPlanRedo = { method = "redo", desc = "Redo RoomPlan action" },
   RoomPlanFit = { method = "fit", desc = "Fit RoomPlan canvas" },
+  RoomPlanMinimap = { method = "toggle_minimap", desc = "Toggle the RoomPlan minimap" },
   RoomPlanAspect = { method = "set_aspect", nargs = "?", desc = "Calibrate RoomPlan terminal cell aspect" },
   RoomPlanCanvasDetail = {
     method = "set_detail_level", nargs = "?",

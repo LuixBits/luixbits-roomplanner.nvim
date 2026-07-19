@@ -700,6 +700,8 @@ function M.context(value, ui_state)
     cursor_world = ui_state and ui_state.cursor_world or nil,
     zoom = zoom,
     view_rotation = viewport and (tonumber(viewport.rotation_quarters) or 0) % 4 or 0,
+    minimap_enabled = type(value) == "table"
+      and value.minimap and value.minimap.enabled == true or false,
   }
   local study = type(value) == "table" and value.sun_study or nil
   if study then

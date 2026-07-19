@@ -135,6 +135,7 @@ describe("action registry", function()
     for _, id in ipairs({
       "add", "add_door", "add_window", "add_outlet", "add_furniture", "pan", "align", "rotate",
       "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
+      "toggle_minimap",
       "toggle_snap", "bypass_snap", "save_as", "next_issue", "previous_issue",
       "measure",
       "history_list",
@@ -147,6 +148,10 @@ describe("action registry", function()
     assert_equal(".", present.zoom_in.key)
     assert_equal(",", present.zoom_out.key)
     assert_equal("t", present.cycle_detail_level.key)
+    assert_equal("M", present.toggle_minimap.key)
+    assert_equal("Show minimap", present.toggle_minimap.label)
+    ctx.minimap_enabled = true
+    assert_equal("Hide minimap", registry.get("toggle_minimap", ctx).label)
     assert_equal("set_detail_level", present.cycle_detail_level.handler)
     assert_equal("cycle", present.cycle_detail_level.args[1])
     assert_equal("Canvas detail: middle → none", present.cycle_detail_level.label)
@@ -172,6 +177,7 @@ describe("action registry", function()
     local controller = require("roomplan.controller")
     for _, id in ipairs({
       "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
+      "toggle_minimap",
       "toggle_snap", "bypass_snap", "save_as", "next_issue", "previous_issue",
       "aspect", "reload", "close",
     }) do

@@ -67,6 +67,7 @@ function M.apply(buf, session)
     "Rotate RoomPlan view counter-clockwise", "rotate_view_counterclockwise")
   map(buf, "g0", controller("rotate_view", "reset"), "Reset RoomPlan plan view/up", "reset_view")
   map(buf, "f", controller("fit"), "Fit RoomPlan", "fit")
+  map(buf, "M", controller("toggle_minimap"), "Toggle RoomPlan minimap", "toggle_minimap")
   map(buf, "t", controller("set_detail_level", "cycle"), "Cycle RoomPlan canvas detail", "cycle_detail_level")
   map(buf, "zf", controller("fit"), "Fit RoomPlan")
   for _, entry in ipairs({ { "zh", -1, 0 }, { "zj", 0, -1 }, { "zk", 0, 1 }, { "zl", 1, 0 } }) do

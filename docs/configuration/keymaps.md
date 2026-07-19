@@ -56,6 +56,7 @@ ordinary `e`, `m`, `y`, and `d` edit/move/duplicate/delete mappings.
 | `v`, `Alt-k`, `Alt-j` | `validate`, `previous_issue`, `next_issue` | Validate/navigate issues |
 | `u`, `Ctrl-r` | `undo`, `redo` | Semantic history |
 | `f`, `.`, `,` | `fit`, `zoom_in`, `zoom_out` | Fit/zoom |
+| `M` | `toggle_minimap` | Show/hide the whole-plan minimap and field-of-view rectangle |
 | `t` | `cycle_detail_level` | Cycle `high`, `middle`, and `none` canvas detail |
 | `L` | `sun_study` | Open the sunlight study in NAV; remains coarse-right in MOVE/PAN/RESIZE |
 | Sun mode: `h`/`l`, `j`/`k` | contextual | Earlier/later time; next/previous three-month season on canvas |

@@ -92,7 +92,13 @@ function M.open_canvas(controller, session)
         workspace.update_cursor(session, world, zoom)
       end
     end,
+    on_redraw = function(_, output)
+      local minimap_ok, minimap = pcall(require, "roomplan.ui.minimap")
+      if minimap_ok then pcall(minimap.refresh, session, output) end
+    end,
     on_wipe = function(handle)
+      local minimap_ok, minimap = pcall(require, "roomplan.ui.minimap")
+      if minimap_ok then pcall(minimap.close, session) end
       if handle and handle.buf then state.detach_buffer(handle.buf) end
       session.canvas = { bufnr = nil, winid = nil }
     end,

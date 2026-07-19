@@ -15,6 +15,7 @@ truth.
 | `zh zj zk zl` | Pan the viewport |
 | `p`, then directions | Enter dedicated PAN mode |
 | `t` | Cycle high, middle, and no canvas detail |
+| `M` | Toggle the colored whole-plan minimap |
 | `Alt-l` / `Alt-h` | Rotate the view clockwise / counter-clockwise |
 | `g0` | Restore the plan view/up projection |
 | `L` | Open the offline sunlight study |
@@ -33,6 +34,15 @@ millimetres-per-column scale so plan proportions look correct in non-square
 terminal cells. Normal and coarse `h/j/k/l` cursor movement automatically pans
 at the `canvas.scrolloff` margin, so zoomed navigation does not stop at the
 visible boundary.
+
+The `M` minimap is a non-focusable overlay in the canvas's upper-right corner.
+It uses the real compound room outlines and room colors, while a warm outlined
+rectangle shows the exact world area visible in the main canvas. The rectangle
+updates after zoom, pan, scrolloff movement, rotation, room edits, and terminal
+resizes. The overview is transient: it adds no plan fields, history entries, or
+configuration keys, and hides automatically with the canvas. On a canvas too
+small to show it legibly, RoomPlan keeps the requested state and restores the
+minimap after the window grows.
 
 Wall outlets use inward-facing half circles; floor outlets use full circles.
 Both use the colorscheme-linked `RoomPlanOutlet` highlight. During a sun study,

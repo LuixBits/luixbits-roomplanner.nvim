@@ -35,6 +35,7 @@ M.aspect = M.set_aspect
 function M.rotate_view(direction) return call("rotate_view", direction or "clockwise") end
 function M.set_canvas_detail(level) return call("set_detail_level", level or "cycle") end
 function M.sun_study() return call("sun_study") end
+function M.toggle_minimap() return call("toggle_minimap") end
 function M.hide(opts) return call("hide", opts or {}) end
 function M.close(opts, callback) return call("close", opts or {}, callback) end
 function M.validate(opts) return call("validate", opts or {}) end

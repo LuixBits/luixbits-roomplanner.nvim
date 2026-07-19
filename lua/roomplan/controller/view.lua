@@ -79,6 +79,20 @@ function M.attach(controller)
   controller.toggle_details = controller.inspect
   controller.toggle_navigator = controller.objects
 
+  function controller.toggle_minimap(session)
+    local resolved, err = resolve(session)
+    if not resolved then return notify_error(err) end
+    if not resolved.canvas or not resolved.canvas.winid or not vim.api.nvim_win_is_valid(resolved.canvas.winid) then
+      local opened, open_err = open_canvas(resolved)
+      if not opened then return notify_error(open_err) end
+    end
+    local enabled, minimap_err = require("roomplan.ui.minimap").toggle(resolved)
+    if minimap_err then compat.notify(minimap_err, vim.log.levels.WARN) end
+    local workspace_ok, workspace = pcall(require, "roomplan.ui.workspace")
+    if workspace_ok and resolved.workspace then workspace.refresh(resolved) end
+    return enabled
+  end
+
   function controller.next_issue(session, direction)
     local resolved, err = resolve(session)
     if not resolved then return notify_error(err) end
