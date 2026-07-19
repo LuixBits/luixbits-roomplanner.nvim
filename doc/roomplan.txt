@@ -255,9 +255,10 @@ if the plan changes elsewhere, the stale form cannot apply over newer data.
 Room and furniture forms include a dependency-free color palette. Stored
 #RRGGBB colors accent labels and furniture outlines; selection, warning, and
 error highlights always take priority. Theme default follows the colorscheme.
-Valid Add furniture drafts also appear as a non-selectable RoomPlanPreview
-ghost on the real canvas; invalid input, Apply, Cancel, or reload clears it
-without changing IDs, history, validation, or saved data.
+Add and Edit furniture show a live RoomPlanPreview footprint silhouette beside
+the popup when space permits. Narrow editors keep it in the popup instead.
+Invalid input removes stale geometry, and the preview never changes IDs,
+history, validation, or saved data.
 
 ==============================================================================
 6. KEYMAPS                                                 *roomplan-keymaps*

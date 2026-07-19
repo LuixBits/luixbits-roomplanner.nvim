@@ -130,7 +130,6 @@ function M.attach(controller)
         shape_edit = resolved.shape_edit,
         snap_guides = resolved.shape_edit and resolved.shape_edit.snap_guides or resolved.snap_guides,
         measurement = resolved.measurement,
-        form_preview = resolved.form_preview,
         show_grid = options.canvas.show_grid,
         detail_level = resolved.canvas_detail_level or options.canvas.detail_level,
         sun_study = resolved.sun_study,

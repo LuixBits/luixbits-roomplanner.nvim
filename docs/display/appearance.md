@@ -54,9 +54,9 @@ The main canvas groups are:
 
 `RoomPlanWall`, `RoomPlanDoor`, `RoomPlanWindow`, `RoomPlanOutlet`,
 `RoomPlanFurniture`, `RoomPlanRoomLabel`, `RoomPlanFurnitureLabel`,
-`RoomPlanPreview`, `RoomPlanSelected`, `RoomPlanSnap`, `RoomPlanSnapOverlap`, `RoomPlanError`,
-`RoomPlanWarning`, `RoomPlanGrid`, `RoomPlanStatus`, `RoomPlanMuted`, and
-`RoomPlanCompass`. Sun studies additionally use `RoomPlanSunWall`,
+`RoomPlanPreview`, `RoomPlanSelected`, `RoomPlanSnap`, `RoomPlanSnapOverlap`,
+`RoomPlanError`, `RoomPlanWarning`, `RoomPlanGrid`, `RoomPlanStatus`,
+`RoomPlanMuted`, and `RoomPlanCompass`. Sun studies additionally use `RoomPlanSunWall`,
 `RoomPlanSunWindow`, and `RoomPlanSunlight1` through `RoomPlanSunlight5`.
 The five floor-light backgrounds form an adaptive yellow-to-orange gradient
 derived from the active `Normal` background, so they remain visible without a
@@ -79,6 +79,10 @@ vim.api.nvim_set_hl(0, "RoomPlanSnap", { link = "DiagnosticInfo" })
 vim.api.nvim_set_hl(0, "RoomPlanSnapOverlap", { link = "IncSearch" })
 vim.api.nvim_set_hl(0, "RoomPlanWorkspaceActiveBorder", { link = "FloatBorder" })
 ```
+
+`RoomPlanPreview` colors furniture silhouettes shown beside Add/Edit furniture
+forms when the draft uses the theme default. Explicit furniture colors take
+priority for that silhouette.
 
 Use a `ColorScheme` autocmd for overrides that must survive colorscheme
 changes. If proportions, rather than glyph widths, look wrong, continue with

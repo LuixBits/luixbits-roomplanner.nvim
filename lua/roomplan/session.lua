@@ -316,7 +316,6 @@ function Session:reset(snapshot, revision, locator, opts)
   self.mode = "NAV"
   self.shape_edit = nil
   self.preview_model = nil
-  self.form_preview = nil
   self.snap_guides = {}
   self.snap_exclusions = {}
   self.move_feedback = nil
@@ -371,7 +370,6 @@ function M.new(source, model, opts)
     marked_objects = {},
     batch_move = nil,
     measurement = nil,
-    form_preview = nil,
     viewport = opts.viewport,
     canvas_detail_level = config.get().canvas.detail_level,
     mode = "NAV",

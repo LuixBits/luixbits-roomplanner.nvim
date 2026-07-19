@@ -56,11 +56,11 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   emphasis, elevation-aware floor gradients, reliable whole-day playback,
   three-month comparison controls, and fixed-band daily exposure. Study
   date/time/playback/analysis remains transient and closes with its timer.
-- Valid Add furniture drafts render as a non-selectable real-canvas ghost and
-  are cleared by invalid input, Apply, Cancel, staleness, or reload without
-  entering model state, IDs, history, validation, or persistence. Issues rows
-  and previous/next issue select, reveal, and centre their owner while
-  preserving zoom and rotation.
+- Add and Edit furniture render a live footprint silhouette beside the form,
+  with an in-popup fallback on narrow editors. Invalid input removes stale
+  geometry; preview state never enters the model, IDs, history, validation, or
+  persistence. Issues rows and previous/next issue select, reveal, and centre
+  their owner while preserving zoom and rotation.
 
 Schema v1, v2, and v3 stay readable compatibility formats; schema v4 is the only
 writer. Compound footprints are connected, hole-free unions of at most 256
