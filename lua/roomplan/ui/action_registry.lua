@@ -46,6 +46,10 @@ local definitions = {
   duplicate = { key = "y", mapping = "duplicate", label = "Duplicate", handler = "duplicate_selected", priority = 45 },
   delete = { key = "d", mapping = "delete", label = "Delete", handler = "delete_selected", priority = 40 },
   fit = { key = "f", mapping = "fit", label = "Fit", handler = "fit", priority = 65 },
+  toggle_minimap = {
+    key = "M", mapping = "toggle_minimap", label = "Show minimap",
+    handler = "toggle_minimap", priority = 62,
+  },
   cycle_detail_level = {
     key = "t", mapping = "cycle_detail_level", label = "Cycle canvas detail",
     handler = "set_detail_level", args = { "cycle" }, priority = 40,
@@ -183,7 +187,7 @@ local group_members = {
     "delete_marked",
     "clear_marks" },
   view = {
-    "pan", "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
+    "pan", "fit", "toggle_minimap", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise",
     "reset_view", "sun_study", "validate", "next_issue", "previous_issue",
     "toggle_snap", "bypass_snap",
     "measure", "aspect",
@@ -261,6 +265,8 @@ end
 local function availability(id, ctx)
   local kind = selected_kind(ctx)
   if id == "select" and room_count(ctx) == 0 then
+    return false, "Add a room first"
+  elseif id == "toggle_minimap" and room_count(ctx) == 0 then
     return false, "Add a room first"
   elseif id == "add_door" or id == "add_window" or id == "add_outlet" or id == "add_furniture" then
     if room_count(ctx) == 0 then return false, "Add a room first" end
@@ -376,6 +382,8 @@ function M.get(id, ctx)
     end
   elseif id == "toggle_snap" then
     result.label = ctx.snap_enabled == false and "Enable snapping" or "Disable snapping"
+  elseif id == "toggle_minimap" then
+    result.label = ctx.minimap_enabled and "Hide minimap" or "Show minimap"
   elseif id == "cycle_detail_level" then
     local detail = require("roomplan.canvas_detail")
     local current = detail.normalize(ctx.detail_level) or detail.default
@@ -465,7 +473,7 @@ local pane_ids = {
 }
 
 local safe_full_ids = {
-  "fit", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
+  "fit", "toggle_minimap", "cycle_detail_level", "zoom_in", "zoom_out", "rotate_view_clockwise", "rotate_view_counterclockwise", "reset_view",
   "sun_study", "validate", "next_issue", "previous_issue",
   "toggle_snap", "bypass_snap",
   "measure", "aspect", "save", "save_as", "undo", "redo",

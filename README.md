@@ -31,6 +31,8 @@ rounding can never corrupt the saved plan.
   template updates explicit and never bulk-rewrites other placed items.
 - View-only 90-degree rotation and runtime terminal-cell aspect calibration;
   neither operation changes saved geometry.
+- A colored, non-focusable minimap toggled with `M` shows every room and the
+  current field-of-view rectangle while zooming or panning.
 - Offline sunlight studies with exact plan-north/site setup, seasonal date/time
   controls, reliable whole-day playback, configurable assumed window heights,
   clipped warm floor patches, and comparable daily-exposure bands.
@@ -99,7 +101,7 @@ furniture, and named undo-history browsing. In Navigator, press `Space` to mark
 objects, then use `?` for atomic group move, duplicate, delete, or clear.
 For a room, furniture item, or project template, `e` also exposes an
 **Edit footprint** row that opens direct compound-section editing on the canvas.
-`,` and `.` zoom out and in.
+`,` and `.` zoom out and in; `M` toggles the plan minimap.
 `q` returns to the canvas before hiding the workspace. Add a window directly
 with `W` or an outlet with `O`; the outlet form chooses wall or floor placement.
 From the Add menu use `a` followed by lowercase `w` or `o`.

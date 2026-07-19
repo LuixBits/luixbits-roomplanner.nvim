@@ -62,6 +62,11 @@ The five floor-light backgrounds form an adaptive yellow-to-orange gradient
 derived from the active `Normal` background, so they remain visible without a
 fixed light or dark theme palette.
 
+The minimap uses `RoomPlanMinimapWall`, `RoomPlanMinimapRoom`,
+`RoomPlanMinimapViewport`, `RoomPlanMinimapBorder`, and
+`RoomPlanMinimapTitle`. Explicit room colors receive a subdued background tint;
+the field-of-view outline uses the warm viewport group.
+
 Workspace groups use the `RoomPlanWorkspace*` prefix for titles, active and
 inactive borders, cursor rows, selection, keys, values, object kinds, and
 diagnostic severities. Defaults link to standard groups such as `Title`,

@@ -61,6 +61,10 @@ completed release history belongs in [`CHANGELOG.md`](CHANGELOG.md).
   geometry; preview state never enters the model, IDs, history, validation, or
   persistence. Issues rows and previous/next issue select, reveal, and centre
   their owner while preserving zoom and rotation.
+- A non-focusable colored minimap toggled with `M` reuses the compound-room
+  renderer and follows the exact field of view through zoom, pan, scrolloff,
+  rotation, edits, and resize. It remains transient and adds no model or setup
+  keys.
 
 Schema v1, v2, and v3 stay readable compatibility formats; schema v4 is the only
 writer. Compound footprints are connected, hole-free unions of at most 256
@@ -147,9 +151,8 @@ outside the current model.
 
 ## Deferred larger scopes
 
-- Minimap drawers and named view presets wait until fit, pan, and scrolloff
-  prove insufficient in real plans. History grouping and object locking remain
-  secondary workflow candidates.
+- Named view presets, history grouping, and object locking remain secondary
+  workflow candidates after the first release.
 - Line-of-sight, window-view, robot-vacuum reachability, egress, further room
   presets, arbitrary polygons, multiple floors, richer construction data, and
   multi-user work remain separate later projects rather than dormant settings.

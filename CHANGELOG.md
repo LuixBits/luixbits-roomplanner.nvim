@@ -4,6 +4,11 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Added a non-focusable `M` minimap and `:RoomPlanMinimap`. It reuses the real
+  compound-room renderer and configured glyphs, applies subdued room colors,
+  and tracks the exact canvas field of view through zoom, pan, scrolloff,
+  rotation, edits, and resizing. It adds no plan fields, history, or setup keys
+  and never takes keyboard focus.
 - Replaced the furniture form's sampled `#` silhouette with a miniature
   RoomPlan canvas. The companion and compact fallback previews now use the
   real footprint fitter, configured cell aspect and glyph set, exact color

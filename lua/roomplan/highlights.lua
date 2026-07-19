@@ -44,6 +44,9 @@ local links = {
   RoomPlanWorkspaceError = "DiagnosticError",
   RoomPlanWorkspaceWarning = "DiagnosticWarn",
   RoomPlanWorkspaceInfo = "DiagnosticInfo",
+  RoomPlanMinimapWall = "Function",
+  RoomPlanMinimapBorder = "Special",
+  RoomPlanMinimapTitle = "Title",
 }
 
 local function rgb(value)
@@ -74,6 +77,15 @@ function M.setup()
   end
   vim.api.nvim_set_hl(0, "RoomPlanSunWall", { fg = "#ffb43b", bold = true })
   vim.api.nvim_set_hl(0, "RoomPlanSunWindow", { fg = "#ffed72", bold = true })
+  vim.api.nvim_set_hl(0, "RoomPlanMinimapRoom", {
+    bg = blend(background, 0x61afef, vim.o.background == "light" and 0.12 or 0.20),
+    fg = normal.fg,
+  })
+  vim.api.nvim_set_hl(0, "RoomPlanMinimapViewport", {
+    bg = blend(background, 0xffb43b, vim.o.background == "light" and 0.22 or 0.32),
+    fg = "#ffb43b",
+    bold = true,
+  })
 end
 
 return M

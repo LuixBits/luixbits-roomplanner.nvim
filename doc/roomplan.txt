@@ -198,6 +198,10 @@ explicitly.
                                                         *:RoomPlanSunStudy*
 :RoomPlanSunStudy       Open site setup or the transient sunlight study.
 
+                                                        *:RoomPlanMinimap*
+:RoomPlanMinimap        Toggle the colored whole-plan minimap. Its outlined
+                        rectangle is the current canvas field of view.
+
                                                         *:RoomPlanSave*
 :RoomPlanSave[!]          Save. ! permits saving a structurally valid draft
                           that still has layout errors.
@@ -297,6 +301,7 @@ Canvas and editing:
                   validate / next issue / previous issue
   u / <C-r>      undo / redo
   . / , / f      zoom in / zoom out / fit
+  M              toggle whole-plan minimap / field-of-view rectangle
   t              cycle high / middle / none canvas detail
   zh zj zk zl    pan without entering PAN mode
   Alt-l / Alt-h / g0
