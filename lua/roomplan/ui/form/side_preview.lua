@@ -22,12 +22,19 @@ end
 
 local function position(winid, width, height, col, row)
   if not valid_window(winid) then return end
+  col, row = math.max(0, col), math.max(0, row)
+  local current = vim.api.nvim_win_get_config(winid)
+  if current.relative == "editor" and current.width == width and current.height == height
+    and current.col == col and current.row == row
+  then
+    return
+  end
   pcall(vim.api.nvim_win_set_config, winid, {
     relative = "editor",
     width = width,
     height = height,
-    col = math.max(0, col),
-    row = math.max(0, row),
+    col = col,
+    row = row,
   })
 end
 

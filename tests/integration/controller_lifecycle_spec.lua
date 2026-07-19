@@ -94,6 +94,11 @@ describe("controller lifecycle", function()
     h.eq("side", furniture_form.spec.preview_layout)
     h.truthy(furniture_form.state.preview.graphic)
     h.eq(0, #session:model().furniture, "the visual draft must not enter the durable model")
+    h.eq(furniture_form.winid, vim.api.nvim_get_current_win())
+    h.eq("room-living-room", h.truthy(form.cycle(furniture_form, 1)))
+    h.eq(furniture_form.winid, vim.api.nvim_get_current_win())
+    h.truthy(require("roomplan.ui.workspace").reflow(session, true))
+    h.eq(furniture_form.winid, vim.api.nvim_get_current_win())
     h.eq("room-living-room", h.truthy(form.set_value(
       furniture_form, "room_id", "room-living-room", { raw = false }
     )))

@@ -4,6 +4,10 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Prevented workspace resize/reflow from stealing focus from active forms,
+  palettes, `vim.ui` providers, or unrelated editor windows. Structured forms
+  also restore their own focus after cycling choices, rendering companion
+  previews, and returning from asynchronous scalar or choice editors.
 - Added two pre-release workspace refinements without mappings or saved-plan
   keys. Add and Edit furniture now show a live, colorscheme-linked footprint
   silhouette beside the popup when space permits, with an in-popup compact
