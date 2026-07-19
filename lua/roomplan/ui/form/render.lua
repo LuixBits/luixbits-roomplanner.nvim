@@ -77,6 +77,7 @@ function M.build(state, opts)
     readonly_rows = {},
     preview_rows = {},
     preview_graphic_rows = {},
+    preview_graphic_spans = {},
     footer_rows = {},
   }
   local function push(value)
@@ -117,6 +118,16 @@ function M.build(state, opts)
       meta.preview_rows[row] = true
       if index >= (graphic.first_line or math.huge) and index <= (graphic.last_line or -math.huge) then
         meta.preview_graphic_rows[row] = true
+        local graphic_row = index - graphic.first_line + 1
+        for _, span in ipairs(graphic.highlight_spans or {}) do
+          if span.row == graphic_row then
+            meta.preview_graphic_spans[#meta.preview_graphic_spans + 1] = {
+              row = row,
+              start_col = 2 + span.start_col,
+              end_col = 2 + span.end_col,
+            }
+          end
+        end
       end
     end
     if preview_error then meta.error_rows[push("  ! " .. preview_error)] = true end

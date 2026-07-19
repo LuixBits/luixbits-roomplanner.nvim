@@ -4,6 +4,11 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Replaced the furniture form's sampled `#` silhouette with a miniature
+  RoomPlan canvas. The companion and compact fallback previews now use the
+  real footprint fitter, configured cell aspect and glyph set, exact color
+  spans, compound parts, dimensions, and live rotation without adding model
+  drafts or configuration keys.
 - Prevented workspace resize/reflow from stealing focus from active forms,
   palettes, `vim.ui` providers, or unrelated editor windows. Structured forms
   also restore their own focus after cycling choices, rendering companion
