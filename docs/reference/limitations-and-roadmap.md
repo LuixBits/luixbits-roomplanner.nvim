@@ -56,10 +56,11 @@ forms, fixtures, and recovery documentation.
 
 Palette-based room and furniture colors, compound footprints, wall-anchored
 windows, wall outlets, the contextual selection/MOVE/RESIZE breadcrumb, exact
-clearance measurement, wall placement, marked-object batch actions, and named
-history restore, and the first offline sunlight study are implemented. Likely
-next candidates include a transient companion cat that is never saved in the
-plan or undo history and richer reusable analysis overlays.
+clearance measurement, wall placement, marked-object batch actions, named
+history restore, and the first offline sunlight study are implemented. The
+next product milestone after compatibility hardening and a tagged release is a
+transient circulation and clearance overlay built on reusable analysis
+controls.
 
 Related UX candidates are layer toggles, recent furniture and colors,
 duplicate-and-place-again actions, live placement previews, diagnostic object
@@ -74,8 +75,6 @@ heights, compares three-month seasonal dates, and accumulates a fixed-band daily
 exposure legend. Future sunlight work may add overhangs, wall thickness,
 obstacle-height shadows, and reusable overlay controls. It remains explicitly
 approximate in a 2D plan.
-The companion is view-only, pauses with the workspace, avoids spatial errors,
-patrols outside warning regions, and may be sent away temporarily.
 
 No candidate is a compatibility promise. The source of truth for shipped work
 is the current documentation and tests; planned work belongs in the project

@@ -415,7 +415,7 @@ describe("workspace UI", function()
     assert_equal(false, vim.api.nvim_buf_is_valid(handle.bufnr))
   end)
 
-  it("filters only explicitly searchable action windows", function()
+  it("filters searchable action windows through a version-compatible prompt buffer", function()
     local palette = require("roomplan.ui.palette")
     local handle = assert(palette.open({
       title = "RoomPlan actions",
@@ -441,6 +441,7 @@ describe("workspace UI", function()
 
     vim.api.nvim_buf_set_lines(handle.search_bufnr, 0, -1, false, { "/ opening" })
     vim.api.nvim_exec_autocmds("TextChangedI", { buffer = handle.search_bufnr, modeline = false })
+    assert_equal("opening", handle.query)
     local filtered = table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
     assert_true(filtered:find("Door", 1, true) ~= nil)
     assert_true(filtered:find("Create geometry", 1, true) == nil)
@@ -500,6 +501,11 @@ describe("workspace UI", function()
         assert_equal(current_config.width, initial_config.width)
         assert_equal(current_config.height, initial_config.height)
       end
+      vim.api.nvim_buf_set_lines(handle.search_bufnr, 0, -1, false, { "/ /shape" })
+      vim.api.nvim_exec_autocmds("TextChangedI", { buffer = handle.search_bufnr, modeline = false })
+      assert_equal("/shape", handle.query)
+      vim.api.nvim_buf_set_lines(handle.search_bufnr, 0, -1, false, { "/ shape" })
+      vim.api.nvim_exec_autocmds("TextChangedI", { buffer = handle.search_bufnr, modeline = false })
       assert_true(table.concat(vim.api.nvim_buf_get_lines(handle.bufnr, 0, -1, false), "\n")
         :find("Edit furniture shape", 1, true) ~= nil)
       local search_bufnr = handle.search_bufnr

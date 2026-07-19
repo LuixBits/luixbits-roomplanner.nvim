@@ -62,10 +62,81 @@ writer. Compound footprints are connected, hole-free unions of at most 256
 axis-aligned rectangles. Angled walls and arbitrary polygons are deliberately
 outside the current model.
 
-## Next — stable physical walls and openings
+## Immediate — compatibility hardening and first tagged release
+
+- Keep every required Neovim 0.10, 0.11, and 0.12 job green. Runtime code must
+  not call an API newer than the advertised minimum without a tested
+  compatibility path; the Linux/macOS/Windows, Nix, syntax, help, health, and
+  source-safety checks remain release blockers.
+- Run the complete release check, then complete the documented keyboard-only
+  smoke matrix at compact, medium, and wide sizes with Unicode/ASCII, light and
+  dark colourschemes, vanilla and enhanced `vim.ui`, and clean native,
+  lazy.nvim, Nix/nvf, and rocks-git installs.
+- Choose the first SemVer plugin version, turn the accumulated `Unreleased`
+  history into release notes, create a signed/annotated tag, and verify both
+  the default branch and pinned tag. Stable consumers should pin a release tag
+  instead of requiring a stream of individual commits.
+- Keep the roadmap factual and remove candidates that have no product value or
+  implementation route. Do not tag around a failing required check.
+
+## Next user-facing milestone — circulation and clearance
+
+- Derive walkable room space minus furniture and obstacles, with doors as
+  portals, and render it as a transient main-canvas analysis rather than saved
+  geometry.
+- Start with walkable-area shading, selected-furniture clearance envelopes,
+  door swings, inaccessible regions, and configurable-width bottlenecks. Add
+  selected-point routing only after the underlying reachability is reliable.
+- Reuse `?`, Details, and one structured popup instead of adding a mandatory
+  global mapping. Keep controls transient, avoid saved-plan keys, and expose at
+  most one setup default for the assumed person/passage width.
+- Keep results advisory rather than code certification or automatic layout
+  optimization.
+
+## Supporting analysis overlay framework
+
+- Add a small registry of pure analyses that emit semantic scene primitives,
+  diagnostics, legends, and compact controls as the circulation slice needs
+  them; do not build a speculative framework in isolation.
+- Keep authored annotations separate from transient derived analysis.
+- Add visibility, opacity, and focus without overloading the main workspace.
+- Generalize the shipped exact measurement and sunlight paths into reusable
+  overlay controls before a third analysis is introduced.
+
+## Focused editing UX after circulation
+
+- Preview furniture placement on the real canvas while its popup draft is
+  valid, without mutating history until Apply.
+- Let an issue immediately select, focus, and reveal its owning object. Keep
+  the existing issue list and selection authority instead of creating another
+  diagnostic browser.
+- Consider recent furniture and colour choices or duplicate-and-place-again
+  only after real workflows show that they remove repeated popup work. These
+  remain transient and should not add global mappings.
+
+## Sunlight follow-up
+
+- Use the height already stored on furniture to support optional obstacle
+  shadows before adding wall thickness, overhangs, or another schema revision.
+- Keep view rotation as projection only and retain one exact persisted
+  geographic-north/site authority.
+- Label results as approximate 2D exposure, not illuminance, thermal,
+  construction, or building-code analysis.
+
+## Sharing and view control
+
+- Add SVG export once the current compound silhouettes, openings, labels, and
+  dimensions have an explicit export contract. DXF remains a separately scoped
+  later project.
+- Add layer visibility through Details only where it complements rather than
+  duplicates the shipped `t` detail levels. Candidate layers are furniture,
+  annotations, openings, outlets, diagnostics, and active analyses.
+
+## Later — stable physical walls and openings
 
 - Promote transient exterior/shared-boundary topology to reconciled persistent
-  wall identity, representing each physical shared wall once.
+  wall identity only when a user-facing wall feature requires it, representing
+  each physical shared wall once.
 - Give boundary runs stable IDs with deterministic reconciliation after room
   geometry changes; never persist array indexes or raster segments.
 - Migrate door/window attachments from `room_id + part_id + side + offset` to
@@ -74,46 +145,14 @@ outside the current model.
   Wall thickness and materials wait for complete rendering, validation,
   clearance, and opening semantics.
 
-## Analysis overlay framework
+## Deferred larger scopes
 
-- Add a registry of pure analyses that emit semantic scene primitives,
-  diagnostics, legends, and compact controls.
-- Keep authored annotations separate from transient derived analysis.
-- Add visibility, opacity, and focus without overloading the main workspace.
-- Generalize the shipped exact measurement path into reusable overlay controls
-  before treating the analysis framework as stable.
-
-## Sunlight, circulation, and spatial studies
-
-### Sun study
-
-- Extend the shipped deterministic offline study only where the main canvas
-  benefits: reusable overlay controls, wall thickness/overhangs, and
-  furniture-height or explicit-obstacle shadows. The first fixed-band daily
-  exposure legend and seasonal comparison controls are shipped.
-- Keep view rotation as projection only and retain one exact persisted
-  geographic-north/site authority.
-- Label results as approximate 2D exposure, not illuminance, thermal,
-  construction, or building-code analysis.
-
-### Circulation and clearance
-
-- Derive walkable room space minus furniture and obstacles, with doors as
-  portals.
-- Show reachability, selected-point routes, configurable-width bottlenecks,
-  door swings, furniture clearance envelopes, and accessibility aids.
-- Keep results advisory rather than code certification or automatic layout
-  optimization.
-
-## UI/UX backlog
-
-- Further room/furniture presets only when they reduce common editing work
-  without creating parallel geometry representations.
-- Minimap drawer and named view presets.
-- History grouping, locking, and layer visibility.
-- Line-of-sight, window-view, robot-vacuum reachability, and egress studies.
-- SVG export after compound silhouettes and annotations are stable. DXF and
-  multi-floor planning remain separately scoped later projects.
+- Minimap drawers and named view presets wait until fit, pan, and scrolloff
+  prove insufficient in real plans. History grouping and object locking remain
+  secondary workflow candidates.
+- Line-of-sight, window-view, robot-vacuum reachability, egress, further room
+  presets, arbitrary polygons, multiple floors, richer construction data, and
+  multi-user work remain separate later projects rather than dormant settings.
 
 ## Acceptance gate
 

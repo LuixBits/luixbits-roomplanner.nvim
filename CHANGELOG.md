@@ -4,6 +4,11 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Restored the in-popup action search on Neovim 0.10 and 0.11 by reading its
+  native prompt buffer through the stable buffer API instead of the
+  Neovim-0.12-only `prompt_getinput()` function. The required CI matrix keeps
+  exercising the same focus and live-filtering regressions on every supported
+  Neovim release, and CI checkout now uses the maintained Node 24 action.
 - Expanded the offline sun study without adding saved-plan keys. `h`/`l` now
   inspect time while canvas `j`/`k` compare the same clock time three months
   apart. In the `L` popup, `j`/`k` retain ordinary field navigation;
