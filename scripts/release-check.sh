@@ -9,6 +9,10 @@ command -v jq >/dev/null 2>&1 || {
   echo "release-check: jq is required" >&2
   exit 1
 }
+command -v nvim >/dev/null 2>&1 || {
+  echo "release-check: nvim is required" >&2
+  exit 1
+}
 command -v nix >/dev/null 2>&1 || {
   echo "release-check: nix is required" >&2
   exit 1

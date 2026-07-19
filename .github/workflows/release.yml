@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing signed or annotated SemVer tag to publish
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: roomplan-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  verify-and-publish:
+    name: Verify and publish ${{ inputs.tag }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GH_TOKEN: ${{ github.token }}
+      NVIM_LOG_FILE: ${{ github.workspace }}/roomplan-nvim-release.log
+
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+
+      - name: Validate tag and release notes
+        shell: bash
+        run: |
+          tag='${{ inputs.tag }}'
+          printf '%s\n' "$tag" | grep -Eq '^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$'
+          git rev-parse --verify "refs/tags/$tag"
+          test "$(git rev-list -n 1 "$tag")" = "$GITHUB_SHA"
+          test "$(git cat-file -t "refs/tags/$tag")" = tag
+          ./scripts/release-notes.sh "$tag" > "$RUNNER_TEMP/roomplan-release-notes.md"
+          test -s "$RUNNER_TEMP/roomplan-release-notes.md"
+
+      - name: Install Neovim
+        uses: rhysd/action-setup-vim@febef33995d6649302e9d88dda81e071b68f16a7 # v1.6.1
+        with:
+          neovim: true
+          version: v0.12.4
+
+      - name: Install release dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes jq lua5.1
+
+      - name: Install Nix
+        uses: cachix/install-nix-action@630ae543ea3a38a9a4166f03376c02c50f408342 # v31
+
+      - name: Run complete release gate
+        run: ./scripts/release-check.sh
+
+      - name: Publish GitHub release
+        shell: bash
+        run: |
+          tag='${{ inputs.tag }}'
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "release $tag already exists" >&2
+            exit 1
+          fi
+          flags=()
+          if [[ "$tag" == *-* ]]; then
+            flags+=(--prerelease)
+          fi
+          gh release create "$tag" \
+            --verify-tag \
+            --title "RoomPlan ${tag#v}" \
+            --notes-file "$RUNNER_TEMP/roomplan-release-notes.md" \
+            "${flags[@]}"

@@ -1,0 +1,57 @@
+name: Feature request
+description: Propose an improvement to a real floor-planning workflow
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        RoomPlan favors complete workflows over isolated settings or shortcuts. Describe the planning problem first.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Planning problem
+      description: What are you trying to accomplish, and where does the current workflow stop helping?
+    validations:
+      required: true
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Desired workflow
+      description: Describe the interaction from the user's point of view.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing RoomPlan actions, workarounds, or external tools you tried.
+  - type: dropdown
+    id: persistence
+    attributes:
+      label: Does this need saved plan data?
+      options:
+        - No or unsure
+        - Yes
+    validations:
+      required: true
+  - type: textarea
+    id: ux
+    attributes:
+      label: UI and keyboard considerations
+      description: Mention popup, canvas, pane, discoverability, or key-collision concerns.
+  - type: textarea
+    id: scope
+    attributes:
+      label: Additional context
+      description: Mockups, examples, or related roadmap items.
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checklist
+      options:
+        - label: I checked the documented limitations and roadmap.
+          required: true
+        - label: This request explains user value rather than only proposing a new option or key.
+          required: true

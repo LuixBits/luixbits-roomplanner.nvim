@@ -36,7 +36,7 @@ commands or your own buffer mappings in that case.
 | `Enter` | `workspace_toggle_details_section` | Toggle a Details section |
 | `a`, `D`, `W`, `O`, `F` | `add`, `add_door`, `add_window`, `add_outlet`, `add_furniture` | Add objects |
 | `e`, `d`, `y` | `edit`, `delete`, `duplicate` | Edit supported properties, delete, duplicate |
-| `m`, `A` | `move_mode`, `align` | Move room/object, align room |
+| `m`, `p`, `A` | `move_mode`, `pan_mode`, `align` | Move room/object, pan the viewport, align room |
 | `r`, `R` | `resize_dimensions`, `rotate` | Live-resize room/furniture dimensions, rotate furniture |
 | `Enter` | `select` | Select under Canvas cursor |
 | `q`, `Esc`, `?` | `hide`, `escape`, `help` | Hide, leave context, show actions |
@@ -54,8 +54,8 @@ ordinary `e`, `m`, `y`, and `d` edit/move/duplicate/delete mappings.
 | Default | Semantic name | Action |
 | --- | --- | --- |
 | `v`, `Alt-k`, `Alt-j` | `validate`, `previous_issue`, `next_issue` | Validate/navigate issues |
-| `u`, `Ctrl-r` | `undo`, `redo` | Semantic history |
-| `f`, `.`, `,` | `fit`, `zoom_in`, `zoom_out` | Fit/zoom |
+| `u`, `Ctrl-r` / `U` | `undo`, `redo` / literal `U` | Semantic history; `U` is a convenience redo alias |
+| `f` / `zf`, `.`, `,` | `fit` / literal `zf`, `zoom_in`, `zoom_out` | Fit/zoom |
 | `M` | `toggle_minimap` | Show/hide the whole-plan minimap and field-of-view rectangle |
 | `t` | `cycle_detail_level` | Cycle `high`, `middle`, and `none` canvas detail |
 | `S` | `sun_study` | Open or reopen the sunlight study |
@@ -68,11 +68,15 @@ Exact measurement, selected-furniture wall placement, marked-object batch
 actions, and named history browsing have no default mapping. They remain
 searchable in `?`, and can still receive a semantic override through
 `keymaps.mappings` (`measure`, `place_furniture`, `move_marked`,
-`duplicate_marked`, `delete_marked`, `clear_marks`, and `history_list`).
+`duplicate_marked`, `delete_marked`, `clear_marks`, `history_list`, `aspect`,
+`reload`, and `close`).
 
 Canvas direction keys (`h j k l`, uppercase variants, and Ctrl variants) can be
-overridden by their literal default left-hand sides. PAN uses the same keys in
-a different mode; `zh zj zk zl` are direct pan aliases. The semantic
+overridden by their literal default left-hand sides. `coarse_right` is the
+semantic name for uppercase `L`; the other directional keys use their literal
+left-hand sides. PAN uses the same keys in a different mode; `zh zj zk zl` are
+direct pan aliases. The literal `U` and `zf` convenience aliases can likewise
+be moved or disabled by their left-hand sides. The semantic
 `sun_study` override may move or disable `S`; uppercase `L` is reserved for
 coarse right movement in every canvas mode.
 

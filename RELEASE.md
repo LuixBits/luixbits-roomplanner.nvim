@@ -4,12 +4,25 @@ Releases are evidence-based: keep the runtime dependency-free, keep persisted
 schema changes separate from plugin versioning, and do not tag around a red
 required check.
 
-## Prepare
+## Release change
 
-- Choose the plugin version and update `CHANGELOG.md` from `Unreleased`.
+- Create a focused release branch or pull request from current `main`.
+- Choose the SemVer plugin version. Move the curated `Unreleased` entries to a
+  dated `## [X.Y.Z] - YYYY-MM-DD` section in `CHANGELOG.md`, restore an empty
+  `Unreleased` section above it, and update comparison links.
+- Verify release-note extraction before tagging:
+
+  ```sh
+  ./scripts/release-notes.sh vX.Y.Z
+  ```
+
+- Review the compatibility policy and clearly label deprecations or breaking
+  changes. Plugin SemVer does not change the persisted schema version.
 - If `schema_version` changes, add one sequential migration, old/new fixtures,
   JSON Schema updates, and recovery guidance before continuing.
 - Review `LICENSE` and `NOTICE`; record any newly adapted third-party code.
+- Confirm `SECURITY.md`, support links, issue forms, Vim help, generated help
+  tags, and the public roadmap are current.
 - Run the complete local gate:
 
   ```sh
@@ -32,12 +45,44 @@ required check.
 - Run `:checkhealth roomplan` with no plan, with a standalone plan, and with a
   Norg plan; review warnings rather than merely checking that it opens.
 
-## Publish
+## Repository readiness
 
-- Ensure the worktree contains only intended release files and generated help
-  tags are current.
-- Create and push the signed/annotated SemVer tag and GitHub release notes.
+- Confirm CI on the release commit is green and the worktree contains only
+  intended release files.
+- Confirm GitHub private vulnerability reporting is enabled.
+- Confirm repository rules prevent force-pushing or deleting `main` and
+  release tags. Required CI should remain visible for pull requests.
+- Confirm repository topics, description, support links, and the real UI
+  screenshot or recording are current.
+
+## Tag and publish
+
+- Merge the reviewed release change and update local `main` from its tracked
+  upstream.
+- Create a signed tag when signing is configured; otherwise create an annotated
+  tag. Lightweight release tags are rejected by the publication workflow:
+
+  ```sh
+  git tag -s vX.Y.Z -m "RoomPlan vX.Y.Z"
+  git push origin vX.Y.Z
+  ```
+
+- Wait for every required CI job triggered by the tag. Nightly remains
+  informational. Do not move or reuse a pushed release tag to repair a failure;
+  fix forward with a new version.
+- From GitHub Actions, manually run **Release** with the exact existing tag.
+  The guarded workflow verifies annotated-tag identity, extracts the matching
+  changelog section, reruns the complete release gate, and creates the GitHub
+  release. It refuses to overwrite an existing release.
 - Re-run a default-branch install and a pinned-tag install after publication.
 - Publish a LuaRock only from a tested tagged source; then replace the
   rocks-git fallback in the installation docs with the stable rock command.
-- Restore an `Unreleased` section in `CHANGELOG.md` for subsequent work.
+
+## After publication
+
+- Verify the release page, changelog links, source archives, and installation
+  instructions from a clean checkout.
+- Open the next milestone and convert accepted roadmap work into focused issues.
+- If publication fails after a valid tag, keep the tag immutable, correct the
+  workflow or metadata, and rerun publication for that same tag only when no
+  release exists.

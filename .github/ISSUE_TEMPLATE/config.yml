@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support and troubleshooting
+    url: https://github.com/LuixBits/luixbits-roomplanner.nvim/blob/main/SUPPORT.md
+    about: Check setup, health, and reproduction guidance before filing a bug.
+  - name: Security report
+    url: https://github.com/LuixBits/luixbits-roomplanner.nvim/security/policy
+    about: Report vulnerabilities privately; never include sensitive details in a public issue.

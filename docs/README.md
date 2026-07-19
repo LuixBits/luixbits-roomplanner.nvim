@@ -44,6 +44,8 @@ interactive terminal view.
 - [Troubleshooting](reference/troubleshooting.md)
 - [Limitations and roadmap](reference/limitations-and-roadmap.md)
 - [Architecture](development/architecture.md)
+- [Compatibility policy](development/compatibility.md)
+- [Architecture decision records](adr/README.md)
 - [Contributing](development/contributing.md)
 - [Releasing](development/releasing.md)
 

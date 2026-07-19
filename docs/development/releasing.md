@@ -6,16 +6,20 @@ versioning separate from persisted schema versioning.
 
 ## Prepare
 
-1. Choose a SemVer plugin version and move completed `Unreleased` notes in
-   `CHANGELOG.md`.
-2. Review schema compatibility, migrations/fixtures, `LICENSE`, and `NOTICE`.
-3. Run the complete automated gate:
+1. Create a focused release branch or pull request and choose a SemVer plugin
+   version.
+2. Move curated `Unreleased` notes to a dated release section, restore an empty
+   `Unreleased` section, and verify `./scripts/release-notes.sh vX.Y.Z`.
+3. Review the [compatibility policy](compatibility.md), schema
+   migrations/fixtures, `LICENSE`, `NOTICE`, security/support routes, roadmap,
+   and offline help.
+4. Run the complete automated gate:
 
    ```sh
    ./scripts/release-check.sh
    ```
 
-4. Review benchmark changes rather than treating machine-dependent time as a
+5. Review benchmark changes rather than treating machine-dependent time as a
    hard threshold.
 
 ## Compatibility smoke
@@ -31,16 +35,23 @@ Nix/nvf, and rocks-git while no tagged LuaRock is published. Run
 
 ## Publish and verify
 
-- Ensure the worktree contains only intended release files and help tags are
-  current.
-- Create and push the signed/annotated tag and GitHub release notes.
+- Ensure release-commit CI is green, the worktree contains only intended
+  release files, and help tags are current.
+- Confirm private vulnerability reporting and conservative main/tag repository
+  rules are enabled.
+- Merge, then create and push a signed tag, or an annotated tag when signing is
+  unavailable. Never use a lightweight release tag.
+- Wait for the required tag-triggered CI matrix, then manually dispatch the
+  GitHub **Release** workflow with the exact tag. It revalidates the tag and
+  changelog, reruns the release gate, and creates the release without
+  overwriting an existing one.
 - Test both default-branch and pinned-tag installation after publication.
 - Publish a LuaRock only from the tested tagged source, then update the install
   chapter away from the rocks-git fallback.
-- Restore an `Unreleased` changelog section immediately.
 
 If a published source or schema problem is discovered, document recovery
-before convenience. Never rewrite a tag or silently reinterpret existing plan
-data.
+before convenience. Never rewrite or reuse a pushed tag, and never silently
+reinterpret existing plan data. Fix source problems with a new version; rerun
+publication for an unchanged tag only when its release was never created.
 
-← [Contributing](contributing.md) | [Documentation home](../README.md)
+← [Contributing](contributing.md) | [Documentation home](../README.md) | [Roadmap](../reference/limitations-and-roadmap.md) →

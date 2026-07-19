@@ -3,6 +3,7 @@
 Keep changes small across the architecture boundaries and pair every behaviour
 change with evidence. The repository's canonical policy is
 [`CONTRIBUTING.md`](../../CONTRIBUTING.md); this chapter is the working route.
+All project spaces follow the root [code of conduct](../../CODE_OF_CONDUCT.md).
 
 ## Local setup and checks
 
@@ -45,6 +46,10 @@ second UI path. When replacing an interface, update tests and documentation in
 the same change and remove the obsolete implementation after its supported
 compatibility decision is explicit.
 
+Use the [ADR process](../adr/README.md) for durable cross-layer decisions or
+changes to a public compatibility boundary. The architecture chapter describes
+current structure; an ADR preserves the decision context and consequences.
+
 ## Compatibility and documentation
 
 Use Lua 5.1-compatible syntax and Neovim 0.10+ APIs (the primary tested target
@@ -58,4 +63,4 @@ page, and changelog. Run a relative-link audit when adding or moving chapters.
 
 Adapted third-party code must retain licensing and be recorded in `NOTICE`.
 
-← [Architecture](architecture.md) | [Documentation home](../README.md) | [Releasing](releasing.md) →
+← [ADRs](../adr/README.md) | [Documentation home](../README.md) | [Releasing](releasing.md) →
