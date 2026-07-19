@@ -58,14 +58,18 @@ The main canvas groups are:
 `RoomPlanError`, `RoomPlanWarning`, `RoomPlanGrid`, `RoomPlanStatus`,
 `RoomPlanMuted`, and `RoomPlanCompass`. Sun studies additionally use `RoomPlanSunWall`,
 `RoomPlanSunWindow`, and `RoomPlanSunlight1` through `RoomPlanSunlight5`.
-The five floor-light backgrounds form an adaptive yellow-to-orange gradient
-derived from the active `Normal` background, so they remain visible without a
-fixed light or dark theme palette.
+The five floor-light backgrounds interpolate across the colorscheme's semantic
+warning/error colors and increase their tint against the colorscheme's own
+background. Transparent themes fall back through `NormalFloat`, `Pmenu`,
+`CursorLine`, and `StatusLine`; RoomPlan does not assume a fixed light or dark
+RGB background.
 
 The minimap uses `RoomPlanMinimapWall`, `RoomPlanMinimapRoom`,
 `RoomPlanMinimapViewport`, `RoomPlanMinimapBorder`, and
 `RoomPlanMinimapTitle`. Explicit room colors receive a subdued background tint;
-the field-of-view outline uses the warm viewport group.
+the default room tint follows `Function`/`DiagnosticInfo`, and the field-of-view
+outline follows `IncSearch`/`Search`. These are semantic theme inputs rather
+than a fixed blue/orange pair.
 
 Workspace groups use the `RoomPlanWorkspace*` prefix for titles, active and
 inactive borders, cursor rows, selection, keys, values, object kinds, and
@@ -73,6 +77,8 @@ diagnostic severities. Defaults link to standard groups such as `Title`,
 `Special`, `Identifier`, `Visual`, `IncSearch`, and `DiagnosticError`. RoomPlan
 does not define a separate fixed palette: links follow the active colorscheme
 and are restored after `ColorScheme`. User overrides remain optional.
+Generated sunlight and minimap groups are also installed as defaults, so
+opening or redrawing RoomPlan does not replace an existing user definition.
 
 Override groups after your colorscheme loads:
 
@@ -83,14 +89,20 @@ vim.api.nvim_set_hl(0, "RoomPlanPreview", { link = "DiffAdd" })
 vim.api.nvim_set_hl(0, "RoomPlanSnap", { link = "DiagnosticInfo" })
 vim.api.nvim_set_hl(0, "RoomPlanSnapOverlap", { link = "IncSearch" })
 vim.api.nvim_set_hl(0, "RoomPlanWorkspaceActiveBorder", { link = "FloatBorder" })
+vim.api.nvim_set_hl(0, "RoomPlanSunWall", { link = "DiagnosticWarn" })
+vim.api.nvim_set_hl(0, "RoomPlanSunlight5", { bg = "#7A3E00", fg = "#FFFFFF" })
+vim.api.nvim_set_hl(0, "RoomPlanMinimapViewport", { link = "IncSearch" })
 ```
 
 `RoomPlanPreview` colors furniture silhouettes shown beside Add/Edit furniture
 forms when the draft uses the theme default. Explicit furniture colors take
 priority for that silhouette.
 
-Use a `ColorScheme` autocmd for overrides that must survive colorscheme
-changes. If proportions, rather than glyph widths, look wrong, continue with
+These names are Neovim **highlight groups**, while values passed to
+`require("roomplan").setup({...})` are **setup options**. Colors stay in the
+highlight system instead of being duplicated as setup options. Use a
+`ColorScheme` autocmd for overrides that must survive colorscheme changes. If
+proportions, rather than glyph widths, look wrong, continue with
 [Aspect and rotation](aspect-and-rotation.md).
 
 ← [Furniture catalogues](../planning/furniture-catalogs.md) | [Documentation home](../README.md) | [Aspect and rotation](aspect-and-rotation.md) →

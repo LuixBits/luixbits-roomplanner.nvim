@@ -69,19 +69,20 @@ the two configured defaults above. Choosing defaults does not copy redundant
 keys into the plan. Explicit heights must be non-negative integer millimetres,
 with the head above the sill.
 
-Sun-facing exterior windows and walls receive a warm highlight. Each window
-projects a yellow-to-orange floor patch into its owner room; room geometry
-clips the patch, while furniture, walls, labels, selection, and diagnostics
-remain readable above it. Shared interior windows do not cast an outdoor
-patch. Details says whether a selected window uses explicit or assumed
-heights.
+Sun-facing exterior windows and walls receive a colorscheme-linked warning
+highlight. Each window projects a floor patch using the theme's warning/error
+spectrum into its owner room; room geometry clips the patch, while furniture,
+walls, labels, selection, and diagnostics remain readable above it. Shared
+interior windows do not cast an outdoor patch. Details says whether a selected
+window uses explicit or assumed heights.
 
-Near sunrise and sunset, instantaneous patches shift toward warmer orange;
-the main header includes a view-aware arrow showing the incoming light
-direction. The daily exposure display samples the complete daylight interval
-using the popup step size and accumulates direct-sun minutes for every visible
-floor cell. Its fixed bands are `≤1h`, `≤2h`, `≤4h`, `≤6h`, and `>6h`, so dates
-remain visually comparable instead of stretching every day to its own maximum.
+Near sunrise and sunset, instantaneous patches shift toward the theme's
+stronger warning/error end; the main header includes a view-aware arrow showing
+the incoming light direction. The daily exposure display samples the complete
+daylight interval using the popup step size and accumulates direct-sun minutes
+for every visible floor cell. Its fixed bands are `≤1h`, `≤2h`, `≤4h`, `≤6h`,
+and `>6h`, so dates remain visually comparable instead of stretching every day
+to its own maximum.
 
 ## Accuracy
 

@@ -46,8 +46,9 @@ minimap after the window grows.
 
 Wall outlets use inward-facing half circles; floor outlets use full circles.
 Both use the colorscheme-linked `RoomPlanOutlet` highlight. During a sun study,
-warm exterior walls/windows and clipped yellow-to-orange floor patches form a
-derived layer below furniture, walls, labels, selection, and diagnostics.
+exterior walls/windows and clipped floor patches use the colorscheme's semantic
+warning/error spectrum in a derived layer below furniture, walls, labels,
+selection, and diagnostics.
 
 ## Detail levels
 

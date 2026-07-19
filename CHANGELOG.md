@@ -4,6 +4,12 @@ All notable changes to `roomplan.nvim` will be documented here.
 
 ## [Unreleased]
 
+- Made generated sunlight and minimap accents fully colorscheme-derived. The
+  sunlight bands use the theme's warning/error spectrum over its own
+  background, while minimap rooms and the viewport use semantic theme groups;
+  transparent themes fall back through other theme backgrounds instead of
+  fixed light/dark RGB values. Explicit `RoomPlan*` highlight overrides now
+  survive every RoomPlan setup/refresh, with no duplicate color setup keys.
 - Fixed wall snapping when a discrete movement or resize step crosses a nearby
   wall. Room and furniture edges now stop at the first crossed compatible wall
   instead of overshooting it and producing a layout error when the remaining
@@ -61,7 +67,7 @@ All notable changes to `roomplan.nvim` will be documented here.
   searchable action popup open one structured workflow for exact plan north,
   location, fixed UTC offset, date/time, step size, frame duration, and
   sunrise-to-sunset playback. Exterior sun-facing walls/windows and clipped
-  yellow-to-orange floor patches render beneath normal plan geometry. Windows
+  adaptive sunlight floor patches render beneath normal plan geometry. Windows
   may store one optional sill/head pair or use configurable 900/2100 mm
   defaults without redundant saved keys. Site data is undoable and persisted;
   playback and overlays are transient and timer-safe. User-facing wall choices

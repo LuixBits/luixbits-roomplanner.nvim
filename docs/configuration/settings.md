@@ -147,7 +147,7 @@ sun_study = {
 
 Window defaults are used only when a window has no explicit sill/head pair;
 they are not copied into every plan object. The head must exceed the
-non-negative sill. Playback defaults seed each new transient `L` popup. The
+non-negative sill. Playback defaults seed each new transient `S` popup. The
 step may be 1–720 minutes and frame duration 50–60000 ms; the popup lets you
 change both for the current study. The same minute step determines the sampling
 resolution of the transient daily-exposure map. Sun colors adapt to the
