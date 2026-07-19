@@ -88,6 +88,16 @@ local function apply_highlights(handle, output)
   if output.meta.active_row then highlight_line(handle, output.meta.active_row, "RoomPlanFormActive") end
   for row in pairs(output.meta.error_rows) do highlight_line(handle, row, "RoomPlanFormError") end
   for row in pairs(output.meta.readonly_rows) do highlight_line(handle, row, "RoomPlanFormMuted") end
+  if next(output.meta.preview_graphic_rows or {}) ~= nil then
+    local accent = handle.state.preview and handle.state.preview.accent
+    local graphic_group = "RoomPlanFormPreviewShape" .. handle.id
+    if type(accent) == "string" and accent:match("^#%x%x%x%x%x%x$") then
+      vim.api.nvim_set_hl(0, graphic_group, { fg = accent, bold = true })
+    else
+      vim.api.nvim_set_hl(0, graphic_group, { link = "RoomPlanPreview" })
+    end
+    for row in pairs(output.meta.preview_graphic_rows) do highlight_line(handle, row, graphic_group) end
+  end
   for row in pairs(output.meta.footer_rows) do highlight_line(handle, row, "RoomPlanFormFooter") end
 end
 
@@ -121,10 +131,11 @@ end
 function M.render(handle)
   if not M.is_current(handle) or not valid_buffer(handle.bufnr) then return nil end
   local width = valid_window(handle.winid) and vim.api.nvim_win_get_width(handle.winid) or handle.width
+  if side_preview.visible(handle) then width = side_preview.width(handle) end
   local output = renderer.build(handle.state, {
     width = width,
     keys = form_keys(),
-    include_preview = handle.spec.preview_layout ~= "side",
+    include_preview = not side_preview.visible(handle),
   })
   handle.output = output
   set_lines(handle, output)
@@ -503,13 +514,14 @@ function M.open(session, spec, callbacks)
   define_highlights()
   set_buffer_options(bufnr)
   pcall(vim.api.nvim_buf_set_name, bufnr, "roomplan://form/" .. tostring(spec.id or next_id) .. "/" .. next_id)
-  local initial_output = renderer.build(state, {
-    width = callbacks.width or 72,
-    include_preview = spec.preview_layout ~= "side",
-  })
   local width = callbacks.width or math.max(48, math.min(76, vim.o.columns - 6))
+  handle.width = width
+  local initial_output = renderer.build(state, {
+    width = side_preview.width(handle),
+    include_preview = not side_preview.visible(handle),
+  })
   local height = callbacks.height or math.max(8, math.min(initial_output.meta.height, vim.o.lines - 6))
-  handle.width, handle.height = width, height
+  handle.height = height
   handle.winid = open_window(bufnr, callbacks, width, height)
   if not valid_window(handle.winid) then
     finish(handle, "open failed", { skip_window = true })

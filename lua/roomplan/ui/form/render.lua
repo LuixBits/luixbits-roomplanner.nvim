@@ -76,6 +76,7 @@ function M.build(state, opts)
     error_rows = {},
     readonly_rows = {},
     preview_rows = {},
+    preview_graphic_rows = {},
     footer_rows = {},
   }
   local function push(value)
@@ -110,7 +111,14 @@ function M.build(state, opts)
   if opts.include_preview ~= false and (#previews > 0 or preview_error) then
     push("")
     meta.preview_title_row = push(state.spec.preview_title or "Preview")
-    for _, line in ipairs(previews) do meta.preview_rows[push("  " .. line)] = true end
+    local graphic = state.preview and state.preview.graphic or {}
+    for index, line in ipairs(previews) do
+      local row = push("  " .. line)
+      meta.preview_rows[row] = true
+      if index >= (graphic.first_line or math.huge) and index <= (graphic.last_line or -math.huge) then
+        meta.preview_graphic_rows[row] = true
+      end
+    end
     if preview_error then meta.error_rows[push("  ! " .. preview_error)] = true end
   elseif preview_error then
     push("")

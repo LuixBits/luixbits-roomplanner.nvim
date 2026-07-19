@@ -21,8 +21,8 @@ rounding can never corrupt the saved plan.
 - Structured forms for rooms, furniture, doors, windows, outlets, alignment,
   plan settings, project furniture templates, exact two-object measurement,
   and furniture-to-wall placement, including palette-based room and furniture
-  colors. Add furniture shows each valid draft as a transient, non-selectable
-  ghost on the real canvas before Apply.
+  colors. Add and Edit furniture show a live footprint silhouette beside the
+  popup, with a compact in-popup fallback when the editor is narrow.
 - Compound footprints for L-, T-, and U-shaped rooms and furniture, with
   seam-free walls and one logical selection per object. The room form creates
   configurable L shapes; direct canvas editing can add, resize, and remove

@@ -172,60 +172,16 @@ function M.attach(controller)
 
   local function open_structured_form(session, spec)
     local form = require("roomplan.ui.form")
-    local preview_owner
-    local function clear_canvas_preview()
-      if type(spec.canvas_preview) ~= "function" then return end
-      local current = session.form_preview
-      if current and (preview_owner == nil or current.owner == preview_owner) then
-        session.form_preview = nil
-      end
-    end
-    local function publish_canvas_preview(draft, form_state, active_handle)
-      if type(spec.canvas_preview) ~= "function" then return end
-      preview_owner = preview_owner or (active_handle and active_handle.id) or spec.id
-      local preview
-      if not form_state.stale and next(form_state.errors or {}) == nil then
-        local ok, entity = pcall(spec.canvas_preview, draft, form_state.context)
-        if ok and entity then
-          preview = { owner = preview_owner, kind = "furniture", entity = entity }
-        end
-      end
-      session.form_preview = preview
-      controller.refresh(session)
-    end
     local handle, err = form.open(session, spec, {
-      on_open = function(active_handle)
-        publish_canvas_preview(active_handle.state.draft, active_handle.state, active_handle)
-      end,
-      on_change = function(draft, form_state, active_handle)
-        publish_canvas_preview(draft, form_state, active_handle)
-      end,
-      on_reset = function(active_handle)
-        publish_canvas_preview(active_handle.state.draft, active_handle.state, active_handle)
-      end,
-      on_stale = function()
-        clear_canvas_preview()
-        controller.refresh(session)
-      end,
-      on_submit = function(draft, form_state, active_handle)
-        clear_canvas_preview()
+      on_submit = function(draft, form_state)
         local action, build_err = spec.build(draft, form_state.context)
-        if not action then
-          publish_canvas_preview(draft, form_state, active_handle)
-          return nil, build_err
-        end
+        if not action then return nil, build_err end
         local result, dispatch_err = controller.dispatch(session, action)
-        if not result then
-          publish_canvas_preview(draft, form_state, active_handle)
-          return nil, dispatch_err
-        end
+        if not result then return nil, dispatch_err end
         focus_after_form(session)
         return result
       end,
-      on_cancel = function()
-        clear_canvas_preview()
-        focus_after_form(session)
-      end,
+      on_cancel = function() focus_after_form(session) end,
       on_action = function(action, form_state, active_handle)
         if action ~= "edit_shape" then
           return nil, util.err("FORM_ACTION", "unsupported editor action " .. tostring(action))

@@ -34,12 +34,76 @@ end
 local function content(handle)
   local preview = handle.state.preview or {}
   local lines = { handle.spec.preview_title or "Preview", string.rep("-", 30) }
+  local meta = { graphic_rows = {}, error_rows = {} }
   if preview.error then
     lines[#lines + 1] = "! " .. tostring(preview.error)
+    meta.error_rows[#lines] = true
   else
-    for _, line in ipairs(preview.lines or {}) do lines[#lines + 1] = tostring(line) end
+    local graphic = preview.graphic or {}
+    for index, line in ipairs(preview.lines or {}) do
+      lines[#lines + 1] = tostring(line)
+      if index >= (graphic.first_line or math.huge) and index <= (graphic.last_line or -math.huge) then
+        meta.graphic_rows[#lines] = true
+      end
+    end
   end
-  return lines
+  return lines, meta
+end
+
+local function layout(handle)
+  local desired_main_width = math.min(handle.width, math.max(20, vim.o.columns - 4))
+  local main_height = math.min(handle.height or 8, math.max(6, vim.o.lines - 4))
+  local preview_width = math.max(30, math.min(handle.spec.preview_width or 34, 44))
+  local available_main_width = vim.o.columns - preview_width - 9
+  local visible = handle.spec.preview_layout == "side"
+    and type(handle.spec.preview) == "function"
+    and handle.callbacks.preview ~= false
+    and type(handle.callbacks.open_window) ~= "function"
+    and available_main_width >= math.min(48, desired_main_width)
+  local main_width = visible and math.min(desired_main_width, available_main_width) or desired_main_width
+  local total_width = main_width + preview_width + 5
+  return {
+    main_width = main_width,
+    main_height = main_height,
+    preview_width = preview_width,
+    total_width = total_width,
+    visible = visible,
+  }
+end
+
+function M.visible(handle)
+  return layout(handle).visible
+end
+
+function M.width(handle)
+  return layout(handle).main_width
+end
+
+local function highlight_rows(handle, lines, meta)
+  handle.preview_namespace = handle.preview_namespace
+    or vim.api.nvim_create_namespace("roomplan.form.preview." .. handle.id)
+  vim.api.nvim_buf_clear_namespace(handle.preview_bufnr, handle.preview_namespace, 0, -1)
+  local function mark(row, group)
+    local line = lines[row] or ""
+    vim.api.nvim_buf_set_extmark(handle.preview_bufnr, handle.preview_namespace, row - 1, 0, {
+      end_col = #line,
+      hl_group = group,
+      hl_mode = "combine",
+      strict = false,
+    })
+  end
+  mark(1, "RoomPlanFormTitle")
+  if next(meta.graphic_rows) ~= nil then
+    local accent = handle.state.preview and handle.state.preview.accent
+    local graphic_group = "RoomPlanFormPreviewShape" .. handle.id
+    if type(accent) == "string" and accent:match("^#%x%x%x%x%x%x$") then
+      vim.api.nvim_set_hl(0, graphic_group, { fg = accent, bold = true })
+    else
+      vim.api.nvim_set_hl(0, graphic_group, { link = "RoomPlanPreview" })
+    end
+    for row in pairs(meta.graphic_rows) do mark(row, graphic_group) end
+  end
+  for row in pairs(meta.error_rows) do mark(row, "RoomPlanFormError") end
 end
 
 function M.close(handle)
@@ -51,18 +115,16 @@ function M.close(handle)
 end
 
 function M.sync(handle)
-  if not valid_window(handle.winid) or type(handle.callbacks.open_window) == "function" then return end
-  local main_width = math.min(handle.width, math.max(20, vim.o.columns - 4))
-  local main_height = math.min(handle.height, math.max(6, vim.o.lines - 4))
-  local preview_width = math.max(30, math.min(handle.spec.preview_width or 32, 44))
-  local total_width = main_width + preview_width + 5
-  local visible = handle.spec.preview_layout == "side"
-    and type(handle.spec.preview) == "function"
-    and handle.callbacks.preview ~= false
-    and vim.o.columns >= total_width + 4
+  if not valid_window(handle.winid) then return end
+  local dimensions = layout(handle)
+  local main_width = dimensions.main_width
+  local main_height = dimensions.main_height
+  local preview_width = dimensions.preview_width
+  local total_width = dimensions.total_width
+  local visible = dimensions.visible
 
   local main_col = math.floor((vim.o.columns - (visible and total_width or main_width)) / 2)
-  local lines = content(handle)
+  local lines, meta = content(handle)
   local preview_height = math.min(#lines, math.max(6, vim.o.lines - 6))
   local group_height = visible and math.max(main_height, preview_height) or main_height
   local row = math.max(0, math.floor((vim.o.lines - group_height) / 2))
@@ -98,6 +160,7 @@ function M.sync(handle)
   vim.api.nvim_buf_set_lines(handle.preview_bufnr, 0, -1, false, lines)
   vim.bo[handle.preview_bufnr].modifiable = false
   vim.bo[handle.preview_bufnr].readonly = true
+  highlight_rows(handle, lines, meta)
   position(handle.preview_winid, preview_width, preview_height, main_col + main_width + 3, row)
 end
 

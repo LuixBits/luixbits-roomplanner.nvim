@@ -233,6 +233,10 @@ describe("compound-compatible forms", function()
     local furniture_spec = forms.furniture.edit(session, plan.furniture[1])
     assert_equal(nil, field(furniture_spec, "width_mm"))
     assert_equal(nil, field(furniture_spec, "depth_mm"))
+    assert_equal("side", furniture_spec.preview_layout)
+    local furniture_state = form_state.new(furniture_spec, furniture_spec.context)
+    assert_true(furniture_state.preview.graphic ~= nil)
+    assert_true(#furniture_state.preview.lines > 4)
     local furniture_draft = model.deep_copy(furniture_spec.initial)
     furniture_draft.local_x_mm = 1200
     furniture_draft.rotation_deg = 90

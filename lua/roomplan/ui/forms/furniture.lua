@@ -5,8 +5,28 @@ local footprint = require("roomplan.geometry.footprint")
 local number = require("roomplan.geometry.number")
 local model_helpers = require("roomplan.model")
 local common = require("roomplan.ui.forms.common")
+local furniture_preview = require("roomplan.ui.forms.furniture_preview")
 
 local M = {}
+
+local function preview_content(entity, summary)
+  local graphic, err = furniture_preview.render(entity)
+  if not graphic then return nil, err end
+  local lines = {}
+  for _, line in ipairs(summary or {}) do lines[#lines + 1] = line end
+  lines[#lines + 1] = ""
+  local first_line = #lines + 1
+  for _, line in ipairs(graphic.lines) do lines[#lines + 1] = line end
+  return {
+    lines = lines,
+    graphic = { first_line = first_line, last_line = #lines },
+    accent = entity.color,
+  }
+end
+
+local function invalid_preview(state)
+  return state and next(state.errors or {}) ~= nil
+end
 
 local function schema_version(context)
   local plan = common.model(context)
@@ -171,6 +191,9 @@ function M.add(session, opts)
     description = template_is_simple(template) and "Template dimensions are editable before placement."
       or "The compound template footprint is preserved during placement.",
     apply_label = "Place furniture",
+    preview_layout = "side",
+    preview_title = "Furniture preview",
+    preview_width = 34,
     context = context,
     initial = {
       room_id = room_id,
@@ -272,21 +295,21 @@ function M.add(session, opts)
         visible = function(_, draft) return draft.save_template == true end,
       },
     },
-    preview = function(draft, ctx)
-      local position, err = centre(draft, ctx)
-      if not position then return nil, err end
+    preview = function(draft, ctx, state)
+      if invalid_preview(state) then return { lines = { "Correct the highlighted field to update the preview." } } end
+      local resolved, err = resolve_draft(draft, ctx)
+      if not resolved then return nil, err end
       local selected_room = common.find(ctx, "room", draft.room_id)
-      local selected = resolved_template(ctx, draft.template_id)
-      local geometry = selected and template_is_simple(selected)
+      local geometry = template_is_simple(resolved.selected)
           and string.format("Footprint: %d x %d mm", draft.width_mm, draft.depth_mm)
         or string.format("Footprint: %d parts (preserved)",
-          selected and #(selected.default_footprint.parts or {}) or 0)
-      return {
-        lines = {
-          string.format("%s in %s at %s", draft.name, selected_room.name or selected_room.id, common.point_text(position)),
-          string.format("%s; height %d mm; rotation %d degrees", geometry, draft.height_mm, draft.rotation_deg),
-        },
-      }
+          #(resolved.selected.default_footprint.parts or {}))
+      local entity = furniture_from_draft(draft, resolved, "furniture-preview")
+      return preview_content(entity, {
+        string.format("%s in %s at %s", draft.name, selected_room.name or selected_room.id,
+          common.point_text(resolved.position)),
+        string.format("%s; height %d mm; rotation %d degrees", geometry, draft.height_mm, draft.rotation_deg),
+      })
     end,
   }
   function spec.validate(draft, ctx)
@@ -294,13 +317,6 @@ function M.add(session, opts)
     if not resolved_template(ctx, draft.template_id) then errors.template_id = "template no longer exists" end
     if not common.find(ctx, "room", draft.room_id) then errors.room_id = "room no longer exists" end
     return errors
-  end
-  -- Canvas-only furniture drafts deliberately use a fixed, valid ID and never
-  -- enter the model, ID reservations, validation, history, or persistence.
-  function spec.canvas_preview(draft, ctx)
-    local resolved, err = resolve_draft(draft, ctx)
-    if not resolved then return nil, err end
-    return furniture_from_draft(draft, resolved, "furniture-preview")
   end
   function spec.build(draft, ctx)
     ctx = ctx or context
@@ -366,6 +382,9 @@ function M.edit(session, furniture, opts)
     description = can_resize and "Position, footprint, template and rotation apply as one edit."
       or "Compound geometry is preserved; position, height, rotation and metadata remain editable.",
     apply_label = "Apply furniture changes",
+    preview_layout = "side",
+    preview_title = "Furniture preview",
+    preview_width = 34,
     context = context,
     initial = {
       room_id = furniture.room_id,
@@ -453,17 +472,36 @@ function M.edit(session, furniture, opts)
       return string.format("%s at (%d, %d), %s", draft.name, draft.local_x_mm, draft.local_y_mm, geometry)
     end,
   }
-  spec.preview = function(draft, ctx)
+  spec.preview = function(draft, ctx, state)
+    if invalid_preview(state) then return { lines = { "Correct the highlighted field to update the preview." } } end
     local room = common.find(ctx, "room", draft.room_id)
     if not room then return nil, { code = "ROOM_REQUIRED", message = "choose a room" } end
     local geometry = can_resize and string.format("%d x %d x %d mm", draft.width_mm,
       draft.depth_mm, draft.height_mm)
       or string.format("%d-part footprint preserved; height %d mm", #(furniture.footprint.parts or {}), draft.height_mm)
-    return { lines = {
+    local entity = model_helpers.deep_copy(furniture)
+    entity.room_id = draft.room_id
+    entity.template_id = draft.template_id
+    entity.name = draft.name
+    entity.color = color.resolve(draft.color)
+    entity.category = draft.category
+    entity.rotation_deg = draft.rotation_deg
+    if version >= 2 then
+      entity.position_mm = { draft.local_x_mm, draft.local_y_mm }
+      entity.height_mm = draft.height_mm
+      if can_resize then
+        entity.footprint = model_helpers.rectangle_footprint({ draft.width_mm, draft.depth_mm })
+        entity.anchor2_mm = { draft.width_mm, draft.depth_mm }
+      end
+    else
+      entity.center_mm = { draft.local_x_mm, draft.local_y_mm }
+      entity.size_mm = { draft.width_mm, draft.depth_mm, draft.height_mm }
+    end
+    return preview_content(entity, {
       string.format("%s in %s at %s", draft.name, room.name or room.id,
         common.point_text({ draft.local_x_mm, draft.local_y_mm })),
       string.format("%s; rotation %d degrees", geometry, draft.rotation_deg),
-    } }
+    })
   end
   function spec.build(draft, ctx)
     ctx = ctx or context

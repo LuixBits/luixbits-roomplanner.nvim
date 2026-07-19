@@ -15,11 +15,12 @@ origin; the persisted doubled-mm anchor preserves exact odd-size centres. An
 item must remain inside its owning room and must not overlap another furniture
 footprint.
 
-While Add furniture is open, every valid template, size, rotation, and
-placement draft appears as a colorscheme-linked ghost on the real canvas.
-Invalid field input hides the stale ghost. The preview is not selectable and
-never enters the plan, ID reservations, validation, history, undo, or saved
-bytes; Apply replaces it with the real item and Cancel removes it.
+Add and Edit furniture show a live, colorscheme-linked footprint silhouette to
+the right of the form when the editor is wide enough. It follows compound
+geometry, dimensions, color, and quarter-turn rotation. Narrow editors show the
+same preview below the fields. Invalid input removes stale geometry, and the
+preview never enters the plan, ID reservations, validation, history, undo, or
+saved bytes.
 
 Select furniture and use:
 

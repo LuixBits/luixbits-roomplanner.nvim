@@ -147,13 +147,11 @@ describe("structured forms", function()
     h.eq({ 2500, 2000 }, furniture_action.furniture.position_mm)
     h.eq("builtin:sofa", furniture_action.furniture.template_id)
     h.eq("#C678DD", furniture_action.furniture.color)
-    local furniture_preview = h.truthy(furniture_spec.canvas_preview(
-      furniture_state.draft, furniture_spec.context
-    ))
-    h.eq("furniture-preview", furniture_preview.id)
-    h.eq(furniture_action.furniture.position_mm, furniture_preview.position_mm)
-    h.eq(furniture_action.furniture.footprint, furniture_preview.footprint)
-    h.eq(1, #plan.furniture, "building a canvas preview must not mutate the plan")
+    h.eq("side", furniture_spec.preview_layout)
+    h.eq("#C678DD", furniture_state.preview.accent)
+    h.truthy(furniture_state.preview.graphic)
+    h.truthy(line_contains(furniture_state.preview.lines, "################"))
+    h.eq(1, #plan.furniture, "building a form preview must not mutate the plan")
 
     local door_spec = forms.door.add(session, {
       room_id = "room-living", side = "east", width_mm = 900,
@@ -331,8 +329,8 @@ describe("structured forms", function()
     local session, plan = plan_session()
     local spec = require("roomplan.ui.forms").room.edit(session, plan.rooms[1])
     local original_columns = vim.o.columns
-    vim.o.columns = 140
-    local handle = h.truthy(form.open(session, spec, { width = 48 }))
+    vim.o.columns = 100
+    local handle = h.truthy(form.open(session, spec, {}))
     h.truthy(handle.preview_winid and vim.api.nvim_win_is_valid(handle.preview_winid))
     h.falsy(line_contains(handle.output.lines, "Room preview"))
     h.truthy(line_contains(handle.output.lines, "Ctrl-s] Apply room changes"))
@@ -340,7 +338,35 @@ describe("structured forms", function()
     vim.o.columns = 80
     form.render(handle)
     h.eq(nil, handle.preview_winid)
+    h.truthy(line_contains(handle.output.lines, "Room preview"))
     h.truthy(line_contains(handle.output.lines, "Ctrl-s] Apply room changes"))
+    h.truthy(form.cancel(handle, "preview test"))
+    vim.o.columns = original_columns
+  end)
+
+  it("shows a live furniture silhouette beside the form with a compact fallback", function()
+    local session = plan_session()
+    local spec = require("roomplan.ui.forms").furniture.add(session, {
+      room_id = "room-living", template_id = "builtin:sofa", placement = "centre", color = "#C678DD",
+    })
+    local original_columns = vim.o.columns
+    vim.o.columns = 100
+    local handle = h.truthy(form.open(session, spec, {}))
+    h.truthy(handle.preview_winid and vim.api.nvim_win_is_valid(handle.preview_winid))
+    local side_lines = vim.api.nvim_buf_get_lines(handle.preview_bufnr, 0, -1, false)
+    h.truthy(line_contains(side_lines, "Furniture preview"))
+    h.truthy(line_contains(side_lines, "################"))
+    h.falsy(line_contains(handle.output.lines, "Furniture preview"))
+
+    h.eq(90, h.truthy(form.set_value(handle, "rotation_deg", 90, { raw = false })))
+    local rotated_lines = vim.api.nvim_buf_get_lines(handle.preview_bufnr, 0, -1, false)
+    h.falsy(vim.deep_equal(side_lines, rotated_lines), "rotation should visibly update the silhouette")
+
+    vim.o.columns = 80
+    form.render(handle)
+    h.eq(nil, handle.preview_winid)
+    h.truthy(line_contains(handle.output.lines, "Furniture preview"))
+    h.truthy(line_contains(handle.output.lines, "##"))
     h.truthy(form.cancel(handle, "preview test"))
     vim.o.columns = original_columns
   end)
