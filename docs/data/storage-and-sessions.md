@@ -67,13 +67,12 @@ making a new edit from an older revision discards the newer redo branch.
 ## Conflicts and recovery
 
 RoomPlan records expected buffer and disk revisions. If the source changes
-outside its save transaction, saving stops with `CONFLICT`; it never silently
+outside its save transaction, saving stops with `CONFLICT`. It never silently
 overwrites the newer source. `:RoomPlanResolveConflict` offers review, reload,
-Save As, and—only while the current payload is still parseable and unchanged—a
-confirmed overwrite. A hidden `acwrite` guard keeps risky in-memory state from
-being discarded by an ordinary quit. If saving that guard finds a conflict,
-it keeps the session modified and opens the same resolution choices instead of
-raising a Lua callback error.
+and Save As. It also offers a confirmed overwrite while the current payload is
+still parseable and unchanged. A hidden `acwrite` guard keeps risky in-memory
+state from being discarded by an ordinary quit. If saving that guard finds a
+conflict, it keeps the session modified and opens the same resolution choices.
 
 Autosave is off by default, runs only after the debounce and clean validation,
 and pauses on conflicts. Norg autosave requires both `autosave.enabled = true`

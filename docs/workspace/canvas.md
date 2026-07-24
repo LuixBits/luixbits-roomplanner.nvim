@@ -1,135 +1,107 @@
 # Canvas
 
-The canvas is a bounded terminal rendering of exact model geometry. Walls,
-door leaves and swings, window apertures, wall/floor outlets, furniture footprints,
-labels, dimensions, grid points, diagnostics, and selection are separate
-semantic layers with hit information; the buffer text is never the source of
-truth.
+The Canvas draws the plan and accepts spatial input. Its text is not saved as
+plan data.
 
 ## View controls
 
 | Key | Action |
 | --- | --- |
-| `f` or `zf` | Fit all rendered geometry with the configured margin |
-| `.` / `,` | Zoom in / out around the logical cursor |
-| `zh zj zk zl` | Pan the viewport |
-| `p`, then directions | Enter dedicated PAN mode |
-| `t` | Cycle high, middle, and no canvas detail |
-| `M` | Toggle the colored whole-plan minimap |
-| `Alt-l` / `Alt-h` | Rotate the view clockwise / counter-clockwise |
-| `g0` | Restore the plan view/up projection |
-| `S` | Open the offline sunlight study |
+| `f` or `zf` | Fit the plan |
+| `.` / `,` | Zoom in / out around the cursor |
+| `zh zj zk zl` | Pan directly |
+| `p`, then directions | Enter PAN mode |
+| `t` | Cycle Canvas detail |
+| `M` | Toggle the minimap |
+| `Alt-l` / `Alt-h` | Rotate clockwise / counter-clockwise |
+| `g0` | Restore plan view/up |
+| `S` | Open the sun study |
 
-Starting whole-day playback dismisses the study form so it cannot cover the
-plan. While the study is on the canvas, `h`/`l` step through time and `j`/`k`
-move forward/backward by three months at that same time. `Space` plays from
-sunrise or pauses/resumes, `S` reopens settings, and `Esc` closes the transient
-overlay. A completed day shows the fixed-band exposure map. Press `3` to show
-the same controls, timeline, legend, and play state in Details, or `?` to find
-them in the **Current mode** group.
+The minimap appears in the upper-right corner when enough space is available.
+It shows all rooms and outlines the area visible in the main Canvas. It follows
+zoom, pan, rotation, edits, and window resizing.
 
-Zoom is limited by `canvas.min_mm_per_column` and
-`canvas.max_mm_per_column`. Terminal rows use `cell_aspect` times the
-millimetres-per-column scale so plan proportions look correct in non-square
-terminal cells. Normal and coarse `h/j/k/l` cursor movement automatically pans
-at the `canvas.scrolloff` margin, so zoomed navigation does not stop at the
-visible boundary.
-
-The `M` minimap is a non-focusable overlay in the canvas's upper-right corner.
-It uses the real compound room outlines and colorscheme-linked room colors,
-while a high-contrast colorscheme-linked outlined rectangle shows the exact
-world area visible in the main canvas. The rectangle
-updates after zoom, pan, scrolloff movement, rotation, room edits, and terminal
-resizes. The overview is transient: it adds no plan fields, history entries, or
-configuration keys, and hides automatically with the canvas. On a canvas too
-small to show it legibly, RoomPlan keeps the requested state and restores the
-minimap after the window grows.
-
-Wall outlets use inward-facing half circles; floor outlets use full circles.
-Both use the colorscheme-linked `RoomPlanOutlet` highlight. During a sun study,
-exterior walls/windows and clipped floor patches use the colorscheme's semantic
-warning/error spectrum in a derived layer below furniture, walls, labels,
-selection, and diagnostics.
+View rotation changes only the projection. Saved coordinates do not rotate.
+The Canvas uses `cell_aspect` to compensate for terminal cells that are taller
+than they are wide.
 
 ## Detail levels
 
-The default `middle` level shows object labels and dimensions for every
-exterior wall run. `high` additionally shows furniture width/depth and
-door/window width dimensions. `none` leaves geometry only, with no labels or
-dimensions.
-Within `middle` and `high`, text density also follows the active zoom. Names
-use only part of their projected room or furniture width, preserve both ends
-when shortened, and disappear when the object becomes too small to label
-cleanly. Dimensions render only when their edge has enough surrounding space;
-outlet descriptions drop out in far overviews. This is transient screen-space
-layout and requires no extra setup keys.
-Use `t` to cycle levels or
-`:RoomPlanCanvasDetail high|middle|none|cycle` to choose explicitly. The level
-belongs to the live session and never dirties or rewrites the plan.
+| Level | Shows |
+| --- | --- |
+| `high` | Labels, wall dimensions, furniture dimensions, and door/window widths |
+| `middle` | Labels and wall dimensions |
+| `none` | Geometry only |
 
-The header contains the plan state and, by default, a compact compass. It shows
-plan up (`P↑` and its rotated variants) before site setup, then geographic north
-(`N↗`, for example) after setup. An active study adds local time, azimuth, and
-elevation. The
-action bar below the canvas reports mode, saved/dirty/conflict state, snapping,
-and zoom. A selected object adds one compact breadcrumb, for example
-`Office › Floor outlet · Power · 2 slots`; it disappears with the selection
-instead of occupying another pane. Empty plans show a first-room card; if
-geometry is outside the viewport, the canvas explicitly suggests `f` instead
-of appearing blank.
+`middle` is the default. Press `t` to cycle the levels or use
+`:RoomPlanCanvasDetail high|middle|none|cycle`.
 
-When Details is visible, its dynamic Canvas-controls section becomes the
-command reference and the action bar keeps only this status and feedback. This
-avoids two competing copies while preserving the footer when the pane is
-hidden.
+Labels and dimensions shorten or disappear when an object becomes too small on
+screen. This keeps fitted views readable. The chosen level belongs to the live
+session and does not change the plan.
 
-## Selection and movement
+## Selection
 
-Move the logical cursor with `h j k l` and press `Enter` to select. Multiple
-objects can share a cell; pressing Enter repeatedly cycles the exact hit list.
-Selection highlights all cells belonging to the semantic object, not just its
-label.
+Move the logical cursor with `h j k l`. Press `Enter` to select under it. If
+several objects share a cell, press `Enter` again to cycle them.
 
-In MOVE mode, changes are expressed in world millimetres and recorded as model
-actions. View rotation only changes how direction keys are projected, so
-moving right on screen still looks right. Grid and geometric snapping are
-view-scale aware and capped by `snapping.max_distance_mm`. The breadcrumb adds
-the active object, last visible direction and distance, and named snap target.
-At deep zoom, the plan's existing `fine_step_mm` is the minimum magnetic range
-(still capped by `snapping.max_distance_mm`), so tiny millimetre remainders snap
-cleanly instead of requiring repeated Ctrl-directions.
-Exact positive-length contact is separate from magnetic correction: every
-touched horizontal or vertical wall segment stays strongly highlighted while
-moving, including when snapping is disabled or the next step is bypassed. A
-light full alignment guide is reserved for an actual snap correction, avoiding
-unnecessary lines across the overview.
+The header shows plan state and a compass. Before site setup, the compass shows
+plan up. Afterwards it shows geographic north. The action bar shows mode,
+save state, snapping, zoom, and a short description of the selection.
 
-## Live dimension resizing
+## Movement
 
-Select a room or furniture item and press `r` to resize its rectangular union
-directly on the canvas. One section is highlighted at a time. `Enter` selects under the cursor,
-`Tab` cycles sections, and the usual direction keys use normal, coarse, or fine
-plan steps. The first horizontal/vertical key chooses the corresponding west,
-east, south, or north edge; the status keeps that handle visible while opposite
-directions grow or shrink it. `a` adds an adjoining section and `d` removes one. `s` commits the
-whole preview as one history action and saves the plan; `Esc` discards it. The header/action
-bar identifies `RESIZE`, the active section and edge, the last step, and any
-named snap target. Nearby section edges and
-other-room walls take snap precedence over the grid; a light guide shows the
-alignment and extends just beyond the target wall so horizontal and vertical
-connections stay visible. Every positive-length exterior wall overlap around
-the final room or furniture silhouette is strongly highlighted, including
-separate wall segments that share the same coordinate; the target names remain
-available in status after magnetic corrections. Pure touch highlighting remains
-active with snapping off. Centres can align to centres but are never
-misreported as wall contact. `gs` toggles snapping and `g!` bypasses the next
-change.
-Moving away releases a snap immediately, even with fine steps. Use ordinary
-`m` movement to move the whole room and its furniture with the same snap
-feedback. See
-[Rooms](../planning/rooms.md) for the topology and wall-feature safeguards.
+Select an object and press `m`. Normal movement covers at least one visible
+cell. Uppercase directions use the coarse step. `Ctrl-h/j/k/l` uses the exact
+fine step.
 
-See [Appearance](../display/appearance.md) for glyphs/highlights and
-[Aspect and rotation](../display/aspect-and-rotation.md) for calibration.
+Snapping can target room edges, room centres, doors, furniture, and the grid.
+The Canvas names the target and highlights the touching edge. Press `gs` to
+toggle snapping or `g!` to bypass the next snap.
+
+Moving a room also moves its furniture. Doors, windows, and wall outlets remain
+on their assigned wall. Floor outlets remain inside their room.
+
+## Live resizing
+
+Select a room, furniture item, or project template and press `r`. One section
+is active at a time.
+
+| Key | Action |
+| --- | --- |
+| `Enter` | Select a section under the cursor |
+| `Tab` / `Shift-Tab` | Next / previous section |
+| `h j k l` | Choose and move an edge |
+| `H J K L` | Resize by the coarse step |
+| `Ctrl-h/j/k/l` | Resize by the fine step |
+| `a` / `d` | Add / remove a section |
+| `s` | Apply and save |
+| `Esc` | Cancel |
+
+The first horizontal or vertical direction chooses the active edge. The status
+keeps that edge visible. Every preview must remain connected, hole-free, and
+non-overlapping.
+
+See [Rooms](../planning/rooms.md) for room topology and wall-feature rules. See
+[Furniture](../planning/furniture.md) for anchors and template save scope.
+
+## Sun study controls
+
+While a sun study is visible, `h` and `l` change the time. `j` and `k` move
+between dates three months apart. `Space` starts or pauses playback. `S`
+reopens the form and `Esc` closes the study.
+
+See [Sun study](../planning/sun-study.md) for setup, window heights, and the
+limits of the analysis.
+
+## Appearance
+
+Wall outlets use inward-facing half circles. Floor outlets use full circles.
+Colors come from semantic Neovim highlight groups and follow the active
+colorscheme.
+
+See [Appearance](../display/appearance.md) for glyphs and highlights. See
+[Aspect and rotation](../display/aspect-and-rotation.md) if the plan looks
+stretched.
 
 ← [Forms and actions](forms-and-actions.md) | [Documentation home](../README.md) | [Rooms](../planning/rooms.md) →

@@ -1,47 +1,59 @@
 # Sun study
 
-RoomPlan can draw an approximate top-down sunlight patch through exterior
-windows without network access. Press `S`, run `:RoomPlanSunStudy`, or choose
-**Sun study** from `?`.
+Sun study draws an approximate top view of sunlight entering through exterior
+windows. It runs locally and does not need a network connection.
 
-The first use opens one structured setup popup. Enter:
+Press `S`, run `:RoomPlanSunStudy`, or choose **Sun study** from `?`.
 
-- the exact clockwise angle from plan top to geographic north;
-- latitude and longitude in decimal degrees;
-- the fixed local UTC offset, such as `+02:00`.
+## Set the site
 
-This site information is saved with the plan and is one undoable change. The
-ordinary interface continues to call walls top, right, bottom, and left so it
-always matches the current view. The compact compass shows `P↑` (plan up) until
-a site exists, then changes to a geographic indicator such as `N↗`. Rotating
-the view changes those screen labels and the compass, never the saved site.
+The first study asks for three values:
 
-## Popup controls
+- The clockwise angle from the top of the plan to geographic north.
+- Latitude and longitude in decimal degrees.
+- A fixed local UTC offset, such as `+02:00`.
 
-The study popup keeps a date preset, exact date, fixed UTC-offset reminder,
-local time, minute step, and milliseconds per step together. The presets cover
-today, both equinoxes, and both solstices without saving another plan field.
-`j` and `k` retain normal form navigation, while `h` and `l` are the only keys
-that change the sunlight time directly. `Space` starts whole-day playback,
-closes the popup, and focuses the unobstructed canvas; `Ctrl-s` does the same
-without starting the timer. **View current time on canvas**, **Play whole day
-on canvas**, and **View daily exposure** expose all three choices explicitly.
-**Edit location and plan north** returns to the persisted site popup.
+The site is saved with the plan as one undoable change. The compass shows
+`P↑` before a site is set. Afterwards it shows geographic north. Rotating the
+view changes the screen compass but not the saved site.
 
-While viewing the canvas, `h` and `l` step backward and forward in the chosen
-day; `j` advances three months and `k` goes back three months at the same local
-time. `Space` plays from sunrise, pauses or resumes an active run, and restarts
-from sunrise after completion. `S` pauses and reopens the same settings, and
-`Esc` closes the study. Playback advances only across the calculated daylight
-interval. At sunset it stops and replaces the final instant with the daily
-exposure overlay. These contextual controls do not add more setup keys.
-Press `3` to keep them visible in the dynamic Details pane, or `?` to see the
-same commands under **Current mode**. Details also shows date, sunrise/current/
-sunset progress, exact azimuth/elevation, display type, legend, selected-room
-or selected-window exposure span, and how to leave the mode.
+RoomPlan does not look up time zones or daylight saving rules. Enter the UTC
+offset that applies to the date you want to study.
 
-The default step is 60 minutes and each frame remains visible for 700 ms. Both
-are editable for the current popup and configurable for later studies:
+## Choose a view
+
+The popup offers three outputs:
+
+- **View current time on canvas** shows one sunlight estimate.
+- **Play whole day on canvas** animates the daylight period.
+- **View daily exposure** adds the estimated direct sun minutes for each floor
+  cell.
+
+You can use today's date, an equinox, a solstice, or an exact date. The time
+step and playback speed apply to the current study. They are not saved in the
+plan.
+
+## Canvas controls
+
+| Key | Action |
+| --- | --- |
+| `h` / `l` | Step backward or forward in time |
+| `j` / `k` | Move forward or back by three months |
+| `Space` | Start, pause, resume, or restart playback |
+| `S` | Pause and reopen the settings |
+| `Esc` | Close the study |
+
+Playback starts at sunrise and stops at sunset. It then shows daily exposure.
+Press `3` to keep study details visible, or `?` to see the current controls.
+
+The header shows the incoming light direction. Details shows the date,
+sunrise, sunset, solar position, display type, and selected object exposure.
+
+## Window heights
+
+A window can store its own sill and head heights or use the configured
+defaults. Explicit values must be nonnegative integer millimetres. The head
+must be above the sill.
 
 ```lua
 require("roomplan").setup({
@@ -58,42 +70,20 @@ require("roomplan").setup({
 })
 ```
 
-Date, time, playback position, presets, and accumulated exposure are transient.
-Cancelling the popup or closing the canvas study stops its timer and removes
-the overlay; it does not add history, dirty the plan, or add schema keys.
+Exterior windows facing the sun cast a clipped floor patch inside their room.
+Shared interior windows do not cast outdoor light. Daily exposure uses fixed
+bands up to more than six hours, so different dates remain comparable.
 
-## Window heights and display
+## Accuracy and limits
 
-The window edit popup can either store a sill/head pair for that window or use
-the two configured defaults above. Choosing defaults does not copy redundant
-keys into the plan. Explicit heights must be non-negative integer millimetres,
-with the head above the sill.
+Solar position uses a deterministic approximation in Lua. The result is a
+clear sky 2D estimate. It is useful for comparing layouts and times, but it is
+not a construction or lighting simulation.
 
-Sun-facing exterior windows and walls receive a colorscheme-linked warning
-highlight. Each window projects a floor patch using the theme's warning/error
-spectrum into its owner room; room geometry clips the patch, while furniture,
-walls, labels, selection, and diagnostics remain readable above it. Shared
-interior windows do not cast an outdoor patch. Details says whether a selected
-window uses explicit or assumed heights.
+The study does not model weather, glare, reflections, thermal gain, wall
+thickness, glazing, overhangs, terrain, or shadows from furniture height.
 
-Near sunrise and sunset, instantaneous patches shift toward the theme's
-stronger warning/error end; the main header includes a view-aware arrow showing
-the incoming light direction. The daily exposure display samples the complete
-daylight interval using the popup step size and accumulates direct-sun minutes
-for every visible floor cell. Its fixed bands are `≤1h`, `≤2h`, `≤4h`, `≤6h`,
-and `>6h`, so dates remain visually comparable instead of stretching every day
-to its own maximum.
-
-## Accuracy
-
-The solar position is a deterministic NOAA-style approximation calculated in
-pure Lua. RoomPlan does not contact a geocoder, timezone service, weather
-provider, or daylight-saving database. Enter the offset that applies to the
-chosen date. The study popup and Details deliberately repeat that fixed offset
-to make seasonal comparisons with a daylight-saving change explicit.
-
-The overlay is clear-sky 2D exposure, not illuminance, glare, reflection,
-thermal gain, or a construction simulation. It does not yet model wall
-thickness, glazing, overhangs, furniture height shadows, or terrain.
+Closing the study stops playback and removes the overlay. It does not change
+the plan or add an undo entry.
 
 ← [Windows and outlets](windows-and-outlets.md) | [Documentation home](../README.md) | [Furniture](furniture.md) →

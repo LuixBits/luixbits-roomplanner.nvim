@@ -3,58 +3,26 @@
 [![CI](https://github.com/LuixBits/luixbits-roomplanner.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/LuixBits/luixbits-roomplanner.nvim/actions/workflows/ci.yml)
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
 
-A keyboard-first floor-planning workspace for Neovim.
+A keyboard-first floor planner for Neovim.
 
-RoomPlan keeps exact millimetre geometry in structured JSON or an embedded
-Neorg block. The Unicode/ASCII canvas is an interactive view, so display
-rounding can never corrupt the saved plan.
+RoomPlan stores measurements as structured millimetre geometry. The terminal
+canvas is an interactive view of that data. Display rounding cannot change the
+saved plan.
 
-> RoomPlan is a space-planning tool, not CAD/BIM software or a building-code
-> checker. The current schema models one floor with rectangular-union room and
-> furniture footprints, doors, windows, wall/floor outlets, and 90-degree furniture
-> rotations.
+RoomPlan is intended for space planning. It is not CAD, BIM, a construction
+drawing tool, or a building-code checker.
 
-## Highlights
+## What it does
 
-- Canvas-first responsive workspace with toggleable Navigator and Details
-  panes, registry-backed contextual controls, a compact selection/MOVE/RESIZE breadcrumb,
-  validation issues, semantic highlighting, and a plan/geographic compass. Three
-  transient detail levels keep labels and measurements as sparse or complete
-  as the current task needs.
-- Structured forms for rooms, furniture, doors, windows, outlets, alignment,
-  plan settings, project furniture templates, exact two-object measurement,
-  and furniture-to-wall placement, including palette-based room and furniture
-  colors. Add and Edit furniture show a live footprint silhouette beside the
-  popup, with a compact in-popup fallback when the editor is narrow.
-- Compound footprints for L-, T-, and U-shaped rooms and furniture, with
-  seam-free walls and one logical selection per object. The room form creates
-  configurable L shapes; direct canvas editing can add, resize, and remove
-  rectangular room, placed-furniture, and project-template sections through
-  the same live resize controls. A compact save popup makes item-only versus
-  template updates explicit and never bulk-rewrites other placed items.
-- View-only 90-degree rotation and runtime terminal-cell aspect calibration;
-  neither operation changes saved geometry.
-- A colored, non-focusable minimap toggled with `M` shows every room and the
-  current field-of-view rectangle while zooming or panning.
-- Offline sunlight studies with exact plan-north/site setup, seasonal date/time
-  controls, reliable whole-day playback, configurable assumed window heights,
-  clipped warm floor patches, and comparable daily-exposure bands.
-- Strict, deterministic JSON with preserved extension fields, plus marked Neorg
-  embedding and conflict-safe writes.
-- Named undo history with confirmed revision restore; Navigator marking for
-  atomic group move, duplicate, and delete operations.
-- Exact silhouette snapping highlights every touched wall segment, cleans up
-  fine-step millimetre residuals, and remains bounded by the existing snap cap.
-  Exact touch highlights remain visible during movement and resize even when
-  magnetic snapping is disabled. Canvas text progressively abbreviates or
-  disappears as its object shrinks on screen, keeping fitted overviews legible.
-  Validation, bounded resources, multiple concurrent plans, and dirty-session
-  protection remain part of the same workflow. Activating a validation issue
-  selects and recentres its owner without changing the current zoom.
-- Dependency-free furniture catalogues from inline Lua definitions or JSON
-  files.
-- No mandatory runtime dependency beyond Neovim 0.10 or newer. Standard
-  `vim.ui` providers such as Snacks work automatically when configured.
+- Create rectangular or compound rooms and furniture.
+- Add doors, windows, wall outlets, and floor outlets.
+- Move, resize, rotate, align, measure, and validate objects from the canvas.
+- Import furniture catalogues from Lua or JSON.
+- Save plans as standalone JSON or inside a marked Norg block.
+- Inspect sunlight exposure with an offline two-dimensional study.
+- Keep several plans open with undo history and conflict-safe saving.
+
+RoomPlan supports Neovim 0.10 and newer. It has no required runtime dependency.
 
 ## Install
 
@@ -79,135 +47,85 @@ vim.pack.add({
 require("roomplan").setup({})
 ```
 
-For Nix, nvf, rocks.nvim, native packages, and local development, see the
-[installation chapter](docs/getting-started/installation.md). Keep the plugin
-available on `runtimepath` before calling `require("roomplan")`; this is what
-prevents the `module 'roomplan' not found` and missing `:RoomPlan` command
-errors common to incomplete lazy/Nix wiring.
+See [Installation](docs/getting-started/installation.md) for Nix, nvf,
+rocks-git.nvim, native packages, and local development.
 
-## First plan
+## Create a plan
 
-Initialize a standalone source without overwriting an existing file:
+Create a standalone plan:
 
 ```vim
 :RoomPlanInit ~/plans/flat.roomplan.json
 ```
 
-Then press `a` to add a room, `m` to move the selected object, `r` to resize
-room or furniture dimensions live, `R` to rotate furniture, or `e` for exact
-properties. Save with `s`. Press
-`t` to cycle canvas detail, `1` to focus or toggle the
-Navigator, and `3` to do the same for Details. `?` opens every currently
-available action; press `/` there and type to filter it live inside the popup.
-That action window also contains exact measurement, wall placement for selected
-furniture, and named undo-history browsing. In Navigator, press `Space` to mark
-objects, then use `?` for atomic group move, duplicate, delete, or clear.
-For a room, furniture item, or project template, `e` also exposes an
-**Edit footprint** row that opens direct compound-section editing on the canvas.
-`,` and `.` zoom out and in; `M` toggles the plan minimap.
-`q` returns to the canvas before hiding the workspace. Add a window directly
-with `W` or an outlet with `O`; the outlet form chooses wall or floor placement.
-From the Add menu use `a` followed by lowercase `w` or `o`.
-Press `S` for the sunlight study. Its first use asks for plan north, location,
-and UTC offset in one popup; later uses open the date/time playback directly.
-`Space` starts at sunrise and dismisses the popup so the whole canvas remains
-visible. On the canvas use `h`/`l` for time and `j`/`k` for forward/backward
-three-month comparisons. `Space` pauses or resumes and the completed day becomes
-a direct-sun exposure map; `S` reopens settings and `Esc` closes the study.
+The most useful default keys are:
 
-Open the plan again with:
+| Key | Action |
+| --- | --- |
+| `a` | Add an object |
+| `e` | Edit exact properties |
+| `m` | Move the selected object |
+| `r` | Resize a room or furniture item |
+| `R` | Rotate furniture |
+| `s` | Save |
+| `u` / `Ctrl-r` | Undo / redo |
+| `.` / `,` | Zoom in / out |
+| `1` / `2` / `3` | Navigator / Canvas / Details |
+| `?` | Show all actions for the current context |
+
+Press `/` inside the `?` window to search its actions. The [Quick
+start](docs/getting-started/quick-start.md) builds a complete plan with rooms,
+furniture, a door, a window, and an outlet.
+
+Open an existing plan with:
 
 ```vim
 :RoomPlanOpen ~/plans/flat.roomplan.json
 ```
 
-The [quick-start chapter](docs/getting-started/quick-start.md) walks through a
-complete room, furniture, door, window, and outlet workflow.
-
 ## Documentation
 
-The documentation is a linked, chaptered handbook:
+Start at the [documentation home](docs/README.md) when you need help with a
+specific task.
 
-- [Documentation home](docs/README.md) and [complete chapter list](docs/SUMMARY.md)
-- [Workspace and navigation](docs/workspace/overview.md)
-- [Rooms](docs/planning/rooms.md), [doors](docs/planning/doors.md),
-  [windows and outlets](docs/planning/windows-and-outlets.md),
-  [sun study](docs/planning/sun-study.md), and [furniture](docs/planning/furniture.md)
-- [Settings](docs/configuration/settings.md),
-  [keymaps](docs/configuration/keymaps.md), and
-  [appearance](docs/display/appearance.md)
-- [Aspect calibration and rotation](docs/display/aspect-and-rotation.md)
-- [Storage and sessions](docs/data/storage-and-sessions.md),
-  [validation](docs/data/validation.md), and
-  [document schema](docs/data/coordinates-and-schema.md)
-- [Commands](docs/reference/commands.md), [Lua API](docs/reference/lua-api.md),
-  and [troubleshooting](docs/reference/troubleshooting.md)
-- [Architecture](docs/development/architecture.md),
-  [compatibility](docs/development/compatibility.md),
-  [architecture decisions](docs/adr/README.md),
-  [contributing](docs/development/contributing.md), and
-  [releasing](docs/development/releasing.md)
+- [Installation](docs/getting-started/installation.md)
+- [Quick start](docs/getting-started/quick-start.md)
+- [Default keys and remapping](docs/configuration/keymaps.md)
+- [Rooms](docs/planning/rooms.md) and [furniture](docs/planning/furniture.md)
+- [Doors](docs/planning/doors.md), [windows and outlets](docs/planning/windows-and-outlets.md)
+- [Sun study](docs/planning/sun-study.md)
+- [Saving, sessions, and conflicts](docs/data/storage-and-sessions.md)
+- [Troubleshooting](docs/reference/troubleshooting.md)
 
-Inside Neovim, `:help roomplan` is the compact offline reference and
-`:checkhealth roomplan` reports compatibility, display, mappings, optional
-Neorg support, sessions, and source safety.
+Inside Neovim, use `:help roomplan` for the offline reference and
+`:checkhealth roomplan` for diagnostics.
 
-## Configuration example
+## Configuration
 
-Defaults work without `setup()`. A small customized configuration looks like:
+Defaults work without calling `setup()`. RoomPlan validates all supplied
+options and rejects unknown settings.
 
-```lua
-require("roomplan").setup({
-  canvas = {
-    cell_aspect = 2.0,
-    show_grid = false,
-    detail_level = "middle",
-    show_compass = true,
-  },
-  furniture = {
-    include_builtins = false,
-    files = { vim.fn.stdpath("config") .. "/roomplan-furniture.json" },
-  },
-  sun_study = {
-    window_defaults = { sill_height_mm = 900, head_height_mm = 2100 },
-    playback = { step_minutes = 60, frame_duration_ms = 700 },
-  },
-  ui = {
-    workspace = {
-      navigator_visible = true,
-      details_visible = false,
-      border = "rounded",
-    },
-  },
-})
-```
-
-RoomPlan rejects unknown or invalid options instead of silently ignoring them.
-See [settings](docs/configuration/settings.md) for the complete contract.
+See [Settings](docs/configuration/settings.md),
+[Keymaps](docs/configuration/keymaps.md), and
+[Appearance](docs/display/appearance.md) for the complete configuration.
 
 ## Development
 
-Run the headless test suite from the repository root:
+Run the test suite from the repository root:
 
 ```sh
 ./scripts/test.sh
 ```
 
-Contribution rules and release gates live in
-[CONTRIBUTING.md](CONTRIBUTING.md) and [RELEASE.md](RELEASE.md). The design and
-dependency boundaries are maintained in the
-[architecture chapter](docs/development/architecture.md), not in historical
-implementation-plan files.
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing the project. Release
+requirements are in [RELEASE.md](RELEASE.md). The [architecture
+chapter](docs/development/architecture.md) describes the code boundaries.
 
-For questions and bug-report requirements, read [SUPPORT.md](SUPPORT.md).
-Security-sensitive reports follow [SECURITY.md](SECURITY.md), and all project
-spaces follow the [code of conduct](CODE_OF_CONDUCT.md). Durable cross-cutting
-decisions are recorded in the [ADR index](docs/adr/README.md); accepted product
-work remains in the canonical [roadmap](plan.md).
+Use [SUPPORT.md](SUPPORT.md) for questions and bug reports. Report security
+issues as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
-Licensed under the GNU General Public License v3.0 only (`GPL-3.0-only`). See
-[LICENSE](LICENSE). You may use, study, modify, and redistribute RoomPlan, but
-distributed versions must preserve the same freedoms and provide their source.
-Third-party material, if introduced, must also be recorded in [NOTICE](NOTICE).
+RoomPlan is licensed under GPL-3.0-only. See [LICENSE](LICENSE). Distributed
+versions must remain under the same license and provide their source.
+Third-party notices are recorded in [NOTICE](NOTICE).

@@ -1,53 +1,53 @@
 # Workspace overview
 
-RoomPlan opens a canvas-first workspace. The canvas is a read-only projection
-of the saved model; editing canvas characters never edits the plan.
+RoomPlan opens a workspace around the plan Canvas. The Canvas shows the saved
+geometry but is not itself the source data.
 
 The workspace has four areas:
 
-- **Canvas** renders rooms, doors, windows, outlets, furniture, selection,
-  dimensions, and the compass.
-- **Navigator** uses one side slot for either Objects or Issues.
-- **Details** shows the current mode, its Canvas controls, and compact,
-  accordion-style information about the selection.
-- **Action bar** shows only the most useful actions for the current pane and
-  mode. Press `?` for the complete grouped action window, including disabled
-  actions and their reasons, then `/` to start its in-popup live search.
+- **Canvas** shows the plan and receives movement, resize, zoom, and pan input.
+- **Navigator** shows either Objects or Issues.
+- **Details** shows information about the selection and the current mode.
+- **Action bar** shows useful keys and status for the current context.
 
-Selection is shared by every area. Selecting an Objects or Issues row updates
-the canvas and Details; selecting on the canvas updates both side panes.
+Press `?` to see every available action. Disabled actions include a reason.
+Press `/` in that window to search.
 
-## Responsive layouts
+## Layouts
 
-With the default settings, RoomPlan chooses the layout from the editor size:
+RoomPlan changes the layout to protect the useful Canvas area.
 
-| Layout | Default range | Behaviour |
+| Layout | Default size | Result |
 | --- | --- | --- |
-| Wide | 120 columns or more | Canvas with any enabled side panes on both sides |
-| Medium | 90–119 columns | Canvas plus at most one side pane |
-| Compact | 89 columns or fewer, or under 22 rows | Persistent Canvas; side panes open as bordered drawers |
+| Wide | 120 columns or more | Canvas with enabled panes on both sides |
+| Medium | 90–119 columns | Canvas with at most one side pane |
+| Compact | 89 columns or fewer, or under 22 rows | Canvas with temporary pane drawers |
 
-Side panes surrender width before the canvas drops below its configured
-minimum. Resize events reflow the workspace while preserving pane visibility,
-selection, filters, and collapsed sections.
+Pane visibility, selection, filters, and collapsed sections survive a reflow.
+Closing a side pane keeps it closed until you open it again.
 
-## Opening and leaving
+## Common pane keys
 
-`:RoomPlanOpen` and `:RoomPlanInit` open the workspace. `q` hides it but keeps
-the live session and its history; reopening the same source restores that
-session. `:RoomPlanClose` unloads the session and protects unsaved work with a
-confirmation. See [Storage and sessions](../data/storage-and-sessions.md) for
-the full lifecycle.
+| Key | Area |
+| --- | --- |
+| `1` | Navigator |
+| `2` | Canvas |
+| `3` | Details |
+| `!` | Issues |
+| `Tab` / `Shift-Tab` | Next / previous visible pane |
 
-The fastest pane controls are `1` for Navigator, `2` for Canvas, `3` for
-Details, and `!` for Issues. Pressing the active side-pane key again hides that
-pane and returns to Canvas.
+Pressing the key for an active side pane hides it and returns to the Canvas.
 
-Details uses headings such as **NAV**, **MOVE**, **RESIZE**, and **SUN STUDY**.
-Its Canvas controls come from the same registry as the action bar and `?`, and
-always include the key that finishes or cancels an active mode. If Details has
-focus, press `2` before using those Canvas controls; its own `Enter`, `Space`,
-`h`, and `l` remain section-navigation keys. While Details is visible, the
-action bar keeps status and feedback but does not duplicate the command list.
+Details lists commands for the current NAV, MOVE, PAN, RESIZE, form, or SUN
+STUDY context. Press `2` before using a Canvas command while Details has focus.
+
+## Hide or close
+
+`q` hides the workspace and keeps the live session with its undo history.
+Opening the same source restores that session.
+
+`:RoomPlanClose` unloads the session. Unsaved work requires confirmation. See
+[Storage and sessions](../data/storage-and-sessions.md) for the complete
+lifecycle.
 
 ← [Core concepts](../getting-started/concepts.md) | [Documentation home](../README.md) | [Navigation](navigation.md) →
