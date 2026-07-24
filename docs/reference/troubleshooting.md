@@ -6,72 +6,90 @@ Start with:
 :checkhealth roomplan
 ```
 
-It reports Neovim/runtime compatibility, encoding, glyph widths, cell aspect,
-keymap overrides, optional Norg support, autosave, live sessions, and source
-writability.
+It checks Neovim compatibility, glyph widths, canvas aspect, keymap overrides,
+optional Norg support, autosave, live sessions, and source permissions.
 
-## `module 'roomplan' not found`
+## RoomPlan cannot be required
 
-This means the repository root is not on `runtimepath` when your configuration
-calls `require("roomplan")`; it is not a plan-file or UI error.
+The error `module 'roomplan' not found` means the plugin is not on
+`runtimepath` when your configuration calls `require("roomplan")`.
 
 ```vim
 :lua print(vim.inspect(vim.api.nvim_get_runtime_file("lua/roomplan/init.lua", false)))
 ```
 
-The result must contain the installed plugin. Check that the package points at
-`LuixBits/luixbits-roomplanner.nvim`, contains `lua/roomplan/init.lua`, and is
-loaded before its setup call. With lazy loading, either use `lazy = false` or
-declare every RoomPlan command that can trigger loading. With Nix/nvf/mnw, add
-the built Vim plugin package—not merely the raw flake input—to the Neovim
-plugin set. A Nix store build must be rebuilt after changing a local source
-path; a normal non-Nix checkout does not.
+The result should contain the installed plugin. Check that your package points
+to `LuixBits/luixbits-roomplanner.nvim` and includes
+`lua/roomplan/init.lua`. It must load before its setup call.
 
-## `E492: Not an editor command: RoomPlan`
+With lazy loading, use `lazy = false` or declare every RoomPlan command that
+may trigger loading. With Nix based managers, add the built Vim plugin package
+to the Neovim plugin set. Rebuild that package after changing a local source
+path.
 
-The command loader `plugin/roomplan.lua` was not sourced. Check:
+## RoomPlan commands are missing
+
+For `E492: Not an editor command: RoomPlan`, check the command loader:
 
 ```vim
 :lua print(vim.inspect(vim.api.nvim_get_runtime_file("plugin/roomplan.lua", false)))
 :lua print(vim.fn.exists(":RoomPlan"))
 ```
 
-The second value should be `2`. `require("roomplan").setup({})` also registers
-commands once the package is available. For diagnosis,
-`:runtime plugin/roomplan.lua` should register them; if it does, fix package
-load order rather than keeping the manual runtime command.
+The second value should be `2`. If `:runtime plugin/roomplan.lua` registers the
+commands, fix the package load order. The manual command is only a useful test.
 
-## Canvas looks stretched or misaligned
+## A key does nothing
 
-- If squares are too tall/short, calibrate `:RoomPlanAspect` and persist
-  `canvas.cell_aspect`; see [Aspect and rotation](../display/aspect-and-rotation.md).
-- If box glyphs occupy the wrong width, try `canvas.unicode = "ascii"` and
-  inspect `:checkhealth roomplan`. Fonts and `'ambiwidth'` can change widths.
-- If geometry appears absent, press `f`. The canvas distinguishes an empty plan
-  from geometry outside the viewport.
+RoomPlan mappings are local to its own buffers. Some keys also depend on the
+focused pane, selected object, or active mode. Press `?` to see actions for the
+current context.
 
-## No colors or inactive-looking panes
+Run `:checkhealth roomplan` to inspect disabled mappings and overrides. Press
+`2` to return to the Canvas before trying a Canvas action shown in Details.
+See [Keymaps](../configuration/keymaps.md) for the current defaults.
+
+## The Canvas looks stretched or empty
+
+- Press `f` if the plan may be outside the viewport.
+- Run `:RoomPlanAspect` if squares look too tall or too wide.
+- Try `canvas.unicode = "ascii"` if box glyphs have the wrong width.
+
+Fonts and `'ambiwidth'` can affect glyph widths. See
+[Aspect and rotation](../display/aspect-and-rotation.md) for calibration.
+
+## Colours or pane borders look inactive
 
 Inspect `:highlight RoomPlanWall` and
-`:highlight RoomPlanWorkspaceActiveBorder`. RoomPlan links semantic groups to
-standard colorscheme groups. A colorscheme that clears custom highlights after
-startup should reapply overrides in a `ColorScheme` autocmd. See
+`:highlight RoomPlanWorkspaceActiveBorder`. RoomPlan links its groups to
+standard colour scheme groups.
+
+If your colour scheme clears custom highlights after startup, reapply your
+overrides in a `ColorScheme` autocmd. See
 [Appearance](../display/appearance.md).
+
+## A form or popup feels cramped
+
+RoomPlan drops optional previews when the editor is narrow. Increase the
+editor size if fields or action text still feel crowded. The plan itself is
+not affected.
 
 ## Saving or reloading is blocked
 
 - Press `v` and inspect Issues. Layout errors require repair or an explicit
-  `:RoomPlanSave!`; structural errors cannot be forced.
-- `CONFLICT` means the source changed since RoomPlan's expected revision. Use
-  `:RoomPlanResolveConflict`; do not edit revision hashes or bypass checks.
-- `SOURCE_REBIND_PENDING` means the source buffer was renamed. Use Save As to
-  adopt a supported destination or restore the original name.
-- An ambiguous session means several plans are open outside an attached
-  RoomPlan buffer. Use `:RoomPlan` to choose one.
+  `:RoomPlanSave!`. Structural errors cannot be forced.
+- `CONFLICT` means the source changed outside RoomPlan. Use
+  `:RoomPlanResolveConflict` to review the available choices.
+- `SOURCE_REBIND_PENDING` means the source buffer was renamed. Use Save As or
+  restore the original name.
+- If several plans are open, use `:RoomPlan` to choose the intended session.
 
-## Norg plan is not detected
+Do not edit revision hashes to bypass a conflict. They protect newer source
+content from an accidental overwrite.
 
-Use an exact marked range:
+## A Norg plan is not detected
+
+Use one exact marked range:
 
 ```norg
 @code json roomplan.nvim
@@ -79,8 +97,8 @@ Use an exact marked range:
 @end
 ```
 
-RoomPlan deliberately stops on multiple marked blocks, malformed marked JSON,
-unterminated ranges, or several matching legacy blocks. Repair or remove the
-ambiguous block; Neorg and its parser are not required for the scanner.
+RoomPlan stops when it finds multiple marked blocks, malformed JSON, an
+unfinished range, or several matching legacy blocks. Repair the ambiguous
+content first. Neorg and its parser are not required for the scanner.
 
 ← [Lua API](lua-api.md) | [Documentation home](../README.md) | [Limitations and roadmap](limitations-and-roadmap.md) →

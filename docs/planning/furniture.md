@@ -1,101 +1,79 @@
 # Furniture
 
-Furniture is one logical room-local footprint made from a connected union of
-rectangular parts, with an explicit label, category, height, anchor position,
-and rotation. Supported rotations are `0`, `90`, `180`, and `270` degrees.
+Furniture belongs to a room and moves with it. An item can use one rectangle
+or a connected footprint made from several rectangular sections. Rotation is
+limited to quarter turns.
 
-Press `F` or run `:RoomPlanAddFurniture`. Choose a room and a built-in,
-imported, or project template. Template values seed the label, category,
-footprint, and height, but the placed item stores its own values and can be
-customized before applying.
+## Add furniture
 
-Placement choices are room centre, canvas cursor, or exact room-local
-coordinates. `position_mm` places the item's anchor relative to the room
-origin; the persisted doubled-mm anchor preserves exact odd-size centres. An
-item must remain inside its owning room and must not overlap another furniture
-footprint.
+Press `F` or run `:RoomPlanAddFurniture`. Choose a room and a built in,
+imported, or project template. The template supplies initial values. The
+placed item keeps its own label, category, footprint, height, and rotation.
 
-Add and Edit furniture show a live, colorscheme-linked footprint silhouette to
-the right of the form when the editor is wide enough. It follows compound
-geometry, dimensions, color, and quarter-turn rotation. Narrow editors show the
-same preview below the fields. Invalid input removes stale geometry, and the
-preview never enters the plan, ID reservations, validation, history, undo, or
-saved bytes.
+Place the item at the room centre, at the canvas cursor, or at exact local
+coordinates. Its full footprint must stay inside the room and must not overlap
+other furniture.
 
-Select furniture and use:
+The add and edit forms show a shape preview when space allows. This preview is
+only visual. It does not alter the plan or its undo history.
 
-- `e` to edit room, template, label, geometry where available, position, and
-  rotation, or activate **Edit footprint** for direct section editing;
-- `r` to enter highlighted live dimension/section resizing immediately;
-- `m` plus directions to move by the configured plan steps;
-- `R` to rotate one quarter-turn;
-- `y` to duplicate it;
-- `d` to delete it.
+## Common actions
 
-The searchable `?` window adds **Place furniture against wall** without taking
-another default key. Its popup lists exact exterior segments of the owner room,
-offers start/centre/end or current along-wall alignment, and accepts a clearance
-in the same measurement syntax as other forms. Apply is one exact move and one
-undo entry. **Measure exact clearance** in the same window compares furniture
-or rooms without changing the plan.
+| Key | Action |
+| --- | --- |
+| `e` | Edit details and available dimensions |
+| `m` | Move the item |
+| `r` | Edit the footprint on the canvas |
+| `R` | Rotate by 90 degrees |
+| `y` | Duplicate the item |
+| `d` | Delete the item |
 
-Movement and rotation are semantic actions with undo/redo and validation.
-Snapping can target room edges/centres, doors, furniture, and grid according
-to the configured priority. The final preview highlights every room or
-furniture edge segment the complete silhouette touches, including simultaneous
-contacts on compound footprints.
+Movement and rotation use the same validation and undo rules as other plan
+changes. Snapping can target room edges, centres, doors, furniture, and the
+grid.
 
-Built-in and imported rectangle templates become canonical one-part footprints
-when placed. Loaded compound furniture can be moved, rotated, duplicated,
-validated, rendered, shape-edited, and saved without flattening it. Its
-rectangle-only width/depth form controls remain hidden; label, category,
-room-local position, height, and rotation stay editable there.
+Open `?` and choose **Place furniture against wall** for exact wall placement.
+You can align the item with the start, centre, or end of a wall segment and set
+a clearance. **Measure exact clearance** compares rooms or furniture without
+changing the plan.
 
-## Direct shape editing
+## Edit a compound footprint
 
-Press `r` for the direct path, or press `e` and activate **Edit footprint**.
-The canvas then uses the same `RESIZE` interaction as rooms: `Enter` or `Tab`
-selects a section, direction keys choose and resize its visible edge, `a` adds
-an adjoining same-sized section, and `d` removes the selected section. `s`
-applies the complete footprint as one undo step and saves; `Esc` cancels it.
+Press `r`, or choose **Edit footprint** from the `e` form. The canvas uses the
+same `RESIZE` controls as room editing.
 
-The item's doubled-mm anchor and room-local position remain fixed, including
-through quarter-turn rotations. RoomPlan rejects any resize or removal that
-would leave the anchor outside the footprint. Snapping is calculated in world
-space against other sections, room walls, furniture, and the plan grid, then
-converted back to the item's local rotated geometry.
+| Key | Action |
+| --- | --- |
+| `Enter` | Select the section under the cursor |
+| `Tab` / `Shift-Tab` | Select another section |
+| Direction keys | Choose and move an edge |
+| `a` | Add an adjoining section |
+| `d` | Remove the selected section |
+| `s` | Apply the footprint and save |
+| `Esc` | Cancel the edit |
 
-For furniture based on a project-local template, `s` opens a compact RoomPlan
-popup with two explicit scopes:
+The furniture anchor stays fixed while you edit its shape. RoomPlan rejects a
+change that leaves the anchor outside the footprint or places the item outside
+its room.
 
-- **This item only** changes the selected item and leaves every template and
-  peer item unchanged.
-- **Item + project template** changes the selected item and the default used by
-  future placements as one undo step. Other already placed items remain
-  unchanged because they own explicit geometry.
+If the item came from a project template, saving offers two scopes:
 
-Built-in and imported templates are process-level read-only catalogue entries,
-so their placed items use the item-only path. Cancelling the save-scope popup
-returns to the active shape draft; it neither commits nor saves anything.
+- **This item only** changes the selected item.
+- **Item + project template** also changes the default for future placements.
+
+Existing items keep their own geometry in both cases. Built in and imported
+catalogue templates are read only, so their placed items use the first scope.
 
 ## Project templates
 
-Enable **Save as project template** while adding furniture to create a
-`custom:*` template with the current footprint and height. Project templates
-are saved inside that plan, appear as top-level Objects rows, and can be edited
-with `e`. Press `r` for direct editing, or activate **Edit footprint** in that
-popup, to edit its rectangular sections in an isolated local canvas preview.
-The usual `Enter`/`Tab`,
-directions, `a`, `d`, `s`, and `Esc` controls apply. The plan viewport is
-restored afterwards, and the template anchor stays fixed and valid.
+Enable **Save as project template** while adding furniture to store a reusable
+template in the current plan. Project templates appear in Objects and can be
+edited with `e` or `r`.
 
-Saving a direct template edit changes future placements only. Existing placed
-furniture keeps its explicit geometry. Use the placed-item save-scope popup
-when the current item and template should receive the same shape atomically.
-The scalar `e` form remains the compact editor for template name, category,
-height, and canonical rectangle dimensions.
+Changing a project template affects future placements. Existing furniture is
+not changed unless you use the combined save scope from a placed item.
 
-For reusable personal or team defaults that should not be copied into every
-plan, use [Furniture catalogues](furniture-catalogs.md).
+For defaults that should be available across plans, use
+[Furniture catalogues](furniture-catalogs.md).
 
 ← [Windows and outlets](windows-and-outlets.md) | [Documentation home](../README.md) | [Furniture catalogues](furniture-catalogs.md) →

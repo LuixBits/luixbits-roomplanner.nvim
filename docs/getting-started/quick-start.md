@@ -56,17 +56,16 @@ offsets, hinges, and swing direction are explained in
 ## 5. Add furniture
 
 Press `F`, choose Living room and Sofa, then accept or edit its dimensions and
-placement. Press `m` to move the selected sofa, `r` to resize it live, `R` to
-rotate it, and `Esc` to
-leave MOVE mode.
+placement. Press `m` to move the selected sofa. Press `r` to resize it or `R`
+to rotate it. Use `Esc` to leave MOVE mode.
 
 ## 6. Add a window and outlet
 
 Press `W` to place a window on an exterior wall, then press `O` and choose a
 wall or floor outlet. Wall outlets use inward-facing half circles; floor
 outlets use full circles. The `a` Add menu offers the same choices with
-lowercase `w` and `o`. See
-[Windows and outlets](../planning/windows-and-outlets.md) for connections,
+lowercase `w` and `o`. See [Windows and
+outlets](../planning/windows-and-outlets.md) for connections,
 offsets, types, and current vertical-data limits.
 
 ## 7. Validate and save

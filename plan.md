@@ -80,7 +80,7 @@ writer. Compound footprints are connected, hole-free unions of at most 256
 axis-aligned rectangles. Angled walls and arbitrary polygons are deliberately
 outside the current model.
 
-## Immediate — compatibility hardening and first tagged release
+## Immediate: compatibility hardening and first tagged release
 
 - Keep every required Neovim 0.10, 0.11, and 0.12 job green. Runtime code must
   not call an API newer than the advertised minimum without a tested
@@ -100,7 +100,7 @@ outside the current model.
 - Keep the roadmap factual and remove candidates that have no product value or
   implementation route. Do not tag around a failing required check.
 
-## Next user-facing milestone — circulation and clearance
+## Next user-facing milestone: circulation and clearance
 
 - Derive walkable room space minus furniture and obstacles, with doors as
   portals, and render it as a transient main-canvas analysis rather than saved
@@ -148,7 +148,7 @@ outside the current model.
   duplicates the shipped `t` detail levels. Candidate layers are furniture,
   annotations, openings, outlets, diagnostics, and active analyses.
 
-## Later — stable physical walls and openings
+## Later: stable physical walls and openings
 
 - Promote transient exterior/shared-boundary topology to reconciled persistent
   wall identity only when a user-facing wall feature requires it, representing

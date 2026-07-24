@@ -1,65 +1,56 @@
 # Workspace panels
 
-The side panels provide progressive detail without covering the canvas with
-permanent information.
+The side panels keep object lists and detailed information out of the Canvas.
 
-## Navigator: Objects
+## Objects
 
-Objects begins with the plan, then lists rooms in document order. Each room
-contains its owned doors, windows, outlets, and furniture. Project-local
-furniture templates are top-level rows. Diagnostic markers appear beside
-affected objects.
+Objects lists the plan, its rooms, and each room's doors, windows, outlets, and
+furniture. Project furniture templates appear at the top level. Diagnostic
+markers show which objects need attention.
 
-Use `j` / `k` to move, `Enter` to select, `h` / `l` to collapse or expand a
-room, and `/` to filter by kind, ID, name, label, or room. Selecting a row
-normally returns focus to the canvas while retaining the selection.
+| Key | Action |
+| --- | --- |
+| `j` / `k` | Move through rows |
+| `Enter` | Select the row and return to the Canvas |
+| `h` / `l` | Collapse / expand a room |
+| `/` | Filter by kind, ID, name, label, or room |
+| `Space` | Mark or unmark an object |
 
-Press `Space` on an object row to mark or unmark it without adding global
-canvas keys. The Navigator header and row marker show the active set. Open `?`
-to move, duplicate, delete, or clear the marked objects. Each operation is one
-atomic history entry: a failure changes nothing, and one Undo reverts the whole
-batch. Group movement supports rooms and furniture while preserving their
-relative spacing; furniture already owned by a marked room moves with that room
-and is not applied twice. Doors keep their placement popup and are not batch
-duplicated.
+Marked objects can move, duplicate, or delete together. Open `?` to find those
+actions. One operation creates one undo entry. A failed operation changes
+nothing.
 
-## Navigator: Issues
+If a marked room owns marked furniture, the furniture moves with the room only
+once. Doors are not batch duplicated because their placement needs a wall.
 
-Issues shows the latest validation result with severity, code, object, and
-message. `v` refreshes validation and focuses this view; `Alt-k` and `Alt-j` move
-between diagnostics. `Enter` selects the affected object, recentres it on the
-canvas without changing zoom or rotation, and returns focus to the canvas;
-previous/next issue uses the same reveal behaviour. `/` filters the list.
-Errors block a normal save, while warnings do not. See
-[Validation](../data/validation.md).
+## Issues
 
-Objects and Issues share the Navigator slot. `1` opens Objects and `!` opens
-Issues, so the left side never needs two overlapping lists.
+Press `v` to validate and open Issues. Errors block a normal save. Warnings do
+not.
+
+Use `Alt-j` and `Alt-k` for the next and previous issue. `Enter` selects and
+centres the affected object without changing zoom or rotation. Press `/` to
+filter the list.
+
+Objects and Issues share one side slot. Press `1` for Objects and `!` for
+Issues.
 
 ## Details
 
-Details is selection-aware. It shows plan/source summaries when nothing is
-selected, room geometry and area, wall-feature placement, door swing,
-furniture position and size, or project-template defaults. Stable IDs and
-source details live in collapsed sections rather than the primary view.
-Validation messages for the selection get their own section.
+Details shows facts about the selected plan or object. It includes room area,
+wall placement, door swing, furniture position, source information, and
+validation messages where relevant.
 
-The heading follows the active NAV, MOVE, PAN, RESIZE, form, or SUN STUDY
-context. An always-expanded **Canvas controls** section lists the commands for
-that context, including **Finish moving**, **Finish panning**, **Cancel resize**,
-or **Close study**. These are the same resolved keys shown in the footer and
-`?`; no separate Details-only mapping table exists. When Details itself has
-focus, its first row reminds you to press `2` before using Canvas controls.
+The first section lists Canvas controls for the current mode. These keys come
+from the same action data as the footer and `?`. Press `2` before using a Canvas
+control while Details has focus.
 
-Sections use drawn borders and behave like accordions: `Enter` or `Space`
-toggles the focused heading, while `h` and `l` explicitly collapse and expand.
-Use `e` when you want to edit the selected plan or object; Details itself is
-read-only.
+Use `Enter` or `Space` to toggle a section. Use `h` and `l` to collapse or
+expand it. Details is read-only. Press `e` to edit the selected object.
 
 ## Visibility
 
-`1` and `3` toggle Navigator and Details. Their visibility choices survive
-reflows, and manually closing a side split records it as hidden. In compact
-mode the same keys open temporary centered drawers.
+`1` toggles Navigator and `3` toggles Details. In compact layouts these keys
+open centered drawers. Manual visibility choices survive later layout changes.
 
 ← [Navigation](navigation.md) | [Documentation home](../README.md) | [Forms and actions](forms-and-actions.md) →

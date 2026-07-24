@@ -1,89 +1,89 @@
 # Limitations and roadmap
 
-RoomPlan is a precise terminal floor-planning tool, not CAD/BIM software, a
-construction drawing system, or a building-code checker.
+RoomPlan is a terminal space planning tool. It is not CAD, BIM, a construction
+drawing system, or a building code checker.
 
-## Current schema-v4 boundaries
+## Current scope
 
-- one floor per plan;
-- connected, hole-free unions of at most 256 axis-aligned rectangular parts
-  for rooms and furniture;
-- abstract zero-thickness walls;
-- furniture with 0/90/180/270-degree rotation;
-- single-leaf hinged doors;
-- wall-aligned windows with width, an optional sill/head pair, and optional
-  adjacent-room connection;
-- wall and floor point outlets with a type and 1–32 slots;
-- schema-v4 JSON writing, sequential schema-v1/v2/v3 migration, and optional Norg
-  embedding;
-- transient viewport zoom, pan, rotation, pane layout, filters, and collapsed
-  sections;
-- integer-mm authored parts with exact doubled-mm furniture anchors;
-- terminal-cell raster rendering, not freehand text editing.
+| Area | Current support |
+| --- | --- |
+| Plans | One floor per plan |
+| Rooms and furniture | Connected shapes with up to 256 rectangular sections |
+| Walls | Abstract boundaries with no thickness |
+| Furniture rotation | 0, 90, 180, or 270 degrees |
+| Doors | Single leaf hinged doors |
+| Windows | Wall openings with optional room connection and height pair |
+| Outlets | Typed wall or floor points with 1 to 32 slots |
+| Storage | Schema v4 JSON, older schema migration, and optional Norg embedding |
+| Canvas | Terminal cell rendering with temporary zoom, pan, and view rotation |
 
-The compass rotates RoomPlan's view only; Neovim windows and the physical
-display cannot be rotated by a plugin. The offline sunlight study persists
-exact plan north/site data, then keeps its date, time, controls, and overlay
-transient. Furniture height is stored and shown, but the canvas remains a
-top-down 2D footprint.
+Measurements use whole millimetres. Furniture anchors can represent exact
+half millimetre centres for odd sized objects. The Canvas is a view of this
+data and is not a freehand text editor.
 
-The room form creates rectangles and configurable two-part L shapes; direct
-canvas resizing can also add, resize, and remove rectangular sections while
-preserving valid union topology. The furniture form currently creates
-one-part rectangles. Placed furniture can use **Edit footprint** in its
-ordinary `e` popup to reach the direct canvas section editor while preserving
-its explicit anchor through every quarter turn. Project templates use the same editor in an isolated local
-preview. A placed item that references a project template chooses item-only or
-item-plus-template scope in a popup; other placed items are never implicitly
-rewritten. Rectangle-only form resizing remains disabled for compound or
-custom-anchor objects.
+Room forms create rectangles and configurable L shapes. The direct footprint
+editor can add, resize, and remove sections for rooms, placed furniture, and
+project templates. Compound shapes must stay connected and free of holes or
+overlaps.
 
-## Deliberately not represented
+Furniture forms create rectangular items. Loaded compound furniture remains
+editable through the direct footprint editor. Updating a project template does
+not rewrite existing items unless the selected item uses the explicit combined
+save scope.
 
-Wall thickness, wall assemblies, glazing and opening styles, outlet mounting
-heights and circuits, stairs, plumbing or full
-electrical layers, curves, arbitrary polygons, multi-leaf/sliding doors,
-manufacturer catalog semantics, clearance/code compliance, dimensions suitable
-for construction, and multi-user synchronization are outside schema v4.
-Configuration does not pretend these fields work before the model, validation,
-storage, and UI can support them coherently.
+## Not represented
 
-## Direction of future work
+RoomPlan does not currently model:
 
-Likely extensions should arrive end-to-end: schema and migration when needed,
-pure model and geometry, validation, scene/raster representation, structured
-forms, fixtures, and recovery documentation.
+- Wall thickness, assemblies, or materials.
+- Glazing and window opening styles.
+- Outlet height, circuits, or full electrical layers.
+- Stairs, plumbing, curves, or arbitrary polygons.
+- Sliding or multiple leaf doors.
+- Construction dimensions or code compliance.
+- Several floors or live multiuser editing.
 
-Palette-based room and furniture colors, compound footprints, wall-anchored
-windows, wall outlets, the contextual selection/MOVE/RESIZE breadcrumb, exact
-clearance measurement, wall placement, marked-object batch actions, named
-history restore, and the first offline sunlight study are implemented. The
-next product milestone after compatibility hardening and a tagged release is a
-transient circulation and clearance overlay built on reusable analysis
-controls.
+Furniture height is stored and shown, but the Canvas remains a top view.
+Geographic north is stored for sun study. Rotating the view does not rotate
+saved geometry or Neovim windows.
 
-Related UX candidates are layer toggles, recent furniture and colors,
-duplicate-and-place-again actions, and reusable analysis overlays. Longer-term
-candidates already on the roadmap
-remain additional opening types, stable physical wall construction, vertical
-wall-feature data, multiple floors, richer annotations, and a stable tagged
-LuaRock release.
+## Planned work
 
-Sunlight currently calculates direction/elevation, marks exposed exterior
-walls/windows, projects clipped floor patches from explicit or assumed window
-heights, compares three-month seasonal dates, and accumulates a fixed-band daily
-exposure legend. Future sunlight work may add overhangs, wall thickness,
-obstacle-height shadows, and reusable overlay controls. It remains explicitly
-approximate in a 2D plan.
+The immediate goal is compatibility hardening and the first tagged release.
+This includes the full supported Neovim matrix, package checks, manual smoke
+tests, and an accurate screenshot or recording.
 
-No candidate is a compatibility promise. The source of truth for shipped work
-is the current documentation and tests; planned work belongs in the project
-[`plan.md`](../../plan.md) roadmap rather than dormant runtime flags or legacy
-branches.
+The next product milestone is a temporary circulation and clearance overlay.
+It should show walkable space, furniture clearance, door swings, unreachable
+areas, and narrow passages. The results will be advisory and will not certify
+building codes.
 
-Schema v1, v2, and v3 remain explicitly loadable through tested sequential
-migrations. Loading does not rewrite the source; the migrated session requires
-an explicit save before schema-v4 bytes replace it. Plugin version
-changes remain independent of schema versions.
+Likely followups include:
+
+- Reusable controls for analysis overlays.
+- Furniture height shadows in sun study.
+- SVG export.
+- Useful layer visibility controls.
+- Recent choices or duplicate and place again workflows.
+
+Longer term candidates include more opening types, stable physical wall
+identity, vertical wall data, multiple floors, richer annotations, and more
+construction detail.
+
+The sun study remains an approximate clear sky 2D analysis. Possible additions
+include overhangs, wall thickness, and obstacle shadows. It will not be
+presented as illuminance, thermal analysis, or a construction simulation.
+
+## Compatibility
+
+Schema v1, v2, and v3 remain readable through tested migrations. Schema v4 is
+the only writer. Opening an older plan does not rewrite it. An explicit save is
+required before the migrated data replaces the source.
+
+Plugin releases and schema versions are independent. Planned features are not
+compatibility promises. Shipped behaviour is defined by the current code,
+tests, and documentation.
+
+The detailed and canonical product roadmap is [`plan.md`](../../plan.md).
 
 ← [Troubleshooting](troubleshooting.md) | [Documentation home](../README.md) | [Architecture](../development/architecture.md) →

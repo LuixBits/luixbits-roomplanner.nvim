@@ -37,9 +37,9 @@ rectangles/intervals, adjacency, doors, sectors, alignment, and snapping. The
 footprint layer is the shared authority for both migrated one-part rectangles
 and current compound unions. It owns stable part identity, connected-union
 topology, exact-range-checked measurements, seam-free boundaries, containment,
-intersection, transforms, anchors, and hit provenance. Room forms preserve
-compound footprints and can resize their rectangular sections without exposing
-internal offsets; other compound object forms remain preservation-only.
+intersection, transforms, anchors, and hit provenance. Scalar forms preserve
+compound shapes without exposing internal offsets. The shared section editor
+can change rooms, placed furniture, and project templates directly.
 Geometry uses integer or doubled-integer predicates where possible. `validate`
 first defends structural invariants, then evaluates layout relationships and
 returns deterministic diagnostics.
@@ -78,7 +78,7 @@ Implementation lives in cohesive modules:
 - `controller/view.lua` owns workspace visibility, selection, viewport,
   aspect, and view interaction;
 - `controller/edit.lua` dispatches semantic changes and structured editing;
-- `controller/shape.lua` coordinates direct transient room resizing;
+- `controller/shape.lua` coordinates direct compound shape editing;
 - `controller/common.lua` and `source_context.lua` contain narrowly shared
   resolution and source-context helpers.
 
