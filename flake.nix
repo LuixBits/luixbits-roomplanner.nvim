@@ -1,5 +1,5 @@
 {
-  description = "A text-first room planner for Neovim";
+  description = "A keyboard-first floor planner for Neovim, backed by exact metric geometry";
 
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
 
@@ -30,7 +30,7 @@
           version = self.shortRev or "dev";
           src = pluginSource;
           meta = {
-            description = "Terminal-native flat planning for Neovim";
+            description = "A keyboard-first floor planner for Neovim, backed by exact metric geometry";
             homepage = "https://github.com/LuixBits/luixbits-roomplanner.nvim";
             license = pkgs.lib.licenses.gpl3Only;
           };
