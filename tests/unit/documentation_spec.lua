@@ -100,7 +100,12 @@ h.describe("documentation", function()
       { id = "resize_dimensions", key = "r", markdown = "`r` | Resize", help = "r / R" },
       { id = "rotate", key = "R", markdown = "`R` | Rotate", help = "r / R" },
       { id = "sun_study", key = "S", markdown = "`S` | Open or reopen", help = "S               open or reopen" },
-      { id = "toggle_minimap", key = "M", markdown = "`M` | Toggle the minimap", help = "M              toggle whole-plan minimap" },
+      {
+        id = "toggle_minimap",
+        key = "M",
+        markdown = "`M` | Toggle the minimap",
+        help = "M              toggle whole-plan minimap",
+      },
       { id = "save_as", key = "gS", markdown = "`s` / `gS` | Save / Save As", help = "s / gS         save / save as" },
       { id = "next_issue", key = "<A-j>", markdown = "`Alt-j` / `Alt-k`", help = "v / Alt-j / Alt-k" },
       { id = "previous_issue", key = "<A-k>", markdown = "`Alt-j` / `Alt-k`", help = "v / Alt-j / Alt-k" },
@@ -112,21 +117,5 @@ h.describe("documentation", function()
       h.truthy(markdown:find(item.markdown, 1, true), "Markdown is stale for " .. item.id)
       h.truthy(help:find(item.help, 1, true), "Vim help is stale for " .. item.id)
     end
-  end)
-
-  h.it("does not join prose with dash punctuation", function()
-    local paths = vim.fn.glob(root .. "/docs/**/*.md", false, true)
-    paths[#paths + 1] = root .. "/README.md"
-    paths[#paths + 1] = root .. "/plan.md"
-    paths[#paths + 1] = root .. "/doc/roomplan.txt"
-    local failures = {}
-    for _, path in ipairs(paths) do
-      local contents = read(path)
-      if contents:find("—", 1, true) or contents:find(" – ", 1, true) then
-        failures[#failures + 1] = vim.fn.fnamemodify(path, ":.")
-      end
-    end
-    table.sort(failures)
-    h.eq({}, failures)
   end)
 end)

@@ -19,7 +19,7 @@ command -v nix >/dev/null 2>&1 || {
 }
 
 ./scripts/test.sh
-jq empty schema/roomplan.schema.json
+jq empty schema/*.schema.json
 nvim --headless -u NONE -i NONE -n \
   --cmd "set runtimepath^=$ROOT" \
   -c "helptags $ROOT/doc" \
@@ -31,6 +31,6 @@ nvim --headless -u "$ROOT/scripts/minimal_init.lua" -i NONE -n \
   -c "qa!"
 ./scripts/benchmark.sh
 nix flake check "path:$ROOT" --print-build-logs
-git diff --check
+git diff --check HEAD
 
 echo "release-check: local automated checks passed"

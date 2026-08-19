@@ -2,7 +2,7 @@
 set -eu
 
 if [ "$#" -ne 1 ]; then
-  echo "usage: $0 vMAJOR.MINOR.PATCH[-PRERELEASE]" >&2
+  echo "usage: $0 vMAJOR.MINOR.PATCH[-PRERELEASE][+BUILD]" >&2
   exit 2
 fi
 
@@ -23,6 +23,9 @@ awk -v version="$version" '
     next
   }
   found && /^## \[/ {
+    exit
+  }
+  found && /^\[[^]]+\]:[[:space:]]+https?:\/\// {
     exit
   }
   found {
