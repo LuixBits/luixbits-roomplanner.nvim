@@ -1,34 +1,36 @@
 # RoomPlan documentation
 
-Use this page to find the shortest path to the help you need. The [complete
-chapter list](SUMMARY.md) is available when you want to read the handbook in
+Start with the guide that matches what you are trying to do. The [complete
+chapter list](SUMMARY.md) is available if you prefer to read the handbook in
 order.
 
-## Start here
+## New to RoomPlan
 
-- [Install RoomPlan](getting-started/installation.md)
-- [Build your first plan](getting-started/quick-start.md)
-- [Learn the basic concepts](getting-started/concepts.md)
-- [See the default keys](configuration/keymaps.md)
+1. [Install RoomPlan](getting-started/installation.md).
+2. [Build your first plan](getting-started/quick-start.md).
+3. [Learn how plans, sources, sessions, and workspaces differ](getting-started/concepts.md).
 
-## I want to...
+The quick start creates two rooms, connects them with a door, adds furniture
+and wall features, validates the result, and saves it.
 
-| Task | Read |
+## Find a task
+
+| I want to... | Read |
 | --- | --- |
-| Create, move, or resize a room | [Rooms and alignment](planning/rooms.md) |
-| Add or edit furniture | [Furniture and project templates](planning/furniture.md) |
+| Create, move, resize, or align a room | [Rooms](planning/rooms.md) |
+| Add or edit furniture | [Furniture](planning/furniture.md) |
 | Import furniture defaults | [Furniture catalogues](planning/furniture-catalogs.md) |
-| Add a door | [Doors and shared walls](planning/doors.md) |
+| Add a door between rooms or to the outside | [Doors](planning/doors.md) |
 | Add a window or outlet | [Windows and outlets](planning/windows-and-outlets.md) |
-| Measure or place furniture against a wall | [Forms and actions](workspace/forms-and-actions.md) |
-| Use the minimap, zoom, or rotate the view | [Canvas controls](workspace/canvas.md) |
-| Run a sunlight study | [Sun study](planning/sun-study.md) |
+| Measure a gap or place furniture against a wall | [Forms and actions](workspace/forms-and-actions.md) |
+| Zoom, pan, rotate, or use the minimap | [Canvas](workspace/canvas.md) |
+| Compare approximate sunlight exposure | [Sun study](planning/sun-study.md) |
 | Change a key | [Keymaps](configuration/keymaps.md) |
-| Change colors or glyphs | [Appearance](display/appearance.md) |
-| Fix a stretched canvas | [Aspect calibration](display/aspect-and-rotation.md) |
+| Change colours or glyphs | [Appearance](display/appearance.md) |
+| Correct a stretched canvas | [Aspect and rotation](display/aspect-and-rotation.md) |
 | Understand a blocked save | [Validation](data/validation.md) |
 | Recover from a source conflict | [Storage and sessions](data/storage-and-sessions.md) |
-| Diagnose a problem | [Troubleshooting](reference/troubleshooting.md) |
+| Diagnose an installation or display problem | [Troubleshooting](reference/troubleshooting.md) |
 
 ## Learn the workspace
 
@@ -43,7 +45,12 @@ order.
 - [Settings](configuration/settings.md)
 - [Keymaps](configuration/keymaps.md)
 - [Appearance, highlights, and glyphs](display/appearance.md)
-- [Aspect calibration, compass, and view rotation](display/aspect-and-rotation.md)
+- [Aspect calibration and view rotation](display/aspect-and-rotation.md)
+
+## Plan data and saving
+
+- [Storage, sessions, migration, and conflicts](data/storage-and-sessions.md)
+- [Validation and repair drafts](data/validation.md)
 - [Coordinates and document schema](data/coordinates-and-schema.md)
 
 ## Reference
@@ -53,14 +60,18 @@ order.
 - [Troubleshooting](reference/troubleshooting.md)
 - [Limitations and roadmap](reference/limitations-and-roadmap.md)
 
+Inside Neovim, `:help roomplan` provides the offline reference and
+`:checkhealth roomplan` checks compatibility, configuration, mappings,
+display, sessions, and source access.
+
 ## Development
 
 - [Architecture](development/architecture.md)
 - [Compatibility policy](development/compatibility.md)
 - [Architecture decisions](adr/README.md)
-- [Contributing](development/contributing.md)
-- [Releasing](development/releasing.md)
+- [Contributing](../CONTRIBUTING.md)
+- [Release checklist](../RELEASE.md)
 
-Every chapter links back here and to related topics. Inside Neovim, use
-`:help roomplan` for the offline reference and `:checkhealth roomplan` for
-diagnostics.
+The root contribution and release documents are authoritative. The other
+development chapters explain the architecture and compatibility boundaries
+around those procedures.

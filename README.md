@@ -3,24 +3,32 @@
 [![CI](https://github.com/LuixBits/luixbits-roomplanner.nvim/actions/workflows/ci.yml/badge.svg)](https://github.com/LuixBits/luixbits-roomplanner.nvim/actions/workflows/ci.yml)
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
 
-A keyboard-first floor planner for Neovim.
+A keyboard-first floor planner for Neovim, backed by exact metric geometry.
+
+![RoomPlan in Neovim showing a two-room plan with furniture, doors, windows, and outlets](docs/assets/roomplan-overview.gif)
 
 RoomPlan stores measurements as structured millimetre geometry. The terminal
-canvas is an interactive view of that data. Display rounding cannot change the
-saved plan.
+canvas is an interactive view of that data, so display rounding never changes
+the saved plan.
+
+I started RoomPlan while planning a move. The tools I tried either had ads,
+required a subscription, or I just did not like them.
 
 RoomPlan is intended for space planning. It is not CAD, BIM, a construction
 drawing tool, or a building-code checker.
 
 ## What it does
 
-- Create rectangular or compound rooms and furniture.
-- Add doors, windows, wall outlets, and floor outlets.
-- Move, resize, rotate, align, measure, and validate objects from the canvas.
+- Build rectangular, L-shaped, or connected multi-section rooms and furniture.
+- Add single-leaf doors, wall windows, wall outlets, and floor outlets.
+- Move and resize rooms and furniture, rotate furniture by 90 degrees, align
+  rooms, and measure exact clearances.
+- Review layout problems before saving.
 - Import furniture catalogues from Lua or JSON.
-- Save plans as standalone JSON or inside a marked Norg block.
-- Inspect sunlight exposure with an offline two-dimensional study.
-- Keep several plans open with undo history and conflict-safe saving.
+- Save standalone JSON plans or embed them in a marked Norg block.
+- Compare approximate clear-sky 2D sunlight exposure without a network
+  connection.
+- Keep several plans open with undo history and conflict-aware saving.
 
 RoomPlan supports Neovim 0.10 and newer. It has no required runtime dependency.
 
@@ -31,6 +39,7 @@ With lazy.nvim:
 ```lua
 {
   "LuixBits/luixbits-roomplanner.nvim",
+  version = "*",
   lazy = false,
   main = "roomplan",
   opts = {},
@@ -41,41 +50,43 @@ With Neovim 0.12 `vim.pack`:
 
 ```lua
 vim.pack.add({
-  { src = "https://github.com/LuixBits/luixbits-roomplanner.nvim" },
+  {
+    src = "https://github.com/LuixBits/luixbits-roomplanner.nvim",
+    version = vim.version.range("*"),
+  },
 })
 
 require("roomplan").setup({})
 ```
 
-See [Installation](docs/getting-started/installation.md) for Nix, nvf,
+These examples follow the newest tagged release. Remove `version` to follow
+the development branch instead. The [installation
+guide](docs/getting-started/installation.md) also covers exact pins, Nix, nvf,
 rocks-git.nvim, native packages, and local development.
 
-## Create a plan
+## Create your first plan
 
-Create a standalone plan:
+Create a standalone plan without overwriting an existing non-empty file:
 
 ```vim
 :RoomPlanInit ~/plans/flat.roomplan.json
 ```
 
-The most useful default keys are:
+These keys are enough to begin:
 
 | Key | Action |
 | --- | --- |
 | `a` | Add an object |
+| `h j k l` | Move the canvas cursor |
 | `e` | Edit exact properties |
-| `m` | Move the selected object |
-| `r` | Resize a room or furniture item |
-| `R` | Rotate furniture |
+| `m` / `r` / `R` | Move, resize, or rotate the selected object when supported |
 | `s` | Save |
 | `u` / `Ctrl-r` | Undo / redo |
-| `.` / `,` | Zoom in / out |
-| `1` / `2` / `3` | Navigator / Canvas / Details |
-| `?` | Show all actions for the current context |
+| `?` | Show and search the actions available in the current context |
 
-Press `/` inside the `?` window to search its actions. The [Quick
-start](docs/getting-started/quick-start.md) builds a complete plan with rooms,
-furniture, a door, a window, and an outlet.
+The [quick start](docs/getting-started/quick-start.md) builds a plan with two
+rooms, furniture, a shared door, a window, and an outlet, then validates and
+saves it.
 
 Open an existing plan with:
 
@@ -85,47 +96,41 @@ Open an existing plan with:
 
 ## Documentation
 
-Start at the [documentation home](docs/README.md) when you need help with a
-specific task.
+| If you want to... | Start here |
+| --- | --- |
+| Install RoomPlan | [Installation](docs/getting-started/installation.md) |
+| Build a complete first plan | [Quick start](docs/getting-started/quick-start.md) |
+| Learn the workspace and controls | [Workspace overview](docs/workspace/overview.md) |
+| Change settings, keys, colours, or glyphs | [Settings](docs/configuration/settings.md), [keymaps](docs/configuration/keymaps.md), and [appearance](docs/display/appearance.md) |
+| Understand saving, migration, or conflicts | [Storage and sessions](docs/data/storage-and-sessions.md) |
+| Diagnose a problem | [Troubleshooting](docs/reference/troubleshooting.md) |
+| Use commands or Lua | [Commands](docs/reference/commands.md) and [Lua API](docs/reference/lua-api.md) |
+| Check current limits and planned work | [Limitations and roadmap](docs/reference/limitations-and-roadmap.md) |
 
-- [Installation](docs/getting-started/installation.md)
-- [Quick start](docs/getting-started/quick-start.md)
-- [Default keys and remapping](docs/configuration/keymaps.md)
-- [Rooms](docs/planning/rooms.md) and [furniture](docs/planning/furniture.md)
-- [Doors](docs/planning/doors.md), [windows and outlets](docs/planning/windows-and-outlets.md)
-- [Sun study](docs/planning/sun-study.md)
-- [Saving, sessions, and conflicts](docs/data/storage-and-sessions.md)
-- [Troubleshooting](docs/reference/troubleshooting.md)
-
-Inside Neovim, use `:help roomplan` for the offline reference and
+The [documentation home](docs/README.md) links every user and development
+chapter. Inside Neovim, use `:help roomplan` for the offline reference and
 `:checkhealth roomplan` for diagnostics.
 
-## Configuration
+## Compatibility and releases
 
-Defaults work without calling `setup()`. RoomPlan validates all supplied
-options and rejects unknown settings.
+The `main` branch is tested development source; tagged releases are the stable
+installation targets. Plugin versions and saved-plan schema versions are
+independent. The [compatibility policy](docs/development/compatibility.md)
+lists the supported Neovim versions and public interfaces.
 
-See [Settings](docs/configuration/settings.md),
-[Keymaps](docs/configuration/keymaps.md), and
-[Appearance](docs/display/appearance.md) for the complete configuration.
+Release changes are recorded in [CHANGELOG.md](CHANGELOG.md).
 
-## Development
+## Contributing and support
 
-Run the test suite from the repository root:
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing the project. The
+[architecture chapter](docs/development/architecture.md) describes the code
+boundaries, and the [release checklist](RELEASE.md) contains the complete
+gates.
 
-```sh
-./scripts/test.sh
-```
-
-Read [CONTRIBUTING.md](CONTRIBUTING.md) before changing the project. Release
-requirements are in [RELEASE.md](RELEASE.md). The [architecture
-chapter](docs/development/architecture.md) describes the code boundaries.
-
-Use [SUPPORT.md](SUPPORT.md) for questions and bug reports. Report security
-issues as described in [SECURITY.md](SECURITY.md).
+Use [SUPPORT.md](SUPPORT.md) for questions and reproducible bug reports. Report
+security issues privately as described in [SECURITY.md](SECURITY.md).
 
 ## License
 
-RoomPlan is licensed under GPL-3.0-only. See [LICENSE](LICENSE). Distributed
-versions must remain under the same license and provide their source.
-Third-party notices are recorded in [NOTICE](NOTICE).
+RoomPlan is licensed under [GPL-3.0-only](LICENSE). Third-party notices are
+recorded in [NOTICE](NOTICE).
