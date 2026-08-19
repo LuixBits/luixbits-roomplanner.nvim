@@ -7,9 +7,9 @@ A keyboard-first floor planner for Neovim, backed by exact metric geometry.
 
 ## Showcase
 
-![RoomPlan in Neovim showing a two-room plan with furniture, doors, windows, and outlets](docs/assets/roomplan-overview.gif)
+[![Watch the roomplan.nvim showcase on YouTube](docs/assets/roomplan-showcase.png)](https://youtu.be/bAPyriQQsNM)
 
-[Watch the full RoomPlan walkthrough on YouTube.](https://youtu.be/bAPyriQQsNM)
+[Watch on YouTube.](https://youtu.be/bAPyriQQsNM)
 
 RoomPlan stores measurements as structured millimetre geometry. The terminal
 canvas is an interactive view of that data, so display rounding never changes

@@ -1,14 +1,16 @@
 # Documentation media
 
 The GIFs in this directory are rendered from real RoomPlan sessions. The
-source recordings stay in the private LuixBits video archive and are not part
-of this repository.
+showcase image is the final thumbnail for the RoomPlan walkthrough. Source
+recordings and working files stay in the private LuixBits video archive and
+are not part of this repository.
 
 | Asset | Source capture | Cut | Output SHA-256 |
 | --- | --- | --- | --- |
 | `roomplan-overview.gif` | `roomplan/test-tour.mkv` | `0.0s` to `6.9s` | `5d3d4c459344f7e300927ff1d76de86ff65a7781a3538c90bfb27cb8a9378420` |
 | `roomplan-add-align.gif` | `roomplan/02-01-add-and-align.mkv` | `1.1s` to `13.0s` | `db9640d2840dcb4cfee6b997f7cfe8d4a61fc00a46fcbfad7b00f2973297c48e` |
 | `roomplan-sun-study.gif` | `roomplan/chapter01/02-sun-study.mkv` | `4.5s` to `14.5s` | `2de409a374172be4defa5e0ea958623e9ff2afa94b14ce410e799e60e30f8735` |
+| [`roomplan-showcase.png`](roomplan-showcase.png) | `roomplan-nvim-thumbnail-v2.png` | Final thumbnail | `825bfd079bd2744f817f2488dd209e66fc49229d1f8cd4c4c23ab3da728504e5` |
 
 Source capture checksums:
 
