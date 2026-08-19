@@ -62,8 +62,21 @@ required check.
 - Create a signed tag when signing is configured; otherwise create an annotated
   tag. Lightweight release tags are rejected by the publication workflow:
 
+  With signing configured:
+
   ```sh
   git tag -s vX.Y.Z -m "RoomPlan vX.Y.Z"
+  ```
+
+  Without signing configured:
+
+  ```sh
+  git tag -a vX.Y.Z -m "RoomPlan vX.Y.Z"
+  ```
+
+  Push the tag after creating it:
+
+  ```sh
   git push origin vX.Y.Z
   ```
 

@@ -47,7 +47,7 @@ promises.
   actions after every character without changing the immediate one-key Add
   menu. Adjacent unshifted `,` and `.` keys zoom out and in for Swiss, compact,
   and ergonomic keyboards. Both remain configurable by semantic mapping name.
-- Native packages, lazy.nvim, snacks, rocks, Nix flake, and nvf compatibility
+- Native packages, lazy.nvim, Snacks, rocks, Nix flake, and nvf compatibility
   without optional integrations becoming hard dependencies.
 - Public-project foundations including contribution/support/security policies,
   issue and pull-request templates, ADRs for durable decisions, pinned CI
@@ -74,31 +74,13 @@ promises.
   renderer and follows the exact field of view through zoom, pan, scrolloff,
   rotation, edits, and resize. It remains transient and adds no model or setup
   keys.
+- Stable installation examples, a curated v0.1.0 changelog, and real terminal
+  recordings in the README, quick start, and sunlight guide.
 
 Schema v1, v2, and v3 stay readable compatibility formats; schema v4 is the only
 writer. Compound footprints are connected, hole-free unions of at most 256
 axis-aligned rectangles. Angled walls and arbitrary polygons are deliberately
 outside the current model.
-
-## Immediate: compatibility hardening and first tagged release
-
-- Keep every required Neovim 0.10, 0.11, and 0.12 job green. Runtime code must
-  not call an API newer than the advertised minimum without a tested
-  compatibility path; the Linux/macOS/Windows, Nix, syntax, help, health, and
-  source-safety checks remain release blockers.
-- Run the complete release check, then complete the documented keyboard-only
-  smoke matrix at compact, medium, and wide sizes with Unicode/ASCII, light and
-  dark colourschemes, vanilla and enhanced `vim.ui`, and clean native,
-  lazy.nvim, Nix/nvf, and rocks-git installs.
-- Choose the first SemVer plugin version, turn the accumulated `Unreleased`
-  history into release notes, create a signed/annotated tag, and verify both
-  the default branch and pinned tag. Stable consumers should pin a release tag
-  instead of requiring a stream of individual commits.
-- Add one accurate real-workspace screenshot or short recording to the README
-  before the public release announcement; do not substitute a mockup for the
-  actual terminal UI.
-- Keep the roadmap factual and remove candidates that have no product value or
-  implementation route. Do not tag around a failing required check.
 
 ## Next user-facing milestone: circulation and clearance
 
@@ -163,8 +145,8 @@ outside the current model.
 
 ## Deferred larger scopes
 
-- Named view presets, history grouping, and object locking remain secondary
-  workflow candidates after the first release.
+- Named view presets, history grouping, and object locking remain secondary to
+  the circulation and clearance milestone.
 - Line-of-sight, window-view, robot-vacuum reachability, egress, further room
   presets, arbitrary polygons, multiple floors, richer construction data, and
   multi-user work remain separate later projects rather than dormant settings.

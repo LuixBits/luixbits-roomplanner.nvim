@@ -7,8 +7,8 @@ RoomPlan is maintained as an open-source project on a best-effort basis.
 1. Read the [installation guide](docs/getting-started/installation.md) and
    [troubleshooting guide](docs/reference/troubleshooting.md).
 2. Run `:checkhealth roomplan` and review every warning.
-3. Reproduce with the latest tagged release. If no release exists yet, use the
-   current `main` branch.
+3. Reproduce with the latest tagged release. If you also test `main`, include
+   its commit.
 4. Try the repository's `scripts/minimal_init.lua` when the problem may be
    caused by plugin-manager ordering or another plugin.
 5. Search existing issues before creating a new one.

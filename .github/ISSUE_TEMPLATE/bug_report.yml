@@ -83,7 +83,7 @@ body:
     attributes:
       label: Checklist
       options:
-        - label: I reproduced this with the latest supported RoomPlan release or current `main` before the first release.
+        - label: I reproduced this with the latest supported RoomPlan release or current `main` and provided the tag or commit above.
           required: true
         - label: I searched existing issues and this does not contain sensitive security information.
           required: true
