@@ -7,84 +7,53 @@ RoomPlan schema versions are independent from plugin versions.
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-08-19
+
+First public release.
+
 ### Added
 
-- Exact schema-v4 floor plans with deterministic JSON, optional marked Norg
-  embedding, preserved extension fields, and explicit sequential migration
-  from schema v1, v2, and v3.
-- Rectangular and connected L/T/U-shaped room and furniture footprints with
-  exact integer/doubled-millimetre geometry, stable part IDs, seam-free walls,
-  snapping, containment, validation, and hit provenance.
-- A responsive canvas-first workspace with Navigator/Issues, Details, a
-  contextual action bar, searchable `?` action palette, compact drawers, and
-  buffer-local semantic mappings.
-- Structured popup workflows for rooms, furniture, project templates, doors,
-  windows, wall/floor outlets, alignment, plan/site settings, measurement, and
-  selected-furniture wall placement.
-- Direct highlighted compound-footprint editing for rooms, placed furniture,
-  and project templates, including topology-safe section add/remove/resize,
-  exact snapping, atomic apply/cancel, and explicit item/template update scope.
-- Doors, wall-aligned windows with optional sill/head heights, typed multi-slot
-  wall and floor outlets, furniture rotation, project catalogues, and external
-  dependency-free furniture catalogues.
-- Three canvas detail levels, progressive label scaling, view-only rotation,
-  compass, terminal-cell aspect calibration, edge-following navigation, and a
-  colored field-of-view minimap.
-- Offline sunlight studies with persisted plan north/site authority, exact
-  date/time controls, three-month seasonal comparison, sunrise-to-sunset
-  playback, exposed-wall/window emphasis, clipped floor patches, and daily
-  exposure bands.
-- Exact two-object measurement, marked-object atomic batch operations, named
-  bounded history browsing/restoration, validation issue navigation, and
-  selection/MOVE/RESIZE breadcrumbs.
-- Conflict-safe standalone and Norg persistence, atomic creation/replacement,
-  Save As destination checks, source-revision conflicts, dirty-session quit
-  guards, autosave controls, and recovery behavior.
-- Public Ex commands and Lua API, strict validated `setup()` options,
-  colorscheme-linked highlights with user overrides, configurable glyphs,
-  `:checkhealth roomplan`, Vim help, JSON Schemas, and a chaptered handbook.
-- Native/lazy.nvim/vim.pack/rocks-git installation guidance, a Nix flake and
-  nvf example, Linux/macOS/Windows smoke coverage, and Neovim
-  0.10/0.11/0.12/nightly CI.
-- Architecture decision records, compatibility/support/security policies,
-  issue and pull-request templates, and a guarded release workflow.
+- Exact millimetre floor plans with deterministic JSON, optional marked Norg
+  storage, and explicit migration from document schemas v1 through v4.
+- Rectangular, L-shaped, and connected multi-section rooms and furniture with
+  direct footprint editing and validation.
+- Single-leaf doors, windows with optional height and room connections, and
+  typed wall or floor outlets.
+- A responsive keyboard-first workspace with Navigator, Issues, Details,
+  searchable contextual actions, canvas zoom and rotation, and a minimap.
+- Exact room alignment, clearance measurement, furniture wall placement,
+  marked batch operations, and bounded named undo history.
+- Built-in, Lua, JSON, and project-local furniture catalogues.
+- An approximate offline clear-sky 2D sunlight study with date and time
+  controls, playback, and daily exposure bands.
+- Multiple live plans, conflict-aware atomic saving, guarded Save As, and
+  optional conservative autosave for standalone JSON and Norg sources.
+- Public Ex commands and Lua API, validated configuration, semantic keymaps
+  and highlights, `:checkhealth roomplan`, Vim help, and a linked handbook.
+- Installation paths for lazy.nvim, `vim.pack`, native packages, Nix and nvf,
+  and rocks-git.nvim, with CI across Neovim 0.10, 0.11, 0.12, and nightly.
 
 ### Changed
 
-- Unified contextual commands, labels, availability, disabled reasons, and
-  displayed semantic keys in one action registry shared by Details, the
-  footer, and the searchable action palette.
-- Standardized the main shortcuts around lowercase action/mode keys, uppercase
-  object creation or coarse movement, `R` furniture rotation, `S` sunlight,
-  `M` minimap, adjacent `,`/`.` zoom, and `gS` Save As.
-- Kept analysis, minimap, preview, pane, form, filter, viewport, and playback
-  state transient unless it is an authored part of the plan.
-- Derived sunlight, minimap, selection, diagnostic, preview, and workspace
-  accents from semantic colorscheme groups while preserving explicit
-  `RoomPlan*` highlight overrides.
-- Split controller, geometry, schema, storage, scene, render, workspace, and
-  form responsibilities behind small facades and pure testable boundaries.
+- Unified action names, keys, availability, and disabled reasons across the
+  action bar, Details, and searchable action window.
+- Kept viewport, pane, preview, minimap, form, filter, and study state
+  transient unless it is authored plan data.
+- Derived workspace, selection, diagnostic, minimap, and sunlight colours from
+  the active colour scheme while preserving explicit `RoomPlan*` overrides.
 
 ### Fixed
 
-- Made the in-popup `/` action search focus-safe and compatible with Neovim
-  0.10 through 0.12 without editing read-only result buffers or falling back to
-  command-line search.
-- Prevented workspace reflow, choice cycling, and companion preview rendering
-  from stealing focus from active forms, palettes, UI providers, or unrelated
-  windows.
-- Snapped movement and resize to crossed nearby walls even when configured
-  steps do not divide the remaining millimetres, avoiding overshoot errors.
-- Retained and highlighted every simultaneous positive-length wall contact
-  during movement and resize, independently from magnetic snap correction.
-- Kept zoomed navigation moving by scrolling at the configured Neovim-style
-  `canvas.scrolloff` boundary.
-- Protected conflicted dirty plans during `:q` by opening the normal resolution
-  flow instead of exposing a Lua callback traceback.
-- Preserved old-schema and normalized source bytes until an explicit save and
-  prevented autosave or reconciliation from silently establishing a migrated
-  savepoint.
-- Hardened write hooks, symlinks, CRLF/BOM sources, malformed/future documents,
-  failed reloads, duplicate source ownership, and post-write divergence.
+- Kept forms and action search focused across workspace redraws and supported
+  `vim.ui` providers.
+- Snapped movement and resizing to crossed nearby walls when the configured
+  step did not divide the remaining distance.
+- Preserved every simultaneous positive-length wall contact during movement
+  and resizing.
+- Protected dirty or migrated sources from silent writes during conflicts,
+  reloads, autosave, and quit handling.
+- Hardened symlink, CRLF/BOM, malformed document, failed reload, and duplicate
+  source handling.
 
-[Unreleased]: https://github.com/LuixBits/luixbits-roomplanner.nvim/commits/main
+[Unreleased]: https://github.com/LuixBits/luixbits-roomplanner.nvim/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/LuixBits/luixbits-roomplanner.nvim/releases/tag/v0.1.0

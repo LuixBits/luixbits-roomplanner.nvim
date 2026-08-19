@@ -49,11 +49,7 @@ saved geometry or Neovim windows.
 
 ## Planned work
 
-The immediate goal is compatibility hardening and the first tagged release.
-This includes the full supported Neovim matrix, package checks, manual smoke
-tests, and an accurate screenshot or recording.
-
-The next product milestone is a temporary circulation and clearance overlay.
+The current product milestone is a temporary circulation and clearance overlay.
 It should show walkable space, furniture clearance, door swings, unreachable
 areas, and narrow passages. The results will be advisory and will not certify
 building codes.
@@ -83,7 +79,5 @@ required before the migrated data replaces the source.
 Plugin releases and schema versions are independent. Planned features are not
 compatibility promises. Shipped behaviour is defined by the current code,
 tests, and documentation.
-
-The detailed and canonical product roadmap is [`plan.md`](../../plan.md).
 
 ← [Troubleshooting](troubleshooting.md) | [Documentation home](../README.md) | [Architecture](../development/architecture.md) →

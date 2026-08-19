@@ -7,8 +7,7 @@ as security-sensitive.
 
 ## Supported versions
 
-Before the first tagged release, security fixes are made on `main`. After
-`v0.1.0`, the newest tagged minor release and `main` receive fixes. Older
+The newest tagged minor release and `main` receive security fixes. Older
 pre-`1.0` minor lines are not guaranteed separate backports unless a security
 advisory says otherwise.
 
