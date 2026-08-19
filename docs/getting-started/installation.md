@@ -5,16 +5,24 @@
 RoomPlan requires Neovim 0.10 or newer and has no mandatory runtime
 dependencies. Neorg support is optional.
 
+The examples below install the newest tagged release. The current exact tag is
+`v0.1.0`; use it when you want a reproducible pin. Following `main` gives you
+the tested development branch instead.
+
 ## lazy.nvim
 
 ```lua
 {
   "LuixBits/luixbits-roomplanner.nvim",
+  version = "*",
   lazy = false,
   main = "roomplan",
   opts = {},
 }
 ```
+
+Set `version = "v0.1.0"` for the exact first release. Omit `version` to follow
+`main`.
 
 Keeping RoomPlan non-lazy is the least surprising setup because commands such
 as `:RoomPlanInit path` and `:RoomPlanOpen path` must work from arbitrary
@@ -25,24 +33,32 @@ must be included in the plugin specification.
 
 ```lua
 vim.pack.add({
-  { src = "https://github.com/LuixBits/luixbits-roomplanner.nvim" },
+  {
+    src = "https://github.com/LuixBits/luixbits-roomplanner.nvim",
+    version = vim.version.range("*"),
+  },
 })
 
 require("roomplan").setup({})
 ```
 
-`vim.pack` is available in Neovim 0.12 and newer.
+Use `version = "v0.1.0"` for an exact tag or omit `version` to follow `main`.
+The `vim.pack` lockfile records the resolved revision. `vim.pack` is available
+in Neovim 0.12 and newer.
 
 ## Nix flake
 
-Add RoomPlan to the inputs of your configuration:
+Add the tagged input to your configuration:
 
 ```nix
 inputs.roomplan = {
-  url = "github:LuixBits/luixbits-roomplanner.nvim";
+  url = "github:LuixBits/luixbits-roomplanner.nvim/v0.1.0";
   inputs.nixpkgs.follows = "nixpkgs";
 };
 ```
+
+The consumer's `flake.lock` records the exact revision. Remove `/v0.1.0` from
+the URL only when you intend to follow `main`.
 
 The flake exposes `packages.default`,
 `packages.luixbits-roomplanner-nvim`, and `overlays.default` for x86_64 and
@@ -71,7 +87,8 @@ if Nix reports that the Lua module or command is missing.
 
 ## rocks.nvim
 
-Until RoomPlan publishes a tagged LuaRock, use `rocks-git.nvim`:
+RoomPlan is not published to LuaRocks yet. Install it through
+`rocks-git.nvim`, which follows the newest SemVer tag by default:
 
 ```vim
 :Rocks install rocks-git.nvim
@@ -85,18 +102,22 @@ Or declare the Git source in `rocks.toml`:
 git = "LuixBits/luixbits-roomplanner.nvim"
 ```
 
+Add `rev = "v0.1.0"` to that table for the exact first release.
+
 ## Native packages or another manager
 
 Any package manager that adds the repository root to `runtimepath` works. A
 native start-package installation needs only Git:
 
 ```sh
-git clone https://github.com/LuixBits/luixbits-roomplanner.nvim \
+git clone --branch v0.1.0 --depth 1 \
+  https://github.com/LuixBits/luixbits-roomplanner.nvim \
   ~/.local/share/nvim/site/pack/plugins/start/roomplan.nvim
 nvim --headless "+helptags ALL" +qa
 ```
 
-For a local development checkout:
+To work from the development branch instead, clone without `--branch` and
+`--depth`, then prepend the checkout in your configuration:
 
 ```lua
 vim.opt.runtimepath:prepend("/absolute/path/to/luixbits-roomplanner.nvim")
@@ -107,36 +128,8 @@ The runtime plugin registers commands automatically. Calling `setup()` is
 optional when the defaults are sufficient and safe to repeat when configuring
 options.
 
-## Snacks and other UI providers
-
-RoomPlan owns its workspace, forms, and action windows. Scalar editors and
-confirmation prompts use standard `vim.ui.input` and `vim.ui.select`. With no
-provider installed, Neovim may show scalar input on the command line. A
-provider can replace only those transient interactions without taking over
-RoomPlan's panels or becoming a RoomPlan dependency.
-
-For example, an existing Snacks installation can provide floating inputs,
-searchable choice lists, and notifications:
-
-```lua
-{
-  "folke/snacks.nvim",
-  priority = 1000,
-  lazy = false,
-  opts = {
-    input = { enabled = true },
-    picker = { enabled = true, ui_select = true },
-    notifier = { enabled = true },
-  },
-}
-```
-
-RoomPlan supplies standard input `scope` hints and stable selection `kind`
-hints, including `roomplan_form_choice`, `roomplan_furniture_template`,
-`roomplan_color`, `roomplan_confirmation`, `roomplan_conflict_resolution`, and
-`roomplan_norg_heading`; other RoomPlan choices use `roomplan_selection`.
-Providers may use or ignore those hints. If multiple plugins replace the same
-`vim.ui` function, the last provider loaded wins; use one input/select provider
-and load it before starting an interactive RoomPlan workflow.
+RoomPlan works with Neovim's built-in prompts. See [UI
+providers](../configuration/ui-providers.md) if you want Snacks or another
+provider to supply floating input and searchable choices.
 
 [← Documentation home](../README.md) · [Next: Quick start →](quick-start.md)

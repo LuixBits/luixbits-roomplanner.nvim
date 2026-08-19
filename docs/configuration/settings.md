@@ -89,13 +89,9 @@ snapping = {
 },
 ```
 
-`mm_per_column` is the initial/fallback scale; Fit chooses a scale from the
-scene. Snap tolerance begins in displayed cells, converts through the current
-viewport, then is capped in millimetres. The priority resolves equal
-candidates deterministically. At deep zoom, `plan_defaults.settings.fine_step_mm`
-acts as the minimum tolerance so ordinary movement removes a residual smaller
-than one visible cell. The existing `snapping.max_distance_mm` cap still wins;
-there is no additional setup key for this behaviour.
+`mm_per_column` is the initial scale; Fit chooses a scale from the scene.
+Snap tolerance starts in displayed cells and is capped by `max_distance_mm`.
+The priority list resolves equal candidates in the order shown.
 
 `scrolloff` follows Neovim's option name and keeps that many drawable canvas
 cells between the logical cursor and every viewport edge while navigating with
@@ -104,26 +100,16 @@ of trapping the cursor. The same behavior applies to coarse directions and
 rotated views. Set it to `0` to wait until the cursor reaches the actual edge.
 It is transient view state and never changes the plan or undo history.
 
-During room resizing, snapping is axis-local: only the edge being resized is
-corrected. Nearby edges from the same room and exterior walls from other rooms
-take precedence over the grid. Resizing and ordinary movement both show the
-chosen target as a transient light guide, name it in the canvas status, and
-strongly highlight the overlapping edge. Moving away temporarily releases that
-axis until it leaves the tolerance, so fine steps cannot become snap-locked.
-If a discrete movement or resize step crosses a compatible wall, RoomPlan stops
-at the first crossed wall even when the final proposed position would fall
-outside the magnetic tolerance. This keeps dimensions such as `1.95 m` usable
-with 100 mm or 10 mm steps without introducing a temporary overlap error.
-After correction, RoomPlan recomputes exact exterior-silhouette contact and
-highlights every positive-length touched segment rather than only the candidate
-that won the snap. Contact recomputation also runs when magnetic snapping is
-off or bypassed; in that case only the strong touching segments render, without
-a full alignment guide. Feedback never enters saved data.
+Movement and resizing name the chosen snap target and highlight exact contact.
+Press `gs` to disable magnetic snapping or `g!` to bypass the next change.
+These guides are transient and never enter saved data. See [Canvas
+controls](../workspace/canvas.md) for movement and [Rooms](../planning/rooms.md)
+for footprint editing.
 
 `detail_level` controls transient canvas text. `high` shows labels plus every
 exterior wall-run, furniture width/depth, and door/window-width dimension.
-`middle` (the default) shows labels plus exterior wall-run dimensions. `none` renders
-geometry without labels or dimensions. Press `t`, use
+`middle` (the default) shows labels plus exterior wall-run dimensions. `none`
+renders geometry without labels or dimensions. Press `t`, use
 `:RoomPlanCanvasDetail`, or call `require("roomplan").set_canvas_detail()` to
 change the current session without changing its model or history. Within the
 visible levels, names and dimensions have built-in projected-screen budgets:
