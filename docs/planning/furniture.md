@@ -6,7 +6,7 @@ limited to quarter turns.
 
 ## Add furniture
 
-Press `F` or run `:RoomPlanAddFurniture`. Choose a room and a built in,
+Press `F` or run `:RoomPlanAddFurniture`. Choose a room and a built-in,
 imported, or project template. The template supplies initial values. The
 placed item keeps its own label, category, footprint, height, and rotation.
 
@@ -61,8 +61,8 @@ If the item came from a project template, saving offers two scopes:
 - **This item only** changes the selected item.
 - **Item + project template** also changes the default for future placements.
 
-Existing items keep their own geometry in both cases. Built in and imported
-catalogue templates are read only, so their placed items use the first scope.
+Existing items keep their own geometry in both cases. Built-in and imported
+catalogue templates are read-only, so their placed items use the first scope.
 
 ## Project templates
 

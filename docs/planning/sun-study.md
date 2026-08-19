@@ -79,7 +79,7 @@ bands up to more than six hours, so different dates remain comparable.
 ## Accuracy and limits
 
 Solar position uses a deterministic approximation in Lua. The result is a
-clear sky 2D estimate. It is useful for comparing layouts and times, but it is
+clear-sky 2D estimate. It is useful for comparing layouts and times, but it is
 not a construction or lighting simulation.
 
 The study does not model weather, glare, reflections, thermal gain, wall

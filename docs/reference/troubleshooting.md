@@ -23,7 +23,7 @@ to `LuixBits/luixbits-roomplanner.nvim` and includes
 `lua/roomplan/init.lua`. It must load before its setup call.
 
 With lazy loading, use `lazy = false` or declare every RoomPlan command that
-may trigger loading. With Nix based managers, add the built Vim plugin package
+may trigger loading. With Nix-based managers, add the built Vim plugin package
 to the Neovim plugin set. Rebuild that package after changing a local source
 path.
 

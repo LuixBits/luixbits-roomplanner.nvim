@@ -11,14 +11,14 @@ drawing system, or a building code checker.
 | Rooms and furniture | Connected shapes with up to 256 rectangular sections |
 | Walls | Abstract boundaries with no thickness |
 | Furniture rotation | 0, 90, 180, or 270 degrees |
-| Doors | Single leaf hinged doors |
+| Doors | Single-leaf hinged doors |
 | Windows | Wall openings with optional room connection and height pair |
 | Outlets | Typed wall or floor points with 1 to 32 slots |
 | Storage | Schema v4 JSON, older schema migration, and optional Norg embedding |
 | Canvas | Terminal cell rendering with temporary zoom, pan, and view rotation |
 
 Measurements use whole millimetres. Furniture anchors can represent exact
-half millimetre centres for odd sized objects. The Canvas is a view of this
+half-millimetre centres for odd-sized objects. The Canvas is a view of this
 data and is not a freehand text editor.
 
 Room forms create rectangles and configurable L shapes. The direct footprint
@@ -70,7 +70,7 @@ Longer term candidates include more opening types, stable physical wall
 identity, vertical wall data, multiple floors, richer annotations, and more
 construction detail.
 
-The sun study remains an approximate clear sky 2D analysis. Possible additions
+The sun study remains an approximate clear-sky 2D analysis. Possible additions
 include overhangs, wall thickness, and obstacle shadows. It will not be
 presented as illuminance, thermal analysis, or a construction simulation.
 
