@@ -43,6 +43,7 @@ and wall features, validates the result, and saves it.
 ## Configure RoomPlan
 
 - [Settings](configuration/settings.md)
+- [UI providers](configuration/ui-providers.md)
 - [Keymaps](configuration/keymaps.md)
 - [Appearance, highlights, and glyphs](display/appearance.md)
 - [Aspect calibration and view rotation](display/aspect-and-rotation.md)

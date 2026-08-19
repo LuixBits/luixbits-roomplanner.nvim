@@ -33,6 +33,8 @@ You can use today's date, an equinox, a solstice, or an exact date. The time
 step and playback speed apply to the current study. They are not saved in the
 plan.
 
+![A RoomPlan sun study animating a red-orange patch of direct sunlight across the Bedroom](../assets/roomplan-sun-study.gif)
+
 ## Canvas controls
 
 | Key | Action |

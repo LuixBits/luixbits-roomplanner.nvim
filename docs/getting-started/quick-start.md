@@ -26,12 +26,6 @@ Press `a`. In the form:
 RoomPlan accepts `5000`, `5000mm`, `500cm`, and `5m` as the same exact
 measurement. The first room is selected and fitted automatically.
 
-To turn it into a custom compound room later, select it and press `r`. Add or
-resize rectangular sections directly on the canvas, then apply and save the
-entire preview with `s`. Press `m` instead when you want to move the whole room
-and its furniture. The [Rooms chapter](../planning/rooms.md) lists every
-resize-mode key.
-
 ## 3. Add and align a second room
 
 Press `a`, choose Room, and create a `3m × 3m` room named `Bedroom`. Select the
@@ -40,6 +34,8 @@ the Bedroom east of it.
 
 Read [Rooms and alignment](../planning/rooms.md) for every placement and
 alignment option.
+
+![Creating a three-by-three metre Bedroom and aligning it east of a Living room](../assets/roomplan-add-align.gif)
 
 ## 4. Connect the rooms
 
@@ -81,5 +77,13 @@ Use `q` to hide the workspace without unloading its session. Reopen it with:
 
 Use `:RoomPlanClose` only when you want to unload the live plan and its undo
 history.
+
+## Next steps
+
+Select a room and press `r` when you are ready to edit its footprint directly.
+You can add or resize connected rectangular sections on the Canvas, then press
+`s` to apply the complete preview. Press `m` instead to move the whole room and
+its furniture. The [Rooms chapter](../planning/rooms.md) lists every
+resize-mode key.
 
 [← Installation](installation.md) · [Documentation home](../README.md) · [Next: Core concepts →](concepts.md)
