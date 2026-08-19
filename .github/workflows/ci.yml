@@ -67,7 +67,7 @@ jobs:
             | xargs -0 -n1 luac5.1 -p
 
       - name: Check JSON Schema syntax
-        run: jq empty schema/roomplan.schema.json
+        run: jq empty schema/*.schema.json
 
       - name: Run headless test suite
         run: |
