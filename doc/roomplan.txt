@@ -51,6 +51,7 @@ the defaults are sufficient.
 lazy.nvim: >lua
   {
     "LuixBits/luixbits-roomplanner.nvim",
+    version = "*",
     lazy = false,
     main = "roomplan",
     opts = {},
@@ -59,50 +60,39 @@ lazy.nvim: >lua
 
 Neovim 0.12 vim.pack: >lua
   vim.pack.add({
-    { src = "https://github.com/LuixBits/luixbits-roomplanner.nvim" },
+    {
+      src = "https://github.com/LuixBits/luixbits-roomplanner.nvim",
+      version = vim.version.range("*"),
+    },
   })
   require("roomplan").setup({})
 <
 
-For Nix flakes, nvf, rocks.nvim, native packages, and local checkout examples,
-see docs/getting-started/installation.md.
+These examples follow the newest tagged release. Remove version to follow the
+development branch instead. For exact pins, Nix flakes, nvf, rocks.nvim,
+native packages, and local checkout examples, see
+docs/getting-started/installation.md.
 
-RoomPlan owns its workspace, forms, and action palette, but delegates
-transient scalar editors and choices to vim.ui.input() and vim.ui.select().
-With no UI provider, Neovim may show scalar input on the command line. An
-installed provider such as Snacks can show floating input and searchable
-choices without becoming a RoomPlan dependency. Enable Snacks `input` and
-`picker.ui_select`; load one vim.ui provider before an interactive RoomPlan
-workflow. See docs/getting-started/installation.md for a complete example.
+RoomPlan uses vim.ui.input() and vim.ui.select() for transient prompts. Neovim
+provides defaults; an optional provider such as Snacks can replace those
+prompts without taking over RoomPlan's workspace. See
+docs/configuration/ui-providers.md for setup examples.
 
 ==============================================================================
 3. FIRST PLAN                                            *roomplan-quickstart*
 
-Create a standalone plan without overwriting an existing file: >vim
+Create a standalone plan without overwriting an existing non-empty file: >vim
   :RoomPlanInit ~/plans/flat.roomplan.json
 <
 
-Press `a` to add the first room. In the form, move with `j`/`k`, edit with
-<CR>, choose a Rectangle or L-shaped footprint, and apply with <C-s>. An L
-accepts exact overall/leg dimensions and any missing corner. Back on the
-canvas, use `h`/`j`/`k`/`l`, press `e` to edit properties, canonical L
-dimensions, or custom section sizes. Press `m` to move the whole room together
-with its furniture. Press `r` to resize on the canvas: <CR>/<Tab> select a
-section, direction keys resize it, `a`/`d` add/remove, `s` applies and saves,
-and <Esc> cancels. The first horizontal/vertical direction chooses the matching
-west/east or south/north edge; the opposite direction then shrinks that same
-edge. Nearby section or room edges snap with a light alignment guide
-and a strong highlight on the overlapping edge. `gs` toggles snapping and `g!`
-bypasses one change. Moving away from a snap releases it immediately, including
-with fine steps. Every simultaneous wall contact is highlighted, and the fine
-step cleans up deep-zoom millimetre residuals without another setting. Use `t`
-to cycle canvas detail. The `?` window includes exact measurement, selected-
-furniture wall placement, and named undo-history browsing.
+Press `a` to add an object and use `h`/`j`/`k`/`l` to move the Canvas cursor.
+Use `e` for exact properties and `m`/`r`/`R` to move, resize, or rotate the
+selected object when supported. Press `s` to save, `u`/<C-r> to undo/redo, and
+`?` to search the actions available in the current context.
 
-With a room present, `W` adds a window and `O` adds a wall or floor outlet. The
-`a` Add menu offers the same objects with lowercase `w` and `o`.
-Press `S` for the sunlight study. First use opens site setup; later uses open
-the seasonal date/time, whole-day playback, and exposure popup directly.
+The walkthrough in docs/getting-started/quick-start.md builds two rooms,
+connects them with a door, adds furniture and wall features, then validates
+and saves the plan.
 
 Open the plan later with: >vim
   :RoomPlanOpen ~/plans/flat.roomplan.json
@@ -442,7 +432,8 @@ and must be strictly inside an exterior edge because corners are ambiguous.
 Floor outlets use full circles and must be strictly inside their owner room.
 
 The top-down model does not store glazing/opening style or outlet mounting
-height. See docs/planning/windows-and-outlets.md and planning/sun-study.md.
+height. See docs/planning/windows-and-outlets.md and
+docs/planning/sun-study.md.
 
 ==============================================================================
 9. FURNITURE CATALOGUES                                 *roomplan-furniture*
@@ -477,7 +468,7 @@ Inline example: >lua
           name = "Standing desk",
           category = "work",
           shape = "rectangle",
-          default_size_mm = { 1600, 800, 1250 },
+          default_size_mm = { 1600, 800, 1100 },
         },
       },
       files = { vim.fn.stdpath("config") .. "/roomplan-furniture.json" },
@@ -608,11 +599,8 @@ changing the installed package/generation.
 
 If the canvas looks stretched, run :RoomPlanAspect; this never requires a Nix
 or system rebuild. If a plan is not visible, press `f`. If an action is not in
-the compact footer, press `?` to see the complete contextual action window and
-`/` to filter it live without leaving the popup. Enter runs the first match;
-Backspace edits the query, and Esc returns to the matching results without
-running anything. The fixed action window and its read-only results remain
-stable while a separate native prompt owns input and excludes completion.
+the compact footer, press `?` to open the complete contextual action window,
+then `/` to filter its actions.
 
 For detailed diagnosis see docs/reference/troubleshooting.md.
 

@@ -19,7 +19,7 @@ The Add menu also includes both objects. Press `a`, then `w` for a window or
 `:RoomPlanAddOutlet`.
 
 Windows and wall outlets move along their assigned wall. Floor outlets move in
-room local coordinates. All changes support validation and undo.
+room-local coordinates. All changes support validation and undo.
 
 ## Wall placement
 
