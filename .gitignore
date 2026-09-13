@@ -2,3 +2,4 @@ nvim.log
 .nvimlog
 doc/tags
 .luacov
+/graphify-out/
