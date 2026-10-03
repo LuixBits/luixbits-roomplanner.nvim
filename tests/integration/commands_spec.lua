@@ -27,6 +27,30 @@ describe("commands", function()
     assert_equal(vim.api.nvim_get_keymap("n"), before)
   end)
 
+  it("completes canvas detail values that match the typed prefix", function()
+    require("roomplan.commands").register()
+    assert_equal(vim.fn.getcompletion("RoomPlanCanvasDetail ", "cmdline"), { "high", "middle", "none", "cycle" })
+    assert_equal(vim.fn.getcompletion("RoomPlanCanvasDetail m", "cmdline"), { "middle" })
+    assert_equal(vim.fn.getcompletion("RoomPlanCanvasDetail M", "cmdline"), { "middle" })
+    assert_equal(vim.fn.getcompletion("RoomPlanCanvasDetail none", "cmdline"), { "none" })
+    assert_equal(vim.fn.getcompletion("RoomPlanCanvasDetail unknown", "cmdline"), {})
+    assert_equal(vim.fn.getcompletion("RoomPlanCanvasDetail .", "cmdline"), {})
+  end)
+
+  it("completes view rotation directions that match the typed prefix", function()
+    require("roomplan.commands").register()
+    assert_equal(vim.fn.getcompletion("RoomPlanRotateView ", "cmdline"), {
+      "clockwise",
+      "counterclockwise",
+      "reset",
+    })
+    assert_equal(vim.fn.getcompletion("RoomPlanRotateView c", "cmdline"), { "clockwise", "counterclockwise" })
+    assert_equal(vim.fn.getcompletion("RoomPlanRotateView co", "cmdline"), { "counterclockwise" })
+    assert_equal(vim.fn.getcompletion("RoomPlanRotateView re", "cmdline"), { "reset" })
+    assert_equal(vim.fn.getcompletion("RoomPlanRotateView RESET", "cmdline"), { "reset" })
+    assert_equal(vim.fn.getcompletion("RoomPlanRotateView unknown", "cmdline"), {})
+  end)
+
   it("installs buffer-local object and dimension mappings", function()
     require("roomplan.config").reset()
     local bufnr = vim.api.nvim_create_buf(false, true)

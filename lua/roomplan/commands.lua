@@ -21,6 +21,17 @@ local function invoke(method, args)
   end
 end
 
+local function complete_values(values)
+  return function(arg_lead)
+    local prefix = arg_lead:lower()
+    local matches = {}
+    for _, value in ipairs(values) do
+      if value:sub(1, #prefix) == prefix then matches[#matches + 1] = value end
+    end
+    return matches
+  end
+end
+
 local definitions = {
   RoomPlan = { method = "menu", desc = "Open RoomPlan menu" },
   RoomPlanMenu = { method = "menu", desc = "Open RoomPlan menu" },
@@ -52,12 +63,13 @@ local definitions = {
   RoomPlanCanvasDetail = {
     method = "set_detail_level",
     nargs = "?",
-    complete = function() return { "high", "middle", "none", "cycle" } end,
+    complete = complete_values({ "high", "middle", "none", "cycle" }),
     desc = "Set or cycle RoomPlan canvas detail",
   },
   RoomPlanRotateView = {
     method = "rotate_view",
     nargs = "?",
+    complete = complete_values({ "clockwise", "counterclockwise", "reset" }),
     desc = "Rotate the RoomPlan view without changing geometry",
   },
   RoomPlanSunStudy = { method = "sun_study", desc = "Open the RoomPlan sunlight study" },

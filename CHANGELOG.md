@@ -7,6 +7,15 @@ RoomPlan schema versions are independent from plugin versions.
 
 ## [Unreleased]
 
+### Added
+
+- Tab completion for `:RoomPlanRotateView`: `clockwise`, `counterclockwise`,
+  and `reset`.
+
+### Fixed
+
+- `:RoomPlanCanvasDetail` completion now filters options as you type.
+
 ## [0.1.0] - 2026-08-19
 
 First public release.
